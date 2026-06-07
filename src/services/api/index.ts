@@ -1,0 +1,10 @@
+export { authApi } from './auth.api';
+export { eventsApi } from './events.api';
+export { galleryApi } from './gallery.api';
+export { paymentApi } from './payment.api';
+export { couponApi } from './coupon.api';
+export { affiliateApi } from './affiliate.api';
+export { contactApi } from './contact.api';
+export { guestsApi } from './guests.api';
+export { reviewApi } from './review.api';
+export { packagesApi } from './packages.api';
