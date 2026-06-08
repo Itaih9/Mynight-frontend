@@ -121,6 +121,7 @@ export const Register: React.FC = () => {
   const packageName = searchParams.get('package') || 'UNLIMITED';
   const basePrice = parseInt(searchParams.get('price') || '590', 10);
   const refCodeFromUrl = (searchParams.get('ref') || '').trim().toUpperCase() || undefined;
+  const resumePayment = searchParams.get('resumePayment') === '1';
 
   const PACKAGE_DATA: Record<string, { hebrewName: string; features: string[] }> = {
     'The Morning After': {
@@ -282,6 +283,14 @@ export const Register: React.FC = () => {
       requestAnimationFrame(animatePrice);
     }
   }, [finalPrice]);
+
+  useEffect(() => {
+    if (!resumePayment) return;
+    const isLoggedIn = typeof window !== 'undefined' && !!localStorage.getItem('token');
+    if (isLoggedIn && currentEvent && !(currentEvent as any).isPaid && step === 'register') {
+      setStep('payment');
+    }
+  }, [resumePayment, currentEvent, step]);
 
   useEffect(() => {
     if (step === 'loading') {
@@ -1213,12 +1222,12 @@ export const Register: React.FC = () => {
                             type="button"
                             onClick={handleStartSumitRedirect}
                             disabled={sumitRedirectStarting}
-                            className="w-full bg-gradient-to-r from-gold-primary to-gold-secondary text-white font-bold text-2xl py-6 rounded-2xl shadow-lg flex items-center justify-center gap-3"
+                            className="w-full bg-gradient-to-r from-gold-primary to-gold-secondary text-white font-bold text-xl sm:text-2xl py-6 rounded-2xl shadow-lg flex items-center justify-center gap-3"
                           >
                             {sumitRedirectStarting ? <Loader2 className="animate-spin" /> : (
                               <>
-                                <span>המשך לתשלום מאובטח</span>
-                                <Lock size={24} />
+                                <span className="whitespace-nowrap">המשך לתשלום מאובטח</span>
+                                <Lock size={24} className="shrink-0" />
                               </>
                             )}
                           </button>

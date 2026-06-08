@@ -1509,6 +1509,8 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
   // Sentinel for IntersectionObserver-driven infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const heroCollageItemsRef = useRef<MediaItem[]>([]);
+  const heroCollageKeyRef = useRef('');
 
   useEffect(() => {
     if (isShowcase) {
@@ -1850,14 +1852,33 @@ const Gallery: React.FC<GalleryPageProps> = ({
     };
   }, [filteredMedia]);
 
-  const collageItems = useMemo(() => {
+  const filteredCollageItems = useMemo(() => {
     if (!effectiveShareSettings.pro && !effectiveShareSettings.guests && !effectiveShareSettings.stories) return [];
     return mediaItems.filter((item: MediaItem) => {
+      if (item.type !== 'photo' || !item.url) return false;
       if (item.source === 'pro' && !effectiveShareSettings.pro) return false;
       if (item.source === 'guest' && !effectiveShareSettings.guests) return false;
       return true;
     });
   }, [mediaItems, effectiveShareSettings]);
+
+  const collagePermissionKey = `${effectiveShareSettings.pro ? '1' : '0'}${effectiveShareSettings.guests ? '1' : '0'}${effectiveShareSettings.stories ? '1' : '0'}`;
+  const collageIdentityKey = `${resolvedEventId || 'showcase'}:${collagePermissionKey}`;
+
+  const collageItems = useMemo(() => {
+    if (heroCollageKeyRef.current !== collageIdentityKey) {
+      heroCollageKeyRef.current = collageIdentityKey;
+      heroCollageItemsRef.current = [];
+    }
+
+    if (!filteredCollageItems.length) return [];
+
+    if (heroCollageItemsRef.current.length === 0) {
+      heroCollageItemsRef.current = filteredCollageItems.slice(0, 50);
+    }
+
+    return heroCollageItemsRef.current;
+  }, [filteredCollageItems, collageIdentityKey]);
 
   const openLightbox = useCallback((item: MediaItem) => {
     setSelectedMedia(item);

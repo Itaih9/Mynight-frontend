@@ -652,6 +652,26 @@ const Upload: React.FC = () => {
   }, [token, navigate]);
 
   useEffect(() => {
+    if (!token || !currentEvent) return;
+    if ((currentEvent as any).isPaid === false) {
+      const pkgName = (currentEvent as any).packageName || 'UNLIMITED';
+      const englishMap: Record<string, string> = {
+        'האוספת': 'The Morning After',
+        'המושלמת': 'UNLIMITED',
+        'החכמה': 'Here I Am',
+      };
+      const priceMap: Record<string, number> = {
+        'האוספת': 350,
+        'המושלמת': 590,
+        'החכמה': 450,
+      };
+      const englishPkg = englishMap[pkgName] || pkgName;
+      const price = priceMap[pkgName] || 590;
+      navigate(`${ROUTES.REGISTER}?package=${encodeURIComponent(englishPkg)}&price=${price}&resumePayment=1`);
+    }
+  }, [token, currentEvent, navigate]);
+
+  useEffect(() => {
     if (currentEvent?.customSlug && !customSlug) {
       setCustomSlug(currentEvent.customSlug);
     }

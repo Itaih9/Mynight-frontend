@@ -4,13 +4,12 @@ import type { MediaItem } from '../types';
 
 const getHeroPreviewSrc = (item?: MediaItem) => {
   if (!item) return '';
-  return item.poster || item.thumbnail || item.url || '';
+  return item.type === 'photo' ? item.url || '' : '';
 };
 
 const getHeroFullSrc = (item?: MediaItem) => {
   if (!item) return '';
-  if (item.type === 'video') return item.poster || item.thumbnail || '';
-  return item.url || item.thumbnail || '';
+  return item.type === 'photo' ? item.url || '' : '';
 };
 
 const hashString = (value: string) => {
@@ -147,8 +146,9 @@ export const HeroVerticalCollage = React.memo(({ items }: { items: MediaItem[] }
   }, [items]);
 
   const spreadItems = useMemo(() => {
-    if (items.length <= 3) return items;
-    const sorted = [...items].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    const photoItems = items.filter((item) => item.type === 'photo' && item.url);
+    if (photoItems.length <= 3) return photoItems;
+    const sorted = [...photoItems].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
     const step = Math.max(1, Math.floor(sorted.length / 30));
     const picked: MediaItem[] = [];
     for (let i = 0; i < sorted.length && picked.length < 30; i += step) {
