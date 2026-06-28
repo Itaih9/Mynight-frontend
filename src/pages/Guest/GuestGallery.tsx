@@ -391,16 +391,46 @@ const GuestGallery: React.FC = () => {
     setSelectedItem(photos[newIndex]);
   };
 
+  const closeLightbox = () => {
+    // Pop the history entry pushed below; the popstate handler below
+    // actually clears selectedItem, keeping history state consistent
+    // regardless of whether the lightbox was closed via the back button,
+    // the X button, the backdrop, or Escape.
+    if (selectedItem) {
+      window.history.back();
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (!selectedItem) return;
         if (e.key === 'ArrowLeft') navigateLightbox('next');
         if (e.key === 'ArrowRight') navigateLightbox('prev');
-        if (e.key === 'Escape') setSelectedItem(null);
+        if (e.key === 'Escape') closeLightbox();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedItem, photos]);
+
+  // Tapping the phone's back button while a photo is enlarged should close
+  // the lightbox and return to the gallery grid — not navigate away from
+  // this page entirely. We push a dedicated history entry the moment the
+  // lightbox opens, so the back button pops that entry first.
+  useEffect(() => {
+    if (!selectedItem) return;
+
+    window.history.pushState({ lightbox: true }, '');
+
+    const handlePopState = () => {
+      setSelectedItem(null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+    // Intentionally only re-runs on open/close, not on every photo swipe
+    // inside the lightbox (navigateLightbox also changes selectedItem).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedItem !== null]);
 
   const isVideo = (photo: Photo) => photo.metadata?.mimeType?.startsWith('video/');
 
@@ -656,10 +686,10 @@ const GuestGallery: React.FC = () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[180] bg-white flex items-center justify-center"
-                onClick={() => setSelectedItem(null)}
+                onClick={closeLightbox}
             >
                 <div className="absolute top-4 left-4 z-20">
-                   <button onClick={() => setSelectedItem(null)} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-black transition-colors shadow-sm">
+                   <button onClick={closeLightbox} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-black transition-colors shadow-sm">
                         <X size={24} />
                    </button>
                 </div>
