@@ -754,6 +754,15 @@ export const Register: React.FC = () => {
   const handlePaymentComplete = () => {
     setNewUser(true);
     localStorage.setItem('show-welcome-popup', 'true');
+    // The coupon-payment success path never refreshes currentEvent from the
+    // server before getting here, so isPaid would still read false in the
+    // store. Upload.tsx redirects back to /register?resumePayment=1 whenever
+    // it sees isPaid === false, which is exactly the bug this fixes: without
+    // this, a 100%-off coupon would bounce the user straight back to payment
+    // with an "Event is already paid" error on the next attempt.
+    if (currentEvent) {
+      setCurrentEvent({ ...currentEvent, isPaid: true } as any);
+    }
     navigate(ROUTES.UPLOAD);
   };
 
