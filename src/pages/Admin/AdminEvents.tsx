@@ -24,6 +24,7 @@ import {
   Eye,
   MessageCircle,
   Film,
+  Copy,
 } from 'lucide-react';
 
 export const AdminEvents = () => {
@@ -51,6 +52,7 @@ export const AdminEvents = () => {
   const [slugResetCount, setSlugResetCount] = useState(false);
   const [slugSaving, setSlugSaving] = useState(false);
   const [slugError, setSlugError] = useState('');
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   const [photoSelectMode, setPhotoSelectMode] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
@@ -131,6 +133,14 @@ export const AdminEvents = () => {
     setSlugResetCount(false);
     setSlugError('');
     setSlugSaving(false);
+    setCopiedLink(null);
+  };
+
+  const copyLink = (url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedLink(url);
+      setTimeout(() => setCopiedLink(null), 2000);
+    });
   };
 
   const handleSaveSlug = async () => {
@@ -682,6 +692,34 @@ export const AdminEvents = () => {
             </div>
 
             <div className="p-6 space-y-5">
+              {/* ── Quick-copy links ── */}
+              {(() => {
+                const base = 'https://mynight.co.il';
+                const id = slugModalEvent.customSlug || slugModalEvent.eventCode;
+                const links = [
+                  { label: 'Gallery', url: `${base}/gallery/${id}` },
+                  { label: 'Guest Upload', url: `${base}/guest/${slugModalEvent.eventCode}/upload` },
+                  { label: 'Guest Selfie', url: `${base}/guest/${slugModalEvent.eventCode}/selfie` },
+                ];
+                return (
+                  <div className="space-y-2">
+                    {links.map(({ label, url }) => (
+                      <div key={label} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                        <span className="text-xs font-medium text-slate-500 w-20 shrink-0">{label}</span>
+                        <span className="text-xs text-slate-700 font-mono truncate flex-1" dir="ltr">{url}</span>
+                        <button
+                          onClick={() => copyLink(url)}
+                          className="shrink-0 p-1.5 rounded-md hover:bg-slate-200 transition-colors text-slate-500 hover:text-slate-800"
+                          title={`Copy ${label} link`}
+                        >
+                          {copiedLink === url ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
               <div className="bg-slate-50 rounded-lg p-3 text-sm flex items-center justify-between">
                 <span className="text-slate-500">User change count</span>
                 <span className={`font-bold ${(slugModalEvent.slugChangeCount ?? 0) >= 3 ? 'text-red-600' : 'text-slate-700'}`}>
