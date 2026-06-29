@@ -600,7 +600,8 @@ const SetPasswordModal: React.FC<{ onClose: () => void; initialPhone?: string }>
     return (
         <div className="fixed inset-0 z-[400] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/60 backdrop-blur-md" />
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-[40px] p-8 md:p-12 w-full max-w-md relative z-10 shadow-2xl text-center max-h-[90dvh] overflow-y-auto">
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="bg-white rounded-[40px] w-full max-w-md relative z-10 shadow-2xl text-center max-h-[90dvh] overflow-hidden">
+                <div className="overflow-y-auto max-h-[90dvh] p-8 md:p-12">
                 <div className="w-20 h-20 bg-gold-primary/10 rounded-3xl flex items-center justify-center mx-auto text-gold-primary mb-6"><Sparkles size={48} /></div>
                 <h3 className="text-3xl font-black mb-3">ברוכים הבאים!</h3>
                 <p className="text-gray-500 mb-8 leading-relaxed">כדי שתוכלו להיכנס ללוח הבקרה בכל זמן,<br />אנא קבעו סיסמה אישית.</p>
@@ -612,6 +613,7 @@ const SetPasswordModal: React.FC<{ onClose: () => void; initialPhone?: string }>
                     {error && <p className="text-red-500 text-sm font-medium text-center">{error}</p>}
                     <button type="submit" disabled={isLoading} className="w-full bg-black text-white py-5 rounded-2xl font-black text-xl shadow-xl hover:bg-gray-800 transition-all flex items-center justify-center gap-3 mt-4">{isLoading ? <Loader2 className="animate-spin" /> : 'שמירה וכניסה למערכת'}</button>
                 </form>
+                </div>
             </motion.div>
         </div>
     );
@@ -824,7 +826,8 @@ const Upload: React.FC = () => {
         {isEditingSettings && (
           <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsEditingSettings(false)}></div>
-            <div className="bg-white rounded-[32px] p-8 md:p-12 w-full max-w-lg relative z-10 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-[32px] w-full max-w-lg relative z-10 shadow-2xl animate-fade-in max-h-[90vh] overflow-hidden">
+              <div className="overflow-y-auto max-h-[90vh] p-8 md:p-12">
               <div className="relative flex items-center justify-center mb-8"><button onClick={() => setIsEditingSettings(false)} className="absolute right-0 text-gray-400 hover:text-black"><X size={24} /></button><h3 className="text-3xl font-bold text-center">הגדרות חשבון</h3></div>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4"><div><label className="block text-sm font-medium text-gray-400 mb-2">שם בן/בת זוג 1</label><input type="text" className="w-full px-6 py-4 rounded-xl bg-gray-50 border border-gray-100 focus:border-black outline-none text-right font-bold text-xl" value={newName1} onChange={e => setNewName1(e.target.value)} /></div><div><label className="block text-sm font-medium text-gray-400 mb-2">שם בן/בת זוג 2</label><input type="text" className="w-full px-6 py-4 rounded-xl bg-gray-50 border border-gray-100 focus:border-black outline-none text-right font-bold text-xl" value={newName2} onChange={e => setNewName2(e.target.value)} /></div></div>
@@ -833,6 +836,7 @@ const Upload: React.FC = () => {
                 <div><label className="block text-sm font-medium text-gray-400 mb-2">אימייל</label><div className="relative"><input type="email" dir="ltr" className="w-full px-6 py-4 pl-12 rounded-xl bg-gray-50 border border-gray-100 focus:border-black outline-none text-left font-bold text-xl" value={newEmail} onChange={e => setNewEmail(e.target.value)} /><Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} /></div></div>
                 {settingsError && <p className="text-red-500 text-sm font-medium text-center">{settingsError}</p>}
                 <button onClick={handleSaveSettings} disabled={isSavingSettings} className="w-full bg-black text-white py-5 rounded-2xl font-black text-xl mt-6 shadow-xl hover:bg-gray-800 transition-all flex items-center justify-center gap-3">{isSavingSettings ? <Loader2 className="animate-spin" size={24} /> : <CheckCircle2 size={24} />}שמירה ועדכון</button>
+              </div>
               </div>
             </div>
           </div>
