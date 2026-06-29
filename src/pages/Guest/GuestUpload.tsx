@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import { ArrowRight, ArrowLeft, Upload, X, Film, Check, Loader2, Plus, User, ChevronRight, ChevronLeft, Camera, Smartphone, RefreshCcw, Heart } from 'lucide-react';
@@ -242,6 +243,8 @@ const GuestUpload: React.FC = () => {
     }
   };
 
+  const swipeHandlers = useSwipeNavigation(navigateViewer);
+
   if (isLoadingEvent) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center" dir="rtl">
@@ -481,7 +484,7 @@ const GuestUpload: React.FC = () => {
                     <X size={24} />
                 </button>
 
-                <div className="relative w-full h-full flex items-center justify-center p-4 md:p-8" onClick={(e) => e.stopPropagation()}>
+                <div className="relative w-full h-full flex items-center justify-center p-4 md:p-8" onClick={(e) => e.stopPropagation()} {...swipeHandlers}>
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={selectedFile.id}
