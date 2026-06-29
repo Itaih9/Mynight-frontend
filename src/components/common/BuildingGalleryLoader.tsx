@@ -160,7 +160,7 @@ export const BuildingGalleryLoader: React.FC<BuildingGalleryLoaderProps> = ({ on
               <h3 className="text-3xl font-bold text-black tracking-tight">
                 {step === 'final' ? 'הכל מוכן!' : 'מבצעים את ההגדרות האחרונות'}
               </h3>
-              <p className="text-xl text-gray-400 font-light">אנחנו בונים עבורכם חוויה דיגיטלית מושלמת</p>
+              <p className="text-xl text-gray-400 font-light">בונים עבורכם חוויה דיגיטלית מושלמת</p>
             </div>
 
             <div className="w-full h-14 flex items-center justify-center mb-6">
