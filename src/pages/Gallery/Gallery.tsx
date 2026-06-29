@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import confetti from 'canvas-confetti';
+import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 
 const SAMPLE_UPLOADER_NAMES = ['דנה', 'יוסי', 'מיכל', 'אורן', 'שירה', 'עומר', 'נועה', 'איתי'];
 
@@ -1024,7 +1025,9 @@ const LightboxModal = ({
   onInstagram: () => void;
   onFacebook: () => void;
   onMore: () => void;
-}) => (
+}) => {
+  const swipeHandlers = useSwipeNavigation(onNavigate);
+  return (
   <AnimatePresence>
     {item && (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[180] bg-white flex flex-col" onClick={onClose}>
@@ -1050,7 +1053,7 @@ const LightboxModal = ({
           </div>
         </div>
 
-        <div className="flex-1 relative flex items-center justify-center w-full h-full overflow-hidden p-4 md:p-8" onClick={(e) => e.stopPropagation()}>
+        <div className="flex-1 relative flex items-center justify-center w-full h-full overflow-hidden p-4 md:p-8" onClick={(e) => e.stopPropagation()} {...swipeHandlers}>
           <AnimatePresence mode="popLayout">
             <motion.div
               key={item.id}
@@ -1111,7 +1114,8 @@ const LightboxModal = ({
       </motion.div>
     )}
   </AnimatePresence>
-);
+  );
+};
 
 // ============================================================================
 // StoryViewerModal — progress bar uses ref-based DOM update (no 60fps re-renders).
