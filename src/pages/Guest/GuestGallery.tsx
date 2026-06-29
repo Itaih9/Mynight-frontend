@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import { Share2, Download, Play, X, Camera, Heart, ArrowLeft, ChevronLeft, ChevronRight, Instagram, MoreHorizontal, Loader2, Check } from 'lucide-react';
+import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 
 const WhatsAppIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -110,6 +111,7 @@ const GuestGallery: React.FC = () => {
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
 
   const [selectedItem, setSelectedItem] = useState<Photo | null>(null);
+  const [fullImageLoaded, setFullImageLoaded] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(true);
   const [authStep, setAuthStep] = useState<'welcome' | 'photo' | 'processing'>('welcome');
   const [guestImage, setGuestImage] = useState<string | null>(null);
@@ -388,8 +390,11 @@ const GuestGallery: React.FC = () => {
     } else {
         newIndex = (currentIndex - 1 + photos.length) % photos.length;
     }
+    setFullImageLoaded(false);
     setSelectedItem(photos[newIndex]);
   };
+
+  const swipeHandlers = useSwipeNavigation(navigateLightbox);
 
   const closeLightbox = () => {
     // Pop the history entry pushed below; the popstate handler below
@@ -710,7 +715,7 @@ const GuestGallery: React.FC = () => {
                     <ChevronRight size={32} />
                 </button>
 
-                <div className="w-full h-full p-4 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                <div className="w-full h-full p-4 flex items-center justify-center" onClick={(e) => e.stopPropagation()} {...swipeHandlers}>
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={selectedItem._id}
@@ -729,11 +734,23 @@ const GuestGallery: React.FC = () => {
                                     onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }}
                                 />
                             ) : (
-                                <img
-                                    src={getPhotoUrl(selectedItem)}
-                                    alt=""
-                                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-                                />
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                    {/* Thumbnail shown immediately while full image loads */}
+                                    <img
+                                        src={selectedItem.thumbnailUrl || getPhotoUrl(selectedItem)}
+                                        alt=""
+                                        className="absolute max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300"
+                                        style={{ opacity: fullImageLoaded ? 0 : 1 }}
+                                    />
+                                    {/* Full-resolution image fades in on top */}
+                                    <img
+                                        src={getPhotoUrl(selectedItem)}
+                                        alt=""
+                                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-500"
+                                        style={{ opacity: fullImageLoaded ? 1 : 0 }}
+                                        onLoad={() => setFullImageLoaded(true)}
+                                    />
+                                </div>
                             )}
                         </motion.div>
                     </AnimatePresence>
