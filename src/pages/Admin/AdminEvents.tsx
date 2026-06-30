@@ -698,8 +698,8 @@ export const AdminEvents = () => {
                 const id = slugModalEvent.customSlug || slugModalEvent.eventCode;
                 const links = [
                   { label: 'Gallery', url: `${base}/gallery/${id}` },
-                  { label: 'Guest Upload', url: `${base}/guest/${slugModalEvent.eventCode}/upload` },
-                  { label: 'Guest Selfie', url: `${base}/guest/${slugModalEvent.eventCode}/selfie` },
+                  { label: 'Guest Upload', url: `${base}/guest/${id}/upload` },
+                  { label: 'Guest Selfie', url: `${base}/guest/${id}/selfie` },
                 ];
                 return (
                   <div className="space-y-2">
