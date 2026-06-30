@@ -113,11 +113,16 @@ export const Login: React.FC = () => {
       });
 
       if (response.data) {
-        login(response.data.token, response.data.user);
         if (response.data.event) {
+          login(response.data.token, response.data.user);
           setCurrentEvent(response.data.event);
+          navigate(ROUTES.UPLOAD);
+        } else {
+          // Do NOT call login() here: setting the token would trigger the
+          // auto-redirect-to-/upload effect and strand the user on a broken
+          // dashboard. Surface the error and keep them on the login screen.
+          setError('לא נמצא אירוע המשויך לחשבון זה. אנא פנו לתמיכה.');
         }
-        navigate(ROUTES.UPLOAD);
       }
     } catch (err: any) {
       setError(err.response?.data?.error || err.response?.data?.message || 'קוד לא תקין');
@@ -189,11 +194,16 @@ export const Login: React.FC = () => {
       const response = await authApi.loginWithPassword(loginData);
 
       if (response.data) {
-        login(response.data.token, response.data.user);
         if (response.data.event) {
+          login(response.data.token, response.data.user);
           setCurrentEvent(response.data.event);
+          navigate(ROUTES.UPLOAD);
+        } else {
+          // Do NOT call login() here: setting the token would trigger the
+          // auto-redirect-to-/upload effect and strand the user on a broken
+          // dashboard. Surface the error and keep them on the login screen.
+          setError('לא נמצא אירוע המשויך לחשבון זה. אנא פנו לתמיכה.');
         }
-        navigate(ROUTES.UPLOAD);
       }
     } catch (err: any) {
       const message = err.response?.data?.error || err.response?.data?.message || '';
