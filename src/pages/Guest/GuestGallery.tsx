@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
-import { Share2, Download, Play, X, Camera, Heart, ArrowLeft, ChevronLeft, ChevronRight, Instagram, MoreHorizontal, Loader2, Check } from 'lucide-react';
+import { Share2, Download, Play, X, Camera, Heart, ArrowLeft, ChevronLeft, ChevronRight, MoreHorizontal, Loader2, Check } from 'lucide-react';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 
 const WhatsAppIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
@@ -342,48 +342,6 @@ const GuestGallery: React.FC = () => {
       }
 
       closeShareMenu();
-  };
-
-  const handleInstagramStory = async (photo: Photo) => {
-    // To get Instagram to open its Story composer with the media already
-    // loaded, we must share the actual FILE via the Web Share API — not a URL
-    // (a URL just sends a link and looks like a generic share). We fetch the
-    // file through the signed download URL (same path WhatsApp uses, which
-    // avoids CORS issues), then hand the File to navigator.share. When the user
-    // taps Instagram in the resulting sheet, Instagram receives the photo/video.
-    // Works for both images and videos — Instagram Stories accepts both.
-    if (isSharing) return;
-    setIsSharing(true);
-    const isVid = isVideo(photo);
-    const savedMsg = isVid
-      ? 'הסרטון נשמר! פתחו את אינסטגרם והוסיפו אותו לסטורי מהגלריה.'
-      : 'התמונה נשמרה! פתחו את אינסטגרם והוסיפו אותה לסטורי מהגלריה.';
-    try {
-      const signedRes = await galleryApi.getDownloadUrl(photo._id);
-      const fileUrl = signedRes.data?.url || getPhotoUrl(photo);
-      const response = await fetch(fileUrl);
-      const blob = await response.blob();
-      const ext = isVid ? 'mp4' : 'jpg';
-      const mimeType = isVid ? 'video/mp4' : 'image/jpeg';
-      const file = new File([blob], `mynight-${photo._id}.${ext}`, { type: mimeType });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file] });
-      } else {
-        // Desktop, or a browser that refuses this file (e.g. a video over the
-        // platform's share size limit): save it and tell the user how to post.
-        // Web can't deep-link Instagram Stories, so this is the best fallback.
-        handleDownload(photo);
-        alert(savedMsg);
-      }
-    } catch (err) {
-      console.error('Instagram share failed', err);
-      handleDownload(photo);
-      alert(savedMsg);
-    } finally {
-      setIsSharing(false);
-      closeShareMenu();
-    }
   };
 
   const handleNativeShare = async (photo: Photo) => {
@@ -834,16 +792,12 @@ const GuestGallery: React.FC = () => {
               dir="rtl"
             >
               <h3 className="text-lg font-bold mb-6">שיתוף תמונה</h3>
-              <div className="grid grid-cols-4 gap-3 mb-6">
+              <div className="grid grid-cols-3 gap-3 mb-6">
                 <button disabled={isSharing} onClick={() => { const t = shareTarget || selectedItem; if (t) handleWhatsAppShare(t); }} className="flex flex-col items-center gap-3 disabled:opacity-70">
                   <div className="p-4 bg-[#25D366]/10 rounded-full text-[#25D366]">
                     {isSharing ? <Loader2 size={28} className="animate-spin" /> : <WhatsAppIcon size={28} />}
                   </div>
                   <span className="text-xs font-medium text-gray-600">{isSharing ? 'מכין...' : 'WhatsApp'}</span>
-                </button>
-                <button onClick={() => { const t = shareTarget || selectedItem; if (t) handleInstagramStory(t); }} className="flex flex-col items-center gap-3">
-                  <div className="p-4 bg-[#E1306C]/10 rounded-full text-[#E1306C]"><Instagram size={28} /></div>
-                  <span className="text-xs font-medium text-gray-600">Story</span>
                 </button>
                 <button onClick={() => { const t = shareTarget || selectedItem; if (t) { handleDownload(t); closeShareMenu(); } }} className="flex flex-col items-center gap-3">
                   <div className="p-4 bg-gray-100 rounded-full text-gray-700"><Download size={28} /></div>
