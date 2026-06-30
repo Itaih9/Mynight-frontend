@@ -122,9 +122,18 @@ const GuestGallery: React.FC = () => {
   const [authStep, setAuthStep] = useState<'welcome' | 'photo' | 'processing'>('welcome');
   const [guestImage, setGuestImage] = useState<string | null>(null);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
-  const isShareMenuOpenRef = useRef(false);
-  useEffect(() => { isShareMenuOpenRef.current = isShareMenuOpen; }, [isShareMenuOpen]);
   const [shareTarget, setShareTarget] = useState<Photo | null>(null);
+
+  // Closing the share menu via UI (backdrop, cancel, or an action button) pops
+  // the history entry the menu pushed on open. The popstate handler then clears
+  // the menu state, keeping the history stack consistent with the back button.
+  const closeShareMenu = () => {
+    if (isShareMenuOpen) {
+      window.history.back();
+    } else {
+      setShareTarget(null);
+    }
+  };
   const [isSharing, setIsSharing] = useState(false);
   const [isDownloadExpanded, setIsDownloadExpanded] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -332,48 +341,48 @@ const GuestGallery: React.FC = () => {
         setIsSharing(false);
       }
 
-      setIsShareMenuOpen(false);
-      setShareTarget(null);
+      closeShareMenu();
   };
 
   const handleInstagramStory = async (photo: Photo) => {
-    setIsShareMenuOpen(false);
-    // Step 1: Try to share the actual image file (works on Android Chrome + iOS Safari)
-    // This requires the S3 bucket to allow CORS, so wrap in try/catch
+    // To get Instagram to open its Story composer with the media already
+    // loaded, we must share the actual FILE via the Web Share API — not a URL
+    // (a URL just sends a link and looks like a generic share). We fetch the
+    // file through the signed download URL (same path WhatsApp uses, which
+    // avoids CORS issues), then hand the File to navigator.share. When the user
+    // taps Instagram in the resulting sheet, Instagram receives the photo/video.
+    // Works for both images and videos — Instagram Stories accepts both.
+    if (isSharing) return;
+    setIsSharing(true);
+    const isVid = isVideo(photo);
+    const savedMsg = isVid
+      ? 'הסרטון נשמר! פתחו את אינסטגרם והוסיפו אותו לסטורי מהגלריה.'
+      : 'התמונה נשמרה! פתחו את אינסטגרם והוסיפו אותה לסטורי מהגלריה.';
     try {
-      const response = await fetch(getPhotoUrl(photo), { mode: 'cors' });
-      if (response.ok) {
-        const blob = await response.blob();
-        const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file] });
-          return;
-        }
-      }
-    } catch (_corsErr) {
-      // CORS blocked or file share unsupported — fall through
-    }
+      const signedRes = await galleryApi.getDownloadUrl(photo._id);
+      const fileUrl = signedRes.data?.url || getPhotoUrl(photo);
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const ext = isVid ? 'mp4' : 'jpg';
+      const mimeType = isVid ? 'video/mp4' : 'image/jpeg';
+      const file = new File([blob], `mynight-${photo._id}.${ext}`, { type: mimeType });
 
-    // Step 2: Fall back to native share sheet with the image URL.
-    // On mobile this opens the OS share sheet which includes Instagram.
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `תמונה מחתונה של ${coupleName}`,
-          url: getPhotoUrl(photo),
-        });
-        return;
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        // Desktop, or a browser that refuses this file (e.g. a video over the
+        // platform's share size limit): save it and tell the user how to post.
+        // Web can't deep-link Instagram Stories, so this is the best fallback.
+        handleDownload(photo);
+        alert(savedMsg);
       }
-    } catch (_shareErr) {
-      // User cancelled or not supported — fall through
-    }
-
-    // Step 3: Last resort — copy link and tell user to paste in Instagram
-    try {
-      await navigator.clipboard.writeText(getPhotoUrl(photo));
-      alert('הקישור הועתק! פתחו אינסטגרם, לחצו על הוסף לסטורי ובחרו תמונה מהגלריה לאחר שמירת התמונה.');
-    } catch (_clipErr) {
-      alert('כדי לשתף לסטורי, שמרו את התמונה ושתפו מהגלריה');
+    } catch (err) {
+      console.error('Instagram share failed', err);
+      handleDownload(photo);
+      alert(savedMsg);
+    } finally {
+      setIsSharing(false);
+      closeShareMenu();
     }
   };
 
@@ -396,8 +405,7 @@ const GuestGallery: React.FC = () => {
             console.error('Failed to copy', err);
         }
     }
-    setIsShareMenuOpen(false);
-    setShareTarget(null);
+    closeShareMenu();
   };
 
   const handleShareClick = (photo: Photo, e?: React.MouseEvent) => {
@@ -454,18 +462,7 @@ const GuestGallery: React.FC = () => {
     window.history.pushState({ lightbox: true }, '');
 
     const handlePopState = () => {
-      // Read the live share-menu state via a ref to avoid a stale closure
-      // (this effect only re-subscribes on lightbox open/close, not when the
-      // share menu toggles). If the share menu is open, the back button closes
-      // it first and re-pushes the lightbox entry so a second back press still
-      // closes the lightbox. Otherwise, close the lightbox itself.
-      if (isShareMenuOpenRef.current) {
-        setIsShareMenuOpen(false);
-        setShareTarget(null);
-        window.history.pushState({ lightbox: true }, '');
-      } else {
-        setSelectedItem(null);
-      }
+      setSelectedItem(null);
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -474,6 +471,26 @@ const GuestGallery: React.FC = () => {
     // inside the lightbox (navigateLightbox also changes selectedItem).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedItem !== null]);
+
+  // The share menu manages its own history entry so the phone back button
+  // closes just the menu (returning to the gallery or lightbox underneath),
+  // instead of navigating the whole page back to the selfie screen. This is
+  // independent of the lightbox effect above, so it works whether the menu
+  // was opened from the gallery grid or from inside the enlarged-photo view.
+  useEffect(() => {
+    if (!isShareMenuOpen) return;
+
+    window.history.pushState({ shareMenu: true }, '');
+
+    const handlePopState = () => {
+      setIsShareMenuOpen(false);
+      setShareTarget(null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isShareMenuOpen]);
 
   const isVideo = (photo: Photo) => photo.metadata?.mimeType?.startsWith('video/');
 
@@ -806,7 +823,7 @@ const GuestGallery: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-[210] bg-black/40"
-              onClick={() => { setIsShareMenuOpen(false); setShareTarget(null); }}
+              onClick={closeShareMenu}
             />
             <motion.div
               initial={{ opacity: 0, y: 100 }}
@@ -828,7 +845,7 @@ const GuestGallery: React.FC = () => {
                   <div className="p-4 bg-[#E1306C]/10 rounded-full text-[#E1306C]"><Instagram size={28} /></div>
                   <span className="text-xs font-medium text-gray-600">Story</span>
                 </button>
-                <button onClick={() => { const t = shareTarget || selectedItem; if (t) { handleDownload(t); setIsShareMenuOpen(false); setShareTarget(null); } }} className="flex flex-col items-center gap-3">
+                <button onClick={() => { const t = shareTarget || selectedItem; if (t) { handleDownload(t); closeShareMenu(); } }} className="flex flex-col items-center gap-3">
                   <div className="p-4 bg-gray-100 rounded-full text-gray-700"><Download size={28} /></div>
                   <span className="text-xs font-medium text-gray-600">הורדה</span>
                 </button>
@@ -837,7 +854,7 @@ const GuestGallery: React.FC = () => {
                   <span className="text-xs font-medium text-gray-600">עוד</span>
                 </button>
               </div>
-              <button onClick={() => { setIsShareMenuOpen(false); setShareTarget(null); }} className="w-full py-4 bg-gray-50 hover:bg-gray-100 rounded-xl font-bold transition-colors text-gray-500">ביטול</button>
+              <button onClick={closeShareMenu} className="w-full py-4 bg-gray-50 hover:bg-gray-100 rounded-xl font-bold transition-colors text-gray-500">ביטול</button>
             </motion.div>
           </>
         )}
