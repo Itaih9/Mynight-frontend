@@ -314,9 +314,18 @@ const GuestGallery: React.FC = () => {
   const handleWhatsAppShare = async (photo: Photo) => {
       if (isSharing) return;
       const text = `תראו איזו תמונה מדהימה שלי מהחתונה של ${coupleName}! 😍\nנשלח דרך MyNight - האלבום החכם`;
+      const shareText = text + '\n' + getPhotoUrl(photo);
       const fallback = () => {
-        const url = `https://wa.me/?text=${encodeURIComponent(text + '\n' + getPhotoUrl(photo))}`;
-        window.open(url, '_blank');
+        // On mobile, the whatsapp:// scheme launches the installed app directly.
+        // wa.me tends to open WhatsApp's web/landing page instead, which is the
+        // "API website" users were seeing. Desktop has no app scheme, so use
+        // web.whatsapp.com there.
+        const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+        if (isMobile) {
+          window.location.href = `whatsapp://send?text=${encodeURIComponent(shareText)}`;
+        } else {
+          window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+        }
       };
 
       setIsSharing(true);
