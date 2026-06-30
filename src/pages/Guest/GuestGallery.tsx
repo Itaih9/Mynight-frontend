@@ -85,13 +85,19 @@ const GuestPhotoCard = React.memo(({
       )}
 
       {!isSelecting && (
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-4 pointer-events-none">
-          <div className="flex justify-start gap-2 pointer-events-auto">
-            <button onClick={onShare} className="p-2.5 bg-white/30 hover:bg-white/50 backdrop-blur-sm rounded-full text-white transition-colors">
-              <Share2 size={18} />
+        <>
+          {/* Hover overlay - desktop only */}
+          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+          {/* Always-visible share button - disappears in select mode */}
+          <div className="absolute bottom-2 left-2 z-10">
+            <button
+              onClick={onShare}
+              className="p-2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full text-white transition-colors shadow-md"
+            >
+              <Share2 size={15} />
             </button>
           </div>
-        </div>
+        </>
       )}
     </motion.div>
   );
@@ -116,6 +122,8 @@ const GuestGallery: React.FC = () => {
   const [authStep, setAuthStep] = useState<'welcome' | 'photo' | 'processing'>('welcome');
   const [guestImage, setGuestImage] = useState<string | null>(null);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const isShareMenuOpenRef = useRef(false);
+  useEffect(() => { isShareMenuOpenRef.current = isShareMenuOpen; }, [isShareMenuOpen]);
   const [shareTarget, setShareTarget] = useState<Photo | null>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isDownloadExpanded, setIsDownloadExpanded] = useState(false);
@@ -329,25 +337,44 @@ const GuestGallery: React.FC = () => {
   };
 
   const handleInstagramStory = async (photo: Photo) => {
-    try {
-      const response = await fetch(getPhotoUrl(photo));
-      const blob = await response.blob();
-      const file = new File([blob], 'photo.jpg', { type: blob.type });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: 'My Night Photo',
-          text: `בחתונה של ${coupleName}`
-        });
-      } else {
-        alert('כדי לשתף לסטורי, שמרו את התמונה ושתפו מהגלריה, או השתמשו בכפתור "עוד"');
-      }
-    } catch (e) {
-      console.error('Share failed', e);
-      handleNativeShare(photo);
-    }
     setIsShareMenuOpen(false);
+    // Step 1: Try to share the actual image file (works on Android Chrome + iOS Safari)
+    // This requires the S3 bucket to allow CORS, so wrap in try/catch
+    try {
+      const response = await fetch(getPhotoUrl(photo), { mode: 'cors' });
+      if (response.ok) {
+        const blob = await response.blob();
+        const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file] });
+          return;
+        }
+      }
+    } catch (_corsErr) {
+      // CORS blocked or file share unsupported — fall through
+    }
+
+    // Step 2: Fall back to native share sheet with the image URL.
+    // On mobile this opens the OS share sheet which includes Instagram.
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `תמונה מחתונה של ${coupleName}`,
+          url: getPhotoUrl(photo),
+        });
+        return;
+      }
+    } catch (_shareErr) {
+      // User cancelled or not supported — fall through
+    }
+
+    // Step 3: Last resort — copy link and tell user to paste in Instagram
+    try {
+      await navigator.clipboard.writeText(getPhotoUrl(photo));
+      alert('הקישור הועתק! פתחו אינסטגרם, לחצו על הוסף לסטורי ובחרו תמונה מהגלריה לאחר שמירת התמונה.');
+    } catch (_clipErr) {
+      alert('כדי לשתף לסטורי, שמרו את התמונה ושתפו מהגלריה');
+    }
   };
 
   const handleNativeShare = async (photo: Photo) => {
@@ -427,7 +454,18 @@ const GuestGallery: React.FC = () => {
     window.history.pushState({ lightbox: true }, '');
 
     const handlePopState = () => {
-      setSelectedItem(null);
+      // Read the live share-menu state via a ref to avoid a stale closure
+      // (this effect only re-subscribes on lightbox open/close, not when the
+      // share menu toggles). If the share menu is open, the back button closes
+      // it first and re-pushes the lightbox entry so a second back press still
+      // closes the lightbox. Otherwise, close the lightbox itself.
+      if (isShareMenuOpenRef.current) {
+        setIsShareMenuOpen(false);
+        setShareTarget(null);
+        window.history.pushState({ lightbox: true }, '');
+      } else {
+        setSelectedItem(null);
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -694,7 +732,7 @@ const GuestGallery: React.FC = () => {
                 onClick={closeLightbox}
             >
                 <div className="absolute top-4 left-4 z-20">
-                   <button onClick={closeLightbox} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-black transition-colors shadow-sm">
+                   <button onClick={(e) => { e.stopPropagation(); closeLightbox(); }} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-black transition-colors shadow-sm">
                         <X size={24} />
                    </button>
                 </div>
