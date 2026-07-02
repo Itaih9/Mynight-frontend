@@ -1074,11 +1074,18 @@ const LightboxModal = ({
                     alt=""
                   />
                   <img
-                    src={item.url}
+                    src={item.displayUrl || item.url}
                     className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-500"
                     style={{ opacity: fullImageLoaded ? 1 : 0, imageRendering: 'high-quality' as any, imageOrientation: 'from-image' as any }}
                     alt=""
                     onLoad={() => setFullImageLoaded(true)}
+                    onError={(e) => {
+                      // Display rendition missing (photo predates the pipeline
+                      // and isn't backfilled yet) — fall back to the original.
+                      if (item.displayUrl && e.currentTarget.src !== item.url) {
+                        e.currentTarget.src = item.url;
+                      }
+                    }}
                   />
                 </div>
               )}
@@ -1635,6 +1642,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
               source: photo.uploadedBy === 'guest' ? 'guest' : 'pro',
               url: photo.url,
               thumbnail: photo.thumbnailUrl,
+              displayUrl: photo.displayUrl,
               poster: photo.posterUrl,
               uploaderName:
                 photo.uploaderName || (photo.uploadedBy === 'guest' ? 'אורח' : 'צלם האירוע'),
@@ -2052,6 +2060,24 @@ const Gallery: React.FC<GalleryPageProps> = ({
     const stillThere = filteredMedia.some((m) => m.id === selectedMedia.id);
     if (!stillThere) closeLightbox();
   }, [selectedMedia, filteredMedia, deletedIds, closeLightbox]);
+
+  // Preload the display renditions of the previous/next photos while one is
+  // open, so arrow/swipe navigation shows them instantly from browser cache.
+  useEffect(() => {
+    if (!selectedMedia) return;
+    const idx = filteredMedia.findIndex((m) => m.id === selectedMedia.id);
+    if (idx === -1) return;
+    const neighbors = [
+      filteredMedia[(idx + 1) % filteredMedia.length],
+      filteredMedia[(idx - 1 + filteredMedia.length) % filteredMedia.length],
+    ];
+    for (const n of neighbors) {
+      if (n && n.type === 'photo') {
+        const img = new Image();
+        img.src = n.displayUrl || n.url;
+      }
+    }
+  }, [selectedMedia, filteredMedia]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
