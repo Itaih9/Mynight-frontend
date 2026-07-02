@@ -56,6 +56,9 @@ export interface Photo {
   s3Key: string;
   url: string;
   thumbnailUrl: string;
+  /** Web-optimized ~2048px rendition; may 404 for photos uploaded before the
+   *  display pipeline existed — consumers must fall back to url. */
+  displayUrl?: string;
   posterUrl?: string;
   faceId?: string;
   indexedFaces?: IndexedFace[];
