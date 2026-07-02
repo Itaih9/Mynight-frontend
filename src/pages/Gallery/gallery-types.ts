@@ -4,6 +4,9 @@ export interface MediaItem {
   source: 'guest' | 'pro';
   url: string;
   thumbnail: string;
+  /** Web-optimized ~2048px rendition; may 404 for photos uploaded before the
+   *  display pipeline existed — consumers must fall back to url. */
+  displayUrl?: string;
   poster?: string;
   uploaderName: string;
   timestamp: Date;
