@@ -398,6 +398,24 @@ const GuestGallery: React.FC = () => {
 
   const swipeHandlers = useSwipeNavigation(navigateLightbox);
 
+  // Preload the display renditions of the previous/next photos while one is
+  // open, so arrow/swipe navigation shows them instantly from browser cache.
+  useEffect(() => {
+    if (!selectedItem) return;
+    const idx = photos.findIndex((p) => p._id === selectedItem._id);
+    if (idx === -1) return;
+    const neighbors = [
+      photos[(idx + 1) % photos.length],
+      photos[(idx - 1 + photos.length) % photos.length],
+    ];
+    for (const n of neighbors) {
+      if (n && !isVideo(n)) {
+        const img = new Image();
+        img.src = n.displayUrl || getPhotoUrl(n);
+      }
+    }
+  }, [selectedItem, photos]);
+
   const closeLightbox = () => {
     // Pop the history entry pushed below; the popstate handler below
     // actually clears selectedItem, keeping history state consistent
@@ -757,20 +775,27 @@ const GuestGallery: React.FC = () => {
                                 />
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center">
-                                    {/* Thumbnail shown immediately while full image loads */}
+                                    {/* Thumbnail shown immediately while display image loads */}
                                     <img
                                         src={selectedItem.thumbnailUrl || getPhotoUrl(selectedItem)}
                                         alt=""
                                         className="absolute max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300"
                                         style={{ opacity: fullImageLoaded ? 0 : 1 }}
                                     />
-                                    {/* Full-resolution image fades in on top */}
+                                    {/* Web-optimized display rendition fades in on top;
+                                        falls back to the original if display/ is missing */}
                                     <img
-                                        src={getPhotoUrl(selectedItem)}
+                                        src={selectedItem.displayUrl || getPhotoUrl(selectedItem)}
                                         alt=""
                                         className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-500"
                                         style={{ opacity: fullImageLoaded ? 1 : 0 }}
                                         onLoad={() => setFullImageLoaded(true)}
+                                        onError={(e) => {
+                                          const original = getPhotoUrl(selectedItem);
+                                          if (selectedItem.displayUrl && e.currentTarget.src !== original) {
+                                            e.currentTarget.src = original;
+                                          }
+                                        }}
                                     />
                                 </div>
                             )}
