@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
-import { Share2, Download, Play, X, Camera, Heart, ArrowLeft, ChevronLeft, ChevronRight, MoreHorizontal, Loader2, Check } from 'lucide-react';
+import { Share2, Download, Play, X, Camera, Heart, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Loader2, Check } from 'lucide-react';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
 
 const WhatsAppIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
@@ -12,6 +12,7 @@ const WhatsAppIcon = ({ size = 24, className = '' }: { size?: number; className?
 import { motion, AnimatePresence } from 'framer-motion';
 import { eventsApi, galleryApi } from '@/services/api';
 import type { Event, Photo } from '@/types/api.types';
+import { formatCategoryLabel } from '@/lib/utils';
 import logoSvg from '@/assets/logo.svg';
 
 interface GuestPhotoCardProps {
@@ -104,6 +105,57 @@ const GuestPhotoCard = React.memo(({
 });
 GuestPhotoCard.displayName = 'GuestPhotoCard';
 
+// Category filter as a single "עוד" dropdown. The chevron sits to the left of
+// the label (RTL). Shows the active category on the button, with a "הכל" option
+// to clear the filter.
+const CategoryDropdown = ({
+  availableCategories,
+  selectedCategory,
+  setSelectedCategory,
+}: {
+  availableCategories: string[];
+  selectedCategory: string | null;
+  setSelectedCategory: React.Dispatch<React.SetStateAction<string | null>>;
+}) => {
+  const [open, setOpen] = useState(false);
+  const label = selectedCategory ? formatCategoryLabel(selectedCategory) : 'עוד';
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all active:scale-95 ${selectedCategory ? 'bg-black text-white shadow-md' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+      >
+        <span>{label}</span>
+        <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute top-full right-0 mt-2 z-50 min-w-[160px] max-h-[60vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 py-2">
+            <button
+              onClick={() => { setSelectedCategory(null); setOpen(false); }}
+              className={`w-full text-right px-4 py-2.5 text-sm transition-colors hover:bg-gray-50 ${!selectedCategory ? 'text-black font-bold' : 'text-gray-500'}`}
+            >
+              הכל
+            </button>
+            {availableCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => { setSelectedCategory(cat); setOpen(false); }}
+                className={`w-full text-right px-4 py-2.5 text-sm transition-colors hover:bg-gray-50 ${selectedCategory === cat ? 'text-black font-bold' : 'text-gray-500'}`}
+              >
+                {formatCategoryLabel(cat)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const GuestGallery: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -115,6 +167,7 @@ const GuestGallery: React.FC = () => {
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const [selectedItem, setSelectedItem] = useState<Photo | null>(null);
   const [fullImageLoaded, setFullImageLoaded] = useState(false);
@@ -143,6 +196,29 @@ const GuestGallery: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const coupleName = event?.name || '';
+
+  // Categories present among the matched photos. Uncategorized photos are left
+  // out so they only appear under the "all" view. Sorted for a stable order.
+  const availableCategories = useMemo(() => {
+    const seen = new Set<string>();
+    for (const p of photos) {
+      if (p.category) seen.add(p.category);
+    }
+    return Array.from(seen).sort((a, b) => a.localeCompare(b, 'he'));
+  }, [photos]);
+
+  // Photos shown in the grid / lightbox, narrowed to the selected category.
+  const visiblePhotos = useMemo(
+    () => (selectedCategory ? photos.filter((p) => p.category === selectedCategory) : photos),
+    [photos, selectedCategory]
+  );
+
+  // Drop the active category if it no longer has photos (e.g. after a new selfie match).
+  useEffect(() => {
+    if (selectedCategory && !availableCategories.includes(selectedCategory)) {
+      setSelectedCategory(null);
+    }
+  }, [availableCategories, selectedCategory]);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -383,17 +459,17 @@ const GuestGallery: React.FC = () => {
 
   const navigateLightbox = (direction: 'next' | 'prev') => {
     if (!selectedItem) return;
-    const currentIndex = photos.findIndex(item => item._id === selectedItem._id);
+    const currentIndex = visiblePhotos.findIndex(item => item._id === selectedItem._id);
     if (currentIndex === -1) return;
 
     let newIndex;
     if (direction === 'next') {
-        newIndex = (currentIndex + 1) % photos.length;
+        newIndex = (currentIndex + 1) % visiblePhotos.length;
     } else {
-        newIndex = (currentIndex - 1 + photos.length) % photos.length;
+        newIndex = (currentIndex - 1 + visiblePhotos.length) % visiblePhotos.length;
     }
     setFullImageLoaded(false);
-    setSelectedItem(photos[newIndex]);
+    setSelectedItem(visiblePhotos[newIndex]);
   };
 
   const swipeHandlers = useSwipeNavigation(navigateLightbox);
@@ -402,11 +478,11 @@ const GuestGallery: React.FC = () => {
   // open, so arrow/swipe navigation shows them instantly from browser cache.
   useEffect(() => {
     if (!selectedItem) return;
-    const idx = photos.findIndex((p) => p._id === selectedItem._id);
+    const idx = visiblePhotos.findIndex((p) => p._id === selectedItem._id);
     if (idx === -1) return;
     const neighbors = [
-      photos[(idx + 1) % photos.length],
-      photos[(idx - 1 + photos.length) % photos.length],
+      visiblePhotos[(idx + 1) % visiblePhotos.length],
+      visiblePhotos[(idx - 1 + visiblePhotos.length) % visiblePhotos.length],
     ];
     for (const n of neighbors) {
       if (n && !isVideo(n)) {
@@ -414,7 +490,7 @@ const GuestGallery: React.FC = () => {
         img.src = n.displayUrl || getPhotoUrl(n);
       }
     }
-  }, [selectedItem, photos]);
+  }, [selectedItem, visiblePhotos]);
 
   const closeLightbox = () => {
     // Pop the history entry pushed below; the popstate handler below
@@ -659,10 +735,20 @@ const GuestGallery: React.FC = () => {
              </div>
          </div>
 
+         {photos.length > 0 && availableCategories.length > 0 && (
+           <div className="max-w-[1800px] mx-auto px-4 md:px-6 pb-3 flex justify-end">
+              <CategoryDropdown
+                availableCategories={availableCategories}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+              />
+           </div>
+         )}
+
          {photos.length > 0 ? (
            <div className="px-[3px] pb-32">
               <div className="columns-2 md:columns-3 lg:columns-4 gap-[3px] space-y-[3px]">
-                  {photos.map((item) => (
+                  {visiblePhotos.map((item) => (
                     <GuestPhotoCard
                       key={item._id}
                       item={item}

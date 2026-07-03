@@ -491,7 +491,7 @@ export const adminApi = {
 
   batchCompleteUpload: async (
     eventId: string,
-    uploads: { s3Key: string; size: number; mimeType: string; width?: number; height?: number }[]
+    uploads: { s3Key: string; size: number; mimeType: string; width?: number; height?: number; path?: string }[]
   ): Promise<{ created: number }> => {
     const response = await adminAxios.post<ApiResponse<{ created: number }>>(
       `/api/admin/events/${eventId}/complete-batch`,

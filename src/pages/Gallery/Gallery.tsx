@@ -6,6 +6,7 @@ import { eventsApi, galleryApi, couponApi } from '@/services/api';
 import type { MediaItem, StoryGroup, GalleryPageProps } from './types';
 import { cubeVariants } from './constants';
 import { useGalleryData } from './hooks';
+import { formatCategoryLabel } from '@/lib/utils';
 import { OpeningGiftAnimation, HeroVerticalCollage, AnimatedGiftIcon } from './components';
 import logoSvg from '@/assets/logo.svg';
 import {
@@ -13,6 +14,7 @@ import {
   X,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   Search,
   Download,
   Share2,
@@ -444,6 +446,57 @@ const SideMenu = ({
   </AnimatePresence>
 );
 
+// Category filter as a single "עוד" dropdown, sitting alongside the existing
+// filter pills. The chevron renders to the left of the label (RTL). Shows the
+// active category name on the button, with a "הכל" option to clear.
+const CategoryDropdown = ({
+  availableCategories,
+  selectedCategory,
+  setSelectedCategory,
+}: {
+  availableCategories: string[];
+  selectedCategory: string | null;
+  setSelectedCategory: React.Dispatch<React.SetStateAction<string | null>>;
+}) => {
+  const [open, setOpen] = useState(false);
+  const label = selectedCategory ? formatCategoryLabel(selectedCategory) : 'עוד';
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        className={`flex items-center gap-1 text-[12px] md:text-base uppercase tracking-widest transition-all whitespace-nowrap px-1 md:px-1.5 py-1 ${selectedCategory ? 'text-black font-bold' : 'text-gray-400 hover:text-black'}`}
+      >
+        <span>{label}</span>
+        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute top-full right-0 mt-2 z-50 min-w-[160px] max-h-[60vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 py-2">
+            <button
+              onClick={() => { setSelectedCategory(null); setOpen(false); }}
+              className={`w-full text-right px-4 py-2 text-sm transition-colors hover:bg-gray-50 ${!selectedCategory ? 'text-black font-bold' : 'text-gray-500'}`}
+            >
+              הכל
+            </button>
+            {availableCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => { setSelectedCategory(cat); setOpen(false); }}
+                className={`w-full text-right px-4 py-2 text-sm transition-colors hover:bg-gray-50 ${selectedCategory === cat ? 'text-black font-bold' : 'text-gray-500'}`}
+              >
+                {formatCategoryLabel(cat)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 const StickyToolbar = ({
   isMobile,
   isSearchOpen,
@@ -454,6 +507,9 @@ const StickyToolbar = ({
   setFilterType,
   filterSource,
   setFilterSource,
+  selectedCategory,
+  setSelectedCategory,
+  availableCategories,
   showFavoritesOnly,
   setShowFavoritesOnly,
   setIsSideMenuOpen,
@@ -468,6 +524,9 @@ const StickyToolbar = ({
   setFilterType: React.Dispatch<React.SetStateAction<'all' | 'photo' | 'video'>>;
   filterSource: 'all' | 'guest' | 'pro';
   setFilterSource: React.Dispatch<React.SetStateAction<'all' | 'guest' | 'pro'>>;
+  selectedCategory: string | null;
+  setSelectedCategory: React.Dispatch<React.SetStateAction<string | null>>;
+  availableCategories: string[];
   showFavoritesOnly: boolean;
   setShowFavoritesOnly: React.Dispatch<React.SetStateAction<boolean>>;
   setIsSideMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
@@ -522,6 +581,16 @@ const StickyToolbar = ({
               </button>
             ))}
           </div>
+
+          {availableCategories.length > 0 && (
+            <div className="shrink-0">
+              <CategoryDropdown
+                availableCategories={availableCategories}
+                selectedCategory={selectedCategory}
+                setSelectedCategory={setSelectedCategory}
+              />
+            </div>
+          )}
 
           <div className="flex items-center gap-3 md:gap-6 shrink-0 -ml-[7px]">
             <button
@@ -1460,6 +1529,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
   const [filterType, setFilterType] = useState<'all' | 'photo' | 'video'>('all');
   const [filterSource, setFilterSource] = useState<'all' | 'guest' | 'pro'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
@@ -1644,6 +1714,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
               thumbnail: photo.thumbnailUrl,
               displayUrl: photo.displayUrl,
               poster: photo.posterUrl,
+              category: photo.category ?? null,
               uploaderName:
                 photo.uploaderName || (photo.uploadedBy === 'guest' ? 'אורח' : 'צלם האירוע'),
               timestamp: new Date(photo.createdAt),
@@ -1834,13 +1905,39 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
         if (filterType !== 'all' && item.type !== filterType) return false;
         if (filterSource !== 'all' && item.source !== filterSource) return false;
+        if (selectedCategory && item.category !== selectedCategory) return false;
         if (showFavoritesOnly && !favorites.has(item.id)) return false;
         if (q !== '' && !(item.uploaderName?.toLowerCase().includes(q) ?? false)) return false;
 
         return true;
       })
       .sort((a, b) => getItemTime(b) - getItemTime(a));
-  }, [mediaItems, filterType, filterSource, searchQuery, deletedIds, showFavoritesOnly, favorites, effectiveShareSettings]);
+  }, [mediaItems, filterType, filterSource, selectedCategory, searchQuery, deletedIds, showFavoritesOnly, favorites, effectiveShareSettings]);
+
+  // Categories present among the event's photos. Prefer the complete flat list
+  // (allStoryItems, loaded unpaginated) so every category shows even before its
+  // photos have been paged into the grid, falling back to the loaded page while
+  // it warms up — the same source-selection storyGroups uses. Uncategorized
+  // photos (category null) are excluded so they only surface under the "all"
+  // view. Sorted alphabetically for a stable chip order.
+  const availableCategories = useMemo(() => {
+    const source = !isShowcase && allStoryItems.length > 0 ? allStoryItems : mediaItems;
+    const seen = new Set<string>();
+    for (const item of source) {
+      if (deletedIds.has(item.id)) continue;
+      if (item.source === 'pro' && !effectiveShareSettings.pro) continue;
+      if (item.source === 'guest' && !effectiveShareSettings.guests) continue;
+      if (item.category) seen.add(item.category);
+    }
+    return Array.from(seen).sort((a, b) => a.localeCompare(b, 'he'));
+  }, [isShowcase, allStoryItems, mediaItems, deletedIds, effectiveShareSettings]);
+
+  // If the active category disappears (e.g. share settings changed), fall back to all.
+  useEffect(() => {
+    if (selectedCategory && !availableCategories.includes(selectedCategory)) {
+      setSelectedCategory(null);
+    }
+  }, [availableCategories, selectedCategory]);
 
   useEffect(() => {
     if (!filteredMedia.length) return;
@@ -2573,6 +2670,9 @@ const Gallery: React.FC<GalleryPageProps> = ({
         setFilterType={setFilterType}
         filterSource={filterSource}
         setFilterSource={setFilterSource}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        availableCategories={availableCategories}
         showFavoritesOnly={showFavoritesOnly}
         setShowFavoritesOnly={setShowFavoritesOnly}
         setIsSideMenuOpen={setIsSideMenuOpen}

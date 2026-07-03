@@ -8,6 +8,9 @@ export interface MediaItem {
    *  display pipeline existed — consumers must fall back to url. */
   displayUrl?: string;
   poster?: string;
+  /** Moment/subfolder this photo was uploaded under (e.g. "huppah"); null when
+   *  uncategorized. Used by the gallery category filter. */
+  category?: string | null;
   uploaderName: string;
   timestamp: Date;
   orientation?: 'landscape' | 'portrait';

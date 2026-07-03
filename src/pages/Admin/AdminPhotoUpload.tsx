@@ -45,6 +45,20 @@ const readImageDimensions = (file: File): Promise<{ width: number; height: numbe
   });
 };
 
+/**
+ * The moment/category for a folder upload is the top-level subfolder *inside*
+ * the selected directory. `webkitRelativePath` is "SelectedRoot/moment/file.jpg",
+ * so we drop the selected root to leave "moment/file.jpg" — the same shape the
+ * backend derives categories from for ZIP entries. Plain file selections have
+ * no webkitRelativePath, so they stay uncategorized.
+ */
+const getUploadPath = (file: File): string | undefined => {
+  const relativePath = (file as any).webkitRelativePath as string | undefined;
+  if (!relativePath) return undefined;
+  const withoutRoot = relativePath.split('/').slice(1).join('/');
+  return withoutRoot || undefined;
+};
+
 type FileStatus = 'pending' | 'uploading' | 'uploaded' | 'completed' | 'failed';
 
 interface UploadFile {
@@ -614,6 +628,7 @@ export const AdminPhotoUpload = () => {
             size: f.file.size,
             mimeType: f.file.type,
             ...(dimensions[i] || {}),
+            ...(getUploadPath(f.file) ? { path: getUploadPath(f.file) } : {}),
           }));
 
           if (uploads.length > 0) {

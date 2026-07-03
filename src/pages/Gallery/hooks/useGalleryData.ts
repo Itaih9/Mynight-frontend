@@ -63,6 +63,7 @@ export const useGalleryData = (eventId?: string, preloadedEvent?: Event | null, 
         thumbnail: photo.thumbnailUrl,
         displayUrl: photo.displayUrl,
         poster: photo.posterUrl,
+        category: photo.category ?? null,
         uploaderName:
           photo.uploaderName || (photo.uploadedBy === 'guest' ? 'אורח' : 'צלם האירוע'),
         timestamp: new Date(photo.createdAt),

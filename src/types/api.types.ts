@@ -60,6 +60,9 @@ export interface Photo {
    *  display pipeline existed — consumers must fall back to url. */
   displayUrl?: string;
   posterUrl?: string;
+  /** Moment/subfolder this photo was uploaded under (e.g. "huppah"), derived
+   *  from the top-level upload subfolder. null for uncategorized photos. */
+  category?: string | null;
   faceId?: string;
   indexedFaces?: IndexedFace[];
   uploadedBy?: 'owner' | 'guest';
