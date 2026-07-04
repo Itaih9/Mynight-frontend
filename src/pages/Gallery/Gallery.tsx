@@ -1733,6 +1733,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
               displayUrl: photo.displayUrl,
               poster: photo.posterUrl,
               category: photo.category ?? null,
+              indexedFaces: photo.indexedFaces,
               uploaderName:
                 photo.uploaderName || (photo.uploadedBy === 'guest' ? 'אורח' : 'צלם האירוע'),
               timestamp: new Date(photo.createdAt),
