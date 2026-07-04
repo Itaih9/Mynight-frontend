@@ -13,6 +13,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { eventsApi, galleryApi } from '@/services/api';
 import type { Event, Photo } from '@/types/api.types';
 import { formatCategoryLabel } from '@/lib/utils';
+import { FaceCircles } from '@/components/faces/FaceCircles';
+import { FacePhotosOverlay } from '@/components/faces/FacePhotosOverlay';
+import type { FaceEntry } from '@/components/faces/faceCrop';
 import logoSvg from '@/assets/logo.svg';
 
 interface GuestPhotoCardProps {
@@ -168,6 +171,8 @@ const GuestGallery: React.FC = () => {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  // Face gallery opened from a face circle in the lightbox; overlays the lightbox.
+  const [faceView, setFaceView] = useState<{ face: FaceEntry; imageUrl: string; imgW?: number; imgH?: number } | null>(null);
 
   const [selectedItem, setSelectedItem] = useState<Photo | null>(null);
   const [fullImageLoaded, setFullImageLoaded] = useState(false);
@@ -889,7 +894,36 @@ const GuestGallery: React.FC = () => {
                     </AnimatePresence>
                 </div>
 
+                {!isVideo(selectedItem) && (selectedItem.indexedFaces?.length ?? 0) > 0 && (
+                  <FaceCircles
+                    imageUrl={selectedItem.displayUrl || getPhotoUrl(selectedItem)}
+                    imgWidth={selectedItem.metadata?.width}
+                    imgHeight={selectedItem.metadata?.height}
+                    faces={selectedItem.indexedFaces!.map((f) => ({ faceId: f.faceId, boundingBox: f.boundingBox }))}
+                    onFaceClick={(face) => setFaceView({
+                      face,
+                      imageUrl: selectedItem.displayUrl || getPhotoUrl(selectedItem),
+                      imgW: selectedItem.metadata?.width,
+                      imgH: selectedItem.metadata?.height,
+                    })}
+                  />
+                )}
+
             </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {faceView && event && (
+          <FacePhotosOverlay
+            eventId={event._id}
+            face={faceView.face}
+            faceImageUrl={faceView.imageUrl}
+            imgWidth={faceView.imgW}
+            imgHeight={faceView.imgH}
+            coupleName={coupleName}
+            onBack={() => setFaceView(null)}
+          />
         )}
       </AnimatePresence>
 

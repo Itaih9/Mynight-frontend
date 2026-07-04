@@ -11,6 +11,13 @@ export interface MediaItem {
   /** Moment/subfolder this photo was uploaded under (e.g. "huppah"); null when
    *  uncategorized. Used by the gallery category filter. */
   category?: string | null;
+  /** Faces detected in this photo (from stored Rekognition data). boundingBox
+   *  coords are 0–1 fractions of the image, used to crop face circles in the
+   *  lightbox. */
+  indexedFaces?: {
+    faceId: string;
+    boundingBox: { Width: number; Height: number; Left: number; Top: number };
+  }[];
   uploaderName: string;
   timestamp: Date;
   orientation?: 'landscape' | 'portrait';

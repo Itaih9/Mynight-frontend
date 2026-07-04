@@ -7,6 +7,9 @@ import type { MediaItem, StoryGroup, GalleryPageProps } from './types';
 import { cubeVariants } from './constants';
 import { useGalleryData } from './hooks';
 import { formatCategoryLabel } from '@/lib/utils';
+import { FaceCircles } from '@/components/faces/FaceCircles';
+import { FacePhotosOverlay } from '@/components/faces/FacePhotosOverlay';
+import type { FaceEntry } from '@/components/faces/faceCrop';
 import { OpeningGiftAnimation, HeroVerticalCollage, AnimatedGiftIcon } from './components';
 import logoSvg from '@/assets/logo.svg';
 import {
@@ -1077,6 +1080,7 @@ const LightboxModal = ({
   onInstagram,
   onFacebook,
   onMore,
+  onFaceClick,
 }: {
   item: MediaItem | null;
   favorites: Set<string>;
@@ -1094,6 +1098,7 @@ const LightboxModal = ({
   onInstagram: () => void;
   onFacebook: () => void;
   onMore: () => void;
+  onFaceClick: (face: FaceEntry) => void;
 }) => {
   const swipeHandlers = useSwipeNavigation(onNavigate);
   return (
@@ -1167,6 +1172,16 @@ const LightboxModal = ({
           <button onClick={(e) => { e.stopPropagation(); onNavigate('prev'); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white text-black rounded-full backdrop-blur-md transition-all z-50 shadow-lg">
             <ChevronRight size={32} />
           </button>
+
+          {item.type === 'photo' && (item.indexedFaces?.length ?? 0) > 0 && (
+            <FaceCircles
+              imageUrl={item.displayUrl || item.url}
+              imgWidth={item.width}
+              imgHeight={item.height}
+              faces={item.indexedFaces!.map((f) => ({ faceId: f.faceId, boundingBox: f.boundingBox }))}
+              onFaceClick={onFaceClick}
+            />
+          )}
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 z-50 p-6 flex justify-between items-end pointer-events-none">
@@ -1533,6 +1548,9 @@ const Gallery: React.FC<GalleryPageProps> = ({
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
+  // Face gallery opened from a face circle in the lightbox. Kept as an overlay
+  // above the lightbox so the open photo + grid scroll underneath are preserved.
+  const [faceView, setFaceView] = useState<{ face: FaceEntry; imageUrl: string; imgW?: number; imgH?: number } | null>(null);
   const [fullImageLoaded, setFullImageLoaded] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [isStoryShareOpen, setIsStoryShareOpen] = useState(false);
@@ -2753,7 +2771,30 @@ const Gallery: React.FC<GalleryPageProps> = ({
         onInstagram={handleInstagramStory}
         onFacebook={handleFacebookShare}
         onMore={handleNativeShare}
+        onFaceClick={(face) => {
+          if (!selectedMedia) return;
+          setFaceView({
+            face,
+            imageUrl: selectedMedia.displayUrl || selectedMedia.url,
+            imgW: selectedMedia.width,
+            imgH: selectedMedia.height,
+          });
+        }}
       />
+
+      <AnimatePresence>
+        {faceView && event && (
+          <FacePhotosOverlay
+            eventId={event._id}
+            face={faceView.face}
+            faceImageUrl={faceView.imageUrl}
+            imgWidth={faceView.imgW}
+            imgHeight={faceView.imgH}
+            coupleName={event.name || ''}
+            onBack={() => setFaceView(null)}
+          />
+        )}
+      </AnimatePresence>
 
       <StoryViewerModal
         group={activeStoryGroup}
