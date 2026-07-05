@@ -4,6 +4,7 @@ import { ChevronsRight, X, Download, ChevronLeft, ChevronRight, Loader2 } from '
 import { galleryApi } from '@/services/api';
 import type { Photo } from '@/types/api.types';
 import { faceCircleImageStyle, type FaceEntry } from './faceCrop';
+import { FaceCircles } from './FaceCircles';
 
 interface FacePhotosOverlayProps {
   eventId: string;
@@ -37,6 +38,16 @@ export const FacePhotosOverlay = ({
   coupleName,
   onBack,
 }: FacePhotosOverlayProps) => {
+  // The "current person" — starts from the tapped face and its source photo, but
+  // changes when the user taps another face inside a photo in this gallery
+  // (recursive: person A's photo → tap person B → person B's gallery).
+  const [current, setCurrent] = useState({ face, imageUrl: faceImageUrl, imgW: imgWidth, imgH: imgHeight });
+  // Reset to the person the parent opened whenever that changes.
+  useEffect(() => {
+    setCurrent({ face, imageUrl: faceImageUrl, imgW: imgWidth, imgH: imgHeight });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [face.faceId]);
+
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selected, setSelected] = useState<Photo | null>(null);
@@ -46,7 +57,7 @@ export const FacePhotosOverlay = ({
     let cancelled = false;
     setIsLoading(true);
     galleryApi
-      .getFacePhotos(eventId, face.faceId)
+      .getFacePhotos(eventId, current.face.faceId)
       .then((res) => {
         if (cancelled) return;
         setPhotos(Array.isArray(res.data) ? res.data : []);
@@ -60,7 +71,19 @@ export const FacePhotosOverlay = ({
     return () => {
       cancelled = true;
     };
-  }, [eventId, face.faceId]);
+  }, [eventId, current.face.faceId]);
+
+  // Open another person's gallery from a face tapped inside the currently-open photo.
+  const openPerson = (f: FaceEntry, sourcePhoto: Photo) => {
+    setSelected(null);
+    setFullLoaded(false);
+    setCurrent({
+      face: f,
+      imageUrl: sourcePhoto.displayUrl || sourcePhoto.url,
+      imgW: sourcePhoto.metadata?.width,
+      imgH: sourcePhoto.metadata?.height,
+    });
+  };
 
   const navigate = (dir: 'next' | 'prev') => {
     if (!selected) return;
@@ -120,7 +143,7 @@ export const FacePhotosOverlay = ({
 
           <span className="relative block shrink-0 rounded-full bg-gold-primary shadow-md" style={{ width: 46, height: 46 }}>
             <span className="absolute inset-[2px] rounded-full overflow-hidden bg-gray-200" style={{ clipPath: 'circle(50%)' }}>
-              <img src={faceImageUrl} alt="" draggable={false} style={faceCircleImageStyle(face.boundingBox, imgWidth, imgHeight, 42)} />
+              <img src={current.imageUrl} alt="" draggable={false} style={faceCircleImageStyle(current.face.boundingBox, current.imgW, current.imgH, 42)} />
             </span>
           </span>
 
@@ -227,6 +250,16 @@ export const FacePhotosOverlay = ({
                 </div>
               )}
             </div>
+
+            {!isVideo(selected) && (selected.indexedFaces?.length ?? 0) > 0 && (
+              <FaceCircles
+                imageUrl={selected.displayUrl || selected.url}
+                imgWidth={selected.metadata?.width}
+                imgHeight={selected.metadata?.height}
+                faces={(selected.indexedFaces ?? []).map((f) => ({ faceId: f.faceId, boundingBox: f.boundingBox }))}
+                onFaceClick={(f) => openPerson(f, selected)}
+              />
+            )}
           </motion.div>
         )}
       </AnimatePresence>

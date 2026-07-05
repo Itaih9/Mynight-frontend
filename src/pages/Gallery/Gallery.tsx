@@ -1555,6 +1555,17 @@ const Gallery: React.FC<GalleryPageProps> = ({
   // Face gallery opened from a face circle in the lightbox. Kept as an overlay
   // above the lightbox so the open photo + grid scroll underneath are preserved.
   const [faceView, setFaceView] = useState<{ face: FaceEntry; imageUrl: string; imgW?: number; imgH?: number } | null>(null);
+
+  // Phone back button closes the face gallery (returns to the open photo) instead
+  // of leaving the site — push a history entry on open, pop it on close.
+  useEffect(() => {
+    if (!faceView) return;
+    window.history.pushState({ faceGallery: true }, '');
+    const handlePopState = () => setFaceView(null);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faceView !== null]);
   const [fullImageLoaded, setFullImageLoaded] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [isStoryShareOpen, setIsStoryShareOpen] = useState(false);
@@ -2796,7 +2807,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
             imgWidth={faceView.imgW}
             imgHeight={faceView.imgH}
             coupleName={event?.name || ''}
-            onBack={() => setFaceView(null)}
+            onBack={() => window.history.back()}
           />
         )}
       </AnimatePresence>

@@ -173,6 +173,9 @@ const GuestGallery: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   // Face gallery opened from a face circle in the lightbox; overlays the lightbox.
   const [faceView, setFaceView] = useState<{ face: FaceEntry; imageUrl: string; imgW?: number; imgH?: number } | null>(null);
+  // True while the face gallery is open, so the lightbox's popstate handler can
+  // defer to the face gallery (back peels one layer at a time).
+  const faceViewOpenRef = useRef(false);
 
   const [selectedItem, setSelectedItem] = useState<Photo | null>(null);
   const [fullImageLoaded, setFullImageLoaded] = useState(false);
@@ -528,6 +531,9 @@ const GuestGallery: React.FC = () => {
     window.history.pushState({ lightbox: true }, '');
 
     const handlePopState = () => {
+      // If the face gallery is open on top, let its own handler close it first
+      // (one back press peels one layer: face gallery → photo → grid).
+      if (faceViewOpenRef.current) return;
       setSelectedItem(null);
     };
 
@@ -537,6 +543,26 @@ const GuestGallery: React.FC = () => {
     // inside the lightbox (navigateLightbox also changes selectedItem).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedItem !== null]);
+
+  // Face gallery back handling — mirrors the lightbox/share-menu approach so the
+  // phone back button closes the face gallery (returning to the photo) instead
+  // of leaving the site. The ref lets the lightbox handler above defer to this
+  // one while the face gallery is open.
+  useEffect(() => {
+    if (!faceView) return;
+
+    faceViewOpenRef.current = true;
+    window.history.pushState({ faceGallery: true }, '');
+
+    const handlePopState = () => setFaceView(null);
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      faceViewOpenRef.current = false;
+      window.removeEventListener('popstate', handlePopState);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [faceView !== null]);
 
   // The share menu manages its own history entry so the phone back button
   // closes just the menu (returning to the gallery or lightbox underneath),
@@ -922,7 +948,7 @@ const GuestGallery: React.FC = () => {
             imgWidth={faceView.imgW}
             imgHeight={faceView.imgH}
             coupleName={coupleName}
-            onBack={() => setFaceView(null)}
+            onBack={() => window.history.back()}
           />
         )}
       </AnimatePresence>
