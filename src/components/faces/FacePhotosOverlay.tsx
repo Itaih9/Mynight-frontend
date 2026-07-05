@@ -223,19 +223,25 @@ export const FacePhotosOverlay = ({
             className="fixed inset-0 z-[210] bg-white flex items-center justify-center"
             onClick={() => setSelected(null)}
           >
-            <div className="absolute top-4 right-4 flex gap-3 z-20">
-              {favorites && onToggleFavorite && (
-                <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(selected._id, e); }} className="p-3 bg-white border border-gray-100 hover:bg-gray-50 rounded-full shadow-sm transition-all group">
-                  <Heart size={22} className={favorites.has(selected._id) ? 'fill-red-500 text-red-500' : 'text-gray-400 group-hover:text-red-500'} />
-                </button>
-              )}
-              <button onClick={(e) => handleDownload(selected, e)} className="p-3 bg-gray-100 text-black hover:bg-gray-200 rounded-full transition-colors shadow-sm">
-                <Download size={22} />
-              </button>
+            {/* Close + download — top-left toolbar (download behaves like the
+                rekognition gallery's: getDownloadUrl → save the photo). */}
+            <div dir="ltr" className="absolute top-4 left-4 flex gap-3 z-20">
               <button onClick={(e) => { e.stopPropagation(); setSelected(null); }} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-black transition-colors shadow-sm">
                 <X size={22} />
               </button>
+              <button onClick={(e) => handleDownload(selected, e)} className="p-3 bg-gray-100 text-black hover:bg-gray-200 rounded-full transition-colors shadow-sm">
+                <Download size={22} />
+              </button>
             </div>
+
+            {/* Favorite — top-right */}
+            {favorites && onToggleFavorite && (
+              <div className="absolute top-4 right-4 z-20">
+                <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(selected._id, e); }} className="p-3 bg-white border border-gray-100 hover:bg-gray-50 rounded-full shadow-sm transition-all group">
+                  <Heart size={22} className={favorites.has(selected._id) ? 'fill-red-500 text-red-500' : 'text-gray-400 group-hover:text-red-500'} />
+                </button>
+              </div>
+            )}
 
             {photos.length > 1 && (
               <>
@@ -252,17 +258,17 @@ export const FacePhotosOverlay = ({
               {isVideo(selected) ? (
                 <video src={selected.url} className="max-w-full max-h-full rounded-lg shadow-2xl" controls autoPlay playsInline onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }} />
               ) : (
-                <div className="relative w-full h-full flex items-center justify-center">
+                <div className="relative w-full h-full flex items-center justify-center" style={{ filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.20))' }}>
                   <img
                     src={selected.thumbnailUrl || selected.url}
                     alt=""
-                    className="absolute max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300"
+                    className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300"
                     style={{ opacity: fullLoaded ? 0 : 1 }}
                   />
                   <img
                     src={selected.displayUrl || selected.url}
                     alt=""
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-500"
+                    className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
                     style={{ opacity: fullLoaded ? 1 : 0 }}
                     onLoad={() => setFullLoaded(true)}
                     onError={(e) => {
