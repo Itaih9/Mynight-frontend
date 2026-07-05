@@ -103,9 +103,10 @@ export const FaceCircles = ({ imageUrl, imgWidth, imgHeight, faces, onFaceClick 
         )}
       </div>
 
-      {/* DESKTOP — 2-per-row scrollable grid on the right */}
+      {/* DESKTOP — 2-per-row scrollable grid, sitting between the photo and the
+          right nav arrow (which stays at the screen edge). */}
       <div
-        className="hidden md:grid grid-cols-2 gap-3 absolute right-3 top-1/2 -translate-y-1/2 z-40 max-h-[74vh] overflow-y-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+        className="hidden md:grid grid-cols-2 gap-3 absolute right-20 top-1/2 -translate-y-1/2 z-40 max-h-[74vh] overflow-y-auto p-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
         onClick={stop}
       >
         {sorted.map((face) => (

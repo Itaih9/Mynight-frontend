@@ -1101,9 +1101,6 @@ const LightboxModal = ({
   onFaceClick: (face: FaceEntry) => void;
 }) => {
   const swipeHandlers = useSwipeNavigation(onNavigate);
-  // When face circles are shown (desktop 2-col grid on the right), nudge the
-  // right nav arrow inward so it doesn't sit under the grid.
-  const facesPresent = !!item && item.type === 'photo' && (item.indexedFaces?.length ?? 0) > 0;
   return (
   <AnimatePresence>
     {item && (
@@ -1172,7 +1169,7 @@ const LightboxModal = ({
           <button onClick={(e) => { e.stopPropagation(); onNavigate('next'); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white text-black rounded-full backdrop-blur-md transition-all z-50 shadow-lg">
             <ChevronLeft size={32} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onNavigate('prev'); }} className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white text-black rounded-full backdrop-blur-md transition-all z-50 shadow-lg ${facesPresent ? 'md:right-[156px]' : ''}`}>
+          <button onClick={(e) => { e.stopPropagation(); onNavigate('prev'); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white text-black rounded-full backdrop-blur-md transition-all z-50 shadow-lg">
             <ChevronRight size={32} />
           </button>
 
