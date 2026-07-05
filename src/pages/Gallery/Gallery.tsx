@@ -468,10 +468,10 @@ const CategoryDropdown = ({
     <div className="relative shrink-0">
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className={`flex items-center gap-0.5 md:gap-1 text-[12px] md:text-base uppercase tracking-widest transition-all whitespace-nowrap px-0.5 md:px-1.5 py-1 ${selectedCategory ? 'text-black font-bold' : 'text-gray-400 hover:text-black'}`}
+        className={`flex items-center gap-0 md:gap-1 text-[12px] md:text-base uppercase tracking-widest transition-all whitespace-nowrap px-0 md:px-1.5 py-1 ${selectedCategory ? 'text-black font-bold' : 'text-gray-400 hover:text-black'}`}
       >
-        <span className="truncate max-w-[64px] md:max-w-none">{label}</span>
-        <ChevronDown size={14} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="truncate max-w-[40px] md:max-w-none">{label}</span>
+        <ChevronDown size={12} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -586,7 +586,7 @@ const StickyToolbar = ({
           </div>
 
           {availableCategories.length > 0 && (
-            <div className="shrink-0 mr-2 md:mr-0">
+            <div className="shrink-0 mr-3 md:mr-0">
               <CategoryDropdown
                 availableCategories={availableCategories}
                 selectedCategory={selectedCategory}

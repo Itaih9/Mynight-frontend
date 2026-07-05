@@ -140,15 +140,15 @@ export const FacePhotosOverlay = ({
         <div className="max-w-[1800px] mx-auto flex items-center">
           <button
             onClick={onBack}
-            className="p-2 -mr-2 hover:bg-gray-100 rounded-full transition-colors text-black shrink-0"
+            className="p-1 -mr-1 hover:bg-gray-100 rounded-full transition-colors text-black shrink-0"
             aria-label="חזרה"
           >
             <ChevronsRight size={26} />
           </button>
 
-          {/* Equal, tight gaps: the arrow's own padding sets the arrow↔circle gap,
-              and ml-2 sets an equal circle↔count gap. */}
-          <span className="relative block shrink-0 rounded-full bg-gold-primary shadow-md ml-2" style={{ width: 46, height: 46 }}>
+          {/* The arrow↔circle distance is the back button's padding (now p-1); the
+              circle↔count gap (ml-1) is kept equal to it. */}
+          <span className="relative block shrink-0 rounded-full bg-gold-primary shadow-md ml-1" style={{ width: 46, height: 46 }}>
             <span className="absolute inset-[2px] rounded-full overflow-hidden bg-gray-200" style={{ clipPath: 'circle(50%)' }}>
               <img src={current.imageUrl} alt="" draggable={false} style={faceCircleImageStyle(current.face.boundingBox, current.imgW, current.imgH, 42)} />
             </span>
