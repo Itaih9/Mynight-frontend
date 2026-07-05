@@ -1146,17 +1146,21 @@ const LightboxModal = ({
               {item.type === 'video' ? (
                 <video key={`lb-${item.id}`} src={item.url} poster={getVideoThumb(item) || undefined} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" autoPlay controls playsInline loop preload="metadata" onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }} />
               ) : (
-                <div className="relative w-full h-full flex items-center justify-center">
+                // Both imgs fill the same box (absolute inset-0 w-full h-full +
+                // object-contain), so the blurry thumbnail is scaled to the exact
+                // display size from the start — only sharpness changes, no size
+                // jump. drop-shadow on the container follows the image's edges.
+                <div className="relative w-full h-full flex items-center justify-center" style={{ filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.20))' }}>
                   <img
                     src={getSafeImageSrc(item.thumbnail || item.url)}
-                    className="absolute max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300"
-                    style={{ opacity: fullImageLoaded ? 0 : 1, imageRendering: 'low' as any, imageOrientation: 'from-image' as any }}
+                    className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300"
+                    style={{ opacity: fullImageLoaded ? 0 : 1, imageOrientation: 'from-image' as any }}
                     alt=""
                   />
                   <img
                     src={item.displayUrl || item.url}
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-500"
-                    style={{ opacity: fullImageLoaded ? 1 : 0, imageRendering: 'high-quality' as any, imageOrientation: 'from-image' as any }}
+                    className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
+                    style={{ opacity: fullImageLoaded ? 1 : 0, imageOrientation: 'from-image' as any }}
                     alt=""
                     // If the display image is already cached, onLoad won't fire —
                     // mark it loaded on mount so we don't get stuck on the thumbnail.

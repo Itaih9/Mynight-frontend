@@ -896,12 +896,15 @@ const GuestGallery: React.FC = () => {
                                     onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }}
                                 />
                             ) : (
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                    {/* Thumbnail shown immediately while display image loads */}
+                                // Both imgs fill the same box (absolute inset-0 w-full h-full +
+                                // object-contain), so the blurry thumbnail is scaled to the exact
+                                // display size immediately — only sharpness changes, no size jump.
+                                <div className="relative w-full h-full flex items-center justify-center" style={{ filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.20))' }}>
+                                    {/* Thumbnail placeholder, stretched to the full display box */}
                                     <img
                                         src={selectedItem.thumbnailUrl || getPhotoUrl(selectedItem)}
                                         alt=""
-                                        className="absolute max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-300"
+                                        className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300"
                                         style={{ opacity: fullImageLoaded ? 0 : 1 }}
                                     />
                                     {/* Web-optimized display rendition fades in on top;
@@ -909,7 +912,7 @@ const GuestGallery: React.FC = () => {
                                     <img
                                         src={selectedItem.displayUrl || getPhotoUrl(selectedItem)}
                                         alt=""
-                                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-500"
+                                        className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
                                         style={{ opacity: fullImageLoaded ? 1 : 0 }}
                                         // Cached display image won't fire onLoad — mark loaded on mount if already complete.
                                         ref={(node) => { if (node && node.complete && node.naturalWidth > 0) setFullImageLoaded(true); }}

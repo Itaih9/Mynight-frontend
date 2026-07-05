@@ -19,14 +19,11 @@ interface FaceCirclesProps {
  * lightbox is open (never for grid thumbnails).
  */
 export const FaceCircles = ({ imageUrl, imgWidth, imgHeight, faces, onFaceClick }: FaceCirclesProps) => {
-  // Only drop tiny faces (<5% of image width) on crowded photos with MORE than
-  // 10 faces; with 10 or fewer, show them all regardless of size. This is why the
-  // face-gallery showed nothing before — a person's photos are often group shots
-  // where the unconditional filter emptied the list. Gallery display only; the
-  // selfie-scan and upload matching flows are unaffected. Biggest faces first.
+  // Always show the 14 largest faces (by box area) — no size filter. Gallery
+  // display only; the selfie-scan and upload matching flows are unaffected.
   const sorted = useMemo(() => {
-    const shown = faces.length > 10 ? faces.filter((f) => f.boundingBox.Width >= 0.05) : faces;
-    return [...shown].sort((a, b) => b.boundingBox.Width - a.boundingBox.Width);
+    const area = (f: FaceEntry) => f.boundingBox.Width * f.boundingBox.Height;
+    return [...faces].sort((a, b) => area(b) - area(a)).slice(0, 14);
   }, [faces]);
 
   const [expanded, setExpanded] = useState(false);
