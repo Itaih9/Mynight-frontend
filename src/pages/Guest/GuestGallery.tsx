@@ -911,6 +911,8 @@ const GuestGallery: React.FC = () => {
                                         alt=""
                                         className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-500"
                                         style={{ opacity: fullImageLoaded ? 1 : 0 }}
+                                        // Cached display image won't fire onLoad — mark loaded on mount if already complete.
+                                        ref={(node) => { if (node && node.complete && node.naturalWidth > 0) setFullImageLoaded(true); }}
                                         onLoad={() => setFullImageLoaded(true)}
                                         onError={(e) => {
                                           const original = getPhotoUrl(selectedItem);

@@ -19,9 +19,11 @@ interface FaceCirclesProps {
  * lightbox is open (never for grid thumbnails).
  */
 export const FaceCircles = ({ imageUrl, imgWidth, imgHeight, faces, onFaceClick }: FaceCirclesProps) => {
-  // Biggest/closest faces first.
+  // Skip faces smaller than 5% of the image width (too small to show/tap as a
+  // circle). This only affects the gallery's circle strips — the selfie-scan and
+  // upload face-matching flows are unaffected. Biggest/closest faces first.
   const sorted = useMemo(
-    () => [...faces].sort((a, b) => b.boundingBox.Width - a.boundingBox.Width),
+    () => faces.filter((f) => f.boundingBox.Width >= 0.05).sort((a, b) => b.boundingBox.Width - a.boundingBox.Width),
     [faces]
   );
 

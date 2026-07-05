@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronsRight, X, Download, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ChevronsRight, X, Download, ChevronLeft, ChevronRight, Loader2, Heart } from 'lucide-react';
 import { galleryApi } from '@/services/api';
 import type { Photo } from '@/types/api.types';
 import { faceCircleImageStyle, type FaceEntry } from './faceCrop';
@@ -16,6 +16,9 @@ interface FacePhotosOverlayProps {
   /** Couple names for the header, e.g. "נועה & איתי". */
   coupleName: string;
   onBack: () => void;
+  /** Optional favorites support (Gallery passes these; GuestGallery omits them). */
+  favorites?: Set<string>;
+  onToggleFavorite?: (id: string, e?: React.MouseEvent) => void;
 }
 
 const photoCountText = (n: number) => (n === 1 ? 'תמונה אחת' : `${n} תמונות`);
@@ -37,6 +40,8 @@ export const FacePhotosOverlay = ({
   imgHeight,
   coupleName,
   onBack,
+  favorites,
+  onToggleFavorite,
 }: FacePhotosOverlayProps) => {
   // The "current person" — starts from the tapped face and its source photo, but
   // changes when the user taps another face inside a photo in this gallery
@@ -132,7 +137,7 @@ export const FacePhotosOverlay = ({
     >
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-xl border-b border-gray-100 px-4 py-3 md:px-6 md:py-4">
-        <div className="max-w-[1800px] mx-auto flex items-center gap-3">
+        <div className="max-w-[1800px] mx-auto flex items-center">
           <button
             onClick={onBack}
             className="p-2 -mr-2 hover:bg-gray-100 rounded-full transition-colors text-black shrink-0"
@@ -141,7 +146,9 @@ export const FacePhotosOverlay = ({
             <ChevronsRight size={26} />
           </button>
 
-          <span className="relative block shrink-0 rounded-full bg-gold-primary shadow-md" style={{ width: 46, height: 46 }}>
+          {/* Equal, tight gaps: the arrow's own padding sets the arrow↔circle gap,
+              and ml-2 sets an equal circle↔count gap. */}
+          <span className="relative block shrink-0 rounded-full bg-gold-primary shadow-md ml-2" style={{ width: 46, height: 46 }}>
             <span className="absolute inset-[2px] rounded-full overflow-hidden bg-gray-200" style={{ clipPath: 'circle(50%)' }}>
               <img src={current.imageUrl} alt="" draggable={false} style={faceCircleImageStyle(current.face.boundingBox, current.imgW, current.imgH, 42)} />
             </span>
@@ -170,10 +177,12 @@ export const FacePhotosOverlay = ({
           <div className="px-[3px] pb-24 pt-[3px]">
             <div className="columns-2 md:columns-3 lg:columns-4 gap-[3px] space-y-[3px]">
               {photos.map((photo) => (
-                <button
+                <div
                   key={photo._id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => { setFullLoaded(false); setSelected(photo); }}
-                  className="group relative block w-full overflow-hidden bg-gray-50 border-[0.5px] border-gray-100 mb-[3px] break-inside-avoid"
+                  className="group relative block w-full overflow-hidden bg-gray-50 border-[0.5px] border-gray-100 mb-[3px] break-inside-avoid cursor-pointer"
                 >
                   <img
                     src={previewUrl(photo)}
@@ -187,7 +196,17 @@ export const FacePhotosOverlay = ({
                       <span className="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs">▶</span>
                     </span>
                   )}
-                </button>
+                  {/* Favorited photos show an interactive heart (to un-favorite),
+                      matching the main grid — un-favorited photos have none. */}
+                  {favorites && onToggleFavorite && favorites.has(photo._id) && (
+                    <button
+                      onClick={(e) => onToggleFavorite(photo._id, e)}
+                      className="absolute top-2 left-2 z-20 p-2 rounded-full hover:bg-black/10 transition-colors"
+                    >
+                      <Heart size={18} className="fill-red-500 text-red-500" />
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -205,6 +224,11 @@ export const FacePhotosOverlay = ({
             onClick={() => setSelected(null)}
           >
             <div className="absolute top-4 right-4 flex gap-3 z-20">
+              {favorites && onToggleFavorite && (
+                <button onClick={(e) => { e.stopPropagation(); onToggleFavorite(selected._id, e); }} className="p-3 bg-white border border-gray-100 hover:bg-gray-50 rounded-full shadow-sm transition-all group">
+                  <Heart size={22} className={favorites.has(selected._id) ? 'fill-red-500 text-red-500' : 'text-gray-400 group-hover:text-red-500'} />
+                </button>
+              )}
               <button onClick={(e) => handleDownload(selected, e)} className="p-3 bg-gray-100 text-black hover:bg-gray-200 rounded-full transition-colors shadow-sm">
                 <Download size={22} />
               </button>

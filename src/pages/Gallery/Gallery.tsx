@@ -468,10 +468,10 @@ const CategoryDropdown = ({
     <div className="relative shrink-0">
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className={`flex items-center gap-1 text-[12px] md:text-base uppercase tracking-widest transition-all whitespace-nowrap px-1 md:px-1.5 py-1 ${selectedCategory ? 'text-black font-bold' : 'text-gray-400 hover:text-black'}`}
+        className={`flex items-center gap-0.5 md:gap-1 text-[12px] md:text-base uppercase tracking-widest transition-all whitespace-nowrap px-0.5 md:px-1.5 py-1 ${selectedCategory ? 'text-black font-bold' : 'text-gray-400 hover:text-black'}`}
       >
-        <span>{label}</span>
-        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="truncate max-w-[64px] md:max-w-none">{label}</span>
+        <ChevronDown size={14} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -586,7 +586,7 @@ const StickyToolbar = ({
           </div>
 
           {availableCategories.length > 0 && (
-            <div className="shrink-0">
+            <div className="shrink-0 mr-2 md:mr-0">
               <CategoryDropdown
                 availableCategories={availableCategories}
                 selectedCategory={selectedCategory}
@@ -598,7 +598,7 @@ const StickyToolbar = ({
           <div className="flex items-center gap-3 md:gap-6 shrink-0 -ml-[7px]">
             <button
               onClick={() => setShowFavoritesOnly((prev) => !prev)}
-              className={`p-2 rounded-full transition-all ${showFavoritesOnly ? 'bg-red-50 text-red-500' : 'text-gray-400 hover:text-red-500 hover:bg-gray-50'}`}
+              className={`p-2 rounded-full transition-all -translate-x-[5px] md:translate-x-0 ${showFavoritesOnly ? 'bg-red-50 text-red-500' : 'text-gray-400 hover:text-red-500 hover:bg-gray-50'}`}
             >
               <Heart size={20} className={showFavoritesOnly ? 'fill-current' : ''} />
             </button>
@@ -810,14 +810,16 @@ const MediaCard = React.memo(({ item, priority = false, isFavorite, onOpen, onTo
         </div>
       )}
 
-      <button onClick={handleFavoriteClick} className="absolute top-2 left-2 z-20 p-2 rounded-full hover:bg-black/10 transition-colors">
-        <motion.div whileTap={{ scale: 1.2 }}>
-          <Heart
-            size={20}
-            className={`transition-colors duration-300 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-500'} ${isFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-          />
-        </motion.div>
-      </button>
+      {/* Only favorited photos get an interactive heart (to un-favorite). An
+          un-favorited photo has no clickable heart in the grid — tapping the
+          card just opens it (favoriting is done from the lightbox). */}
+      {isFavorite && (
+        <button onClick={handleFavoriteClick} className="absolute top-2 left-2 z-20 p-2 rounded-full hover:bg-black/10 transition-colors">
+          <motion.div whileTap={{ scale: 1.2 }}>
+            <Heart size={20} className="fill-red-500 text-red-500" />
+          </motion.div>
+        </button>
+      )}
 
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-8 pointer-events-none">
         <div className="translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
@@ -1152,6 +1154,9 @@ const LightboxModal = ({
                     className="max-w-full max-h-full object-contain rounded-lg shadow-2xl transition-opacity duration-500"
                     style={{ opacity: fullImageLoaded ? 1 : 0, imageRendering: 'high-quality' as any, imageOrientation: 'from-image' as any }}
                     alt=""
+                    // If the display image is already cached, onLoad won't fire —
+                    // mark it loaded on mount so we don't get stuck on the thumbnail.
+                    ref={(node) => { if (node && node.complete && node.naturalWidth > 0) setFullImageLoaded(true); }}
                     onLoad={() => setFullImageLoaded(true)}
                     onError={(e) => {
                       // Display rendition missing (photo predates the pipeline
@@ -2814,6 +2819,8 @@ const Gallery: React.FC<GalleryPageProps> = ({
             imgHeight={faceView.imgH}
             coupleName={event?.name || ''}
             onBack={() => window.history.back()}
+            favorites={favorites}
+            onToggleFavorite={toggleFavorite}
           />
         )}
       </AnimatePresence>
