@@ -1101,6 +1101,9 @@ const LightboxModal = ({
   onFaceClick: (face: FaceEntry) => void;
 }) => {
   const swipeHandlers = useSwipeNavigation(onNavigate);
+  // When face circles are shown (desktop 2-col grid on the right), nudge the
+  // right nav arrow inward so it doesn't sit under the grid.
+  const facesPresent = !!item && item.type === 'photo' && (item.indexedFaces?.length ?? 0) > 0;
   return (
   <AnimatePresence>
     {item && (
@@ -1169,7 +1172,7 @@ const LightboxModal = ({
           <button onClick={(e) => { e.stopPropagation(); onNavigate('next'); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white text-black rounded-full backdrop-blur-md transition-all z-50 shadow-lg">
             <ChevronLeft size={32} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onNavigate('prev'); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white text-black rounded-full backdrop-blur-md transition-all z-50 shadow-lg">
+          <button onClick={(e) => { e.stopPropagation(); onNavigate('prev'); }} className={`absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white/80 hover:bg-white text-black rounded-full backdrop-blur-md transition-all z-50 shadow-lg ${facesPresent ? 'md:right-[156px]' : ''}`}>
             <ChevronRight size={32} />
           </button>
 
@@ -1185,19 +1188,23 @@ const LightboxModal = ({
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 z-50 p-6 flex justify-between items-end pointer-events-none">
-          <div className="flex flex-col items-start pointer-events-auto">
+          {/* Uploader identity: bottom-right on mobile, bottom-left on desktop
+              (the desktop face circles live on the right, mobile faces bottom-left). */}
+          <div className="flex flex-col items-start pointer-events-auto order-first md:order-last">
             <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-sm border border-gray-100 text-right">
               <p className="font-bold text-sm text-black">{item.uploaderName}</p>
               <p className="text-xs text-gray-500">{formatItemTime(item)}</p>
             </div>
           </div>
 
-          {onDelete && (
-            <div className="pointer-events-auto">
+          {onDelete ? (
+            <div className="pointer-events-auto order-last md:order-first">
               <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-3 bg-white border border-red-100 text-red-500 hover:bg-red-50 rounded-full transition-colors shadow-md">
                 <Trash2 size={20} />
               </button>
             </div>
+          ) : (
+            <div className="order-last md:order-first" aria-hidden />
           )}
         </div>
 
@@ -2784,14 +2791,14 @@ const Gallery: React.FC<GalleryPageProps> = ({
       />
 
       <AnimatePresence>
-        {faceView && event && (
+        {faceView && resolvedEventId && resolvedEventId !== '__showcase__' && (
           <FacePhotosOverlay
-            eventId={event._id}
+            eventId={resolvedEventId}
             face={faceView.face}
             faceImageUrl={faceView.imageUrl}
             imgWidth={faceView.imgW}
             imgHeight={faceView.imgH}
-            coupleName={event.name || ''}
+            coupleName={event?.name || ''}
             onBack={() => setFaceView(null)}
           />
         )}

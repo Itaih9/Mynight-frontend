@@ -118,11 +118,10 @@ export const FacePhotosOverlay = ({
             <ChevronsRight size={26} />
           </button>
 
-          <span
-            className="relative rounded-full overflow-hidden ring-2 ring-gold-primary shadow-md bg-gray-200 shrink-0"
-            style={{ width: 46, height: 46 }}
-          >
-            <img src={faceImageUrl} alt="" draggable={false} style={faceCircleImageStyle(face.boundingBox, imgWidth, imgHeight, 46)} />
+          <span className="relative block shrink-0 rounded-full bg-gold-primary shadow-md" style={{ width: 46, height: 46 }}>
+            <span className="absolute inset-[2px] rounded-full overflow-hidden bg-gray-200" style={{ clipPath: 'circle(50%)' }}>
+              <img src={faceImageUrl} alt="" draggable={false} style={faceCircleImageStyle(face.boundingBox, imgWidth, imgHeight, 42)} />
+            </span>
           </span>
 
           <div className="min-w-0">
