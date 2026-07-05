@@ -2212,6 +2212,12 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (faceView) {
+        // Face gallery is on top — Esc closes it (returns to the photo); ignore
+        // the other keys so they don't drive the lightbox underneath.
+        if (e.key === 'Escape') window.history.back();
+        return;
+      }
       if (activeStoryGroup) {
         switch (e.key) {
           case 'ArrowLeft':
@@ -2241,7 +2247,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeStoryGroup, selectedMedia, handleNextStorySlide, handlePrevStorySlide, navigateLightbox, closeLightbox, closeStory]);
+  }, [faceView, activeStoryGroup, selectedMedia, handleNextStorySlide, handlePrevStorySlide, navigateLightbox, closeLightbox, closeStory]);
 
   const toggleFavorite = useCallback((id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();

@@ -512,6 +512,11 @@ const GuestGallery: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+        if (faceViewOpenRef.current) {
+          // Face gallery is on top — Esc closes it; ignore keys for the lightbox.
+          if (e.key === 'Escape') window.history.back();
+          return;
+        }
         if (!selectedItem) return;
         if (e.key === 'ArrowLeft') navigateLightbox('next');
         if (e.key === 'ArrowRight') navigateLightbox('prev');
