@@ -1107,8 +1107,21 @@ const LightboxModal = ({
   <AnimatePresence>
     {item && (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[180] bg-white flex flex-col" onClick={onClose}>
-        <div className="absolute top-0 left-0 right-0 z-50 p-6 flex justify-between items-start pointer-events-none">
+        {/* dir=ltr so the close X is unambiguously top-left and the actions top-right,
+            regardless of the surrounding RTL context. */}
+        <div dir="ltr" className="absolute top-0 left-0 right-0 z-50 p-6 flex justify-between items-start pointer-events-none">
+          {/* Close — top-left */}
           <div className="flex items-center gap-3 pointer-events-auto">
+            <button onClick={onClose} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-black transition-colors shadow-sm">
+              <X size={20} />
+            </button>
+            <button onClick={(e) => onToggleFavorite(item.id, e)} className="p-3 bg-white border border-gray-100 hover:bg-gray-50 rounded-full shadow-md transition-all group">
+              <Heart size={24} className={favorites.has(item.id) ? 'fill-red-500 text-red-500' : 'text-gray-400 group-hover:text-red-500'} />
+            </button>
+          </div>
+
+          {/* Actions — top-right (rtl keeps the original Hebrew button layout) */}
+          <div dir="rtl" className="flex items-center gap-3 pointer-events-auto">
             <button onClick={(e) => { e.stopPropagation(); onOpenShare(); }} className="flex items-center gap-2 px-5 py-3 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors shadow-md group">
               <span className="hidden md:inline text-sm font-medium">שיתוף</span>
               <Share2 size={18} className="-translate-x-[3px]" />
@@ -1116,15 +1129,6 @@ const LightboxModal = ({
             <button onClick={(e) => { e.stopPropagation(); onDownload(); }} className="flex items-center gap-2 px-5 py-3 bg-gray-100 text-black rounded-xl hover:bg-gray-200 transition-colors shadow-sm group">
               <span className="hidden md:inline text-sm font-medium">הורדה</span>
               <Download size={18} />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 pointer-events-auto">
-            <button onClick={(e) => onToggleFavorite(item.id, e)} className="p-3 bg-white border border-gray-100 hover:bg-gray-50 rounded-full shadow-md transition-all group">
-              <Heart size={24} className={favorites.has(item.id) ? 'fill-red-500 text-red-500' : 'text-gray-400 group-hover:text-red-500'} />
-            </button>
-            <button onClick={onClose} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-black transition-colors shadow-sm">
-              <X size={20} />
             </button>
           </div>
         </div>
