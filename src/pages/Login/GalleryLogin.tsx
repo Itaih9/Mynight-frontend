@@ -39,14 +39,15 @@ export const GalleryLogin: React.FC = () => {
       }
     } catch (err: any) {
       const status = err.response?.status;
-      const message = err.response?.data?.error || err.response?.data?.message || '';
-      const lower = message.toLowerCase();
+      // The app-level 404 (route missing / backend not deployed) sets
+      // message = "The requested resource does not exist"; NotFoundError('User')
+      // sets error = "User not found". Check the raw message to tell them apart.
+      const dataMessage = (err.response?.data?.message || '').toLowerCase();
       if (status === 429) {
-        setError(message || 'יותר מדי ניסיונות. נסו שוב מאוחר יותר.');
-      } else if (lower.includes('does not exist')) {
-        // Route missing (endpoint not deployed) — not a details problem.
-        setError('השירות אינו זמין כרגע. נסו שוב מאוחר יותר.');
-      } else if (status === 404 || lower.includes('not found')) {
+        setError('יותר מדי ניסיונות. נסו שוב מאוחר יותר.');
+      } else if (dataMessage.includes('does not exist')) {
+        setError('השירות אינו זמין כרגע (יש לפרסם את השרת). נסו שוב מאוחר יותר.');
+      } else if (status === 404) {
         setError('הפרטים לא נמצאו במערכת. בדקו את מספר הטלפון או האימייל.');
       } else {
         setError('שגיאה בכניסה. נסו שוב.');
