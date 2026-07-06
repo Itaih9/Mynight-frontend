@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import { useUserStore } from '@/store/userStore';
+import { getTokenScope } from '@/lib/utils';
 import { eventsApi, authApi } from '@/services/api';
 import logoSvg from '@/assets/logo.svg';
 import Footer from '@/components/common/Footer';
@@ -650,6 +651,12 @@ const Upload: React.FC = () => {
   useEffect(() => {
     if (!token) {
       navigate(ROUTES.LOGIN);
+      return;
+    }
+    // Phone-login sessions are scoped to the gallery only — keep them out of the
+    // event-management page.
+    if (getTokenScope(token) === 'gallery') {
+      navigate(ROUTES.GALLERY, { replace: true });
     }
   }, [token, navigate]);
 

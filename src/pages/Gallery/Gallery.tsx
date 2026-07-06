@@ -6,7 +6,7 @@ import { eventsApi, galleryApi, couponApi } from '@/services/api';
 import type { MediaItem, StoryGroup, GalleryPageProps } from './types';
 import { cubeVariants } from './constants';
 import { useGalleryData } from './hooks';
-import { formatCategoryLabel } from '@/lib/utils';
+import { formatCategoryLabel, getTokenScope } from '@/lib/utils';
 import { FaceCircles } from '@/components/faces/FaceCircles';
 import { FacePhotosOverlay } from '@/components/faces/FacePhotosOverlay';
 import type { FaceEntry } from '@/components/faces/faceCrop';
@@ -345,6 +345,7 @@ const SideMenu = ({
   event,
   eventId,
   navigate,
+  allowManagement = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -352,6 +353,7 @@ const SideMenu = ({
   event: any;
   eventId?: string;
   navigate: ReturnType<typeof useNavigate>;
+  allowManagement?: boolean;
 }) => (
   <AnimatePresence>
     {open && (
@@ -406,10 +408,12 @@ const SideMenu = ({
           ) : (
             <>
               <div className="mt-24 flex flex-col gap-8">
-                <button onClick={() => navigate(ROUTES.UPLOAD)} className="flex items-center gap-4 text-xl font-medium text-black hover:text-gold-primary transition-colors text-right group">
-                  <LayoutDashboard size={24} strokeWidth={1.5} className="text-gray-400 group-hover:text-gold-primary transition-colors" />
-                  <span>ניהול האירוע</span>
-                </button>
+                {allowManagement && (
+                  <button onClick={() => navigate(ROUTES.UPLOAD)} className="flex items-center gap-4 text-xl font-medium text-black hover:text-gold-primary transition-colors text-right group">
+                    <LayoutDashboard size={24} strokeWidth={1.5} className="text-gray-400 group-hover:text-gold-primary transition-colors" />
+                    <span>ניהול האירוע</span>
+                  </button>
+                )}
                 <button onClick={() => navigate(ROUTES.COUPON)} className="flex items-center gap-4 text-xl font-medium text-black hover:text-gold-primary transition-colors text-right group">
                   <Ticket size={24} strokeWidth={1.5} className="text-gray-400 group-hover:text-gold-primary transition-colors" />
                   <span>קופון אישי</span>
@@ -2718,7 +2722,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
       </section>
 
       {(isOwnerView || isShowcase) && (
-        <SideMenu open={isSideMenuOpen} onClose={() => setIsSideMenuOpen(false)} isShowcase={isShowcase} event={event} eventId={eventId} navigate={navigate} />
+        <SideMenu open={isSideMenuOpen} onClose={() => setIsSideMenuOpen(false)} isShowcase={isShowcase} event={event} eventId={eventId} navigate={navigate} allowManagement={getTokenScope(token) !== 'gallery'} />
       )}
 
       <StickyToolbar
