@@ -4,6 +4,7 @@ export const ROUTES = {
   REGISTER: '/register',
   UPLOAD: '/upload',
   GALLERY: '/gallery',
+  GALLERY_LOGIN: '/gallery-login',
   GALLERY_SHOWCASE: '/gallery-showcase',
   PUBLIC_GALLERY: '/gallery/:eventCode',
   GUEST_LANDING: '/guest/:eventCode',

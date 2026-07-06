@@ -3,6 +3,7 @@ import { ROUTES } from '../config/routes';
 
 import Landing from '../pages/Landing/Landing';
 import Login from '../pages/Login/Login';
+import GalleryLogin from '../pages/Login/GalleryLogin';
 import Register from '../pages/Register/Register';
 import Upload from '../pages/Upload/Upload';
 import Gallery from '../pages/Gallery/Gallery';
@@ -39,6 +40,7 @@ export const AppRoutes = () => {
     <Routes>
       <Route path={ROUTES.HOME} element={<Landing />} />
       <Route path={ROUTES.LOGIN} element={<Login />} />
+      <Route path={ROUTES.GALLERY_LOGIN} element={<GalleryLogin />} />
       <Route path={ROUTES.REGISTER} element={<Register />} />
       <Route path={ROUTES.UPLOAD} element={<Upload />} />
       <Route path={ROUTES.GALLERY_SHOWCASE} element={<GalleryShowcase />} />

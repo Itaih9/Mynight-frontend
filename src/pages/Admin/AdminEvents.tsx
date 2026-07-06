@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { adminApi, type AdminEvent } from '@/services/api/admin.api';
-import { API_BASE_URL } from '@/config/api';
 import { Loader } from '@/components/common/Loader';
 import { AdminLayout } from './AdminLayout';
 import {
@@ -697,16 +696,13 @@ export const AdminEvents = () => {
               {(() => {
                 const base = 'https://mynight.co.il';
                 const id = slugModalEvent.customSlug || slugModalEvent.eventCode;
-                const couplePhone = slugModalEvent.userId?.phoneNumber;
                 const links = [
                   { label: 'Gallery', url: `${base}/gallery/${id}` },
                   { label: 'Guest Upload', url: `${base}/guest/${id}/upload` },
                   { label: 'Guest Selfie', url: `${base}/guest/${id}/selfie` },
-                  // Phone-login link: drops the couple straight into their gallery
-                  // (gallery-only owner view). Points at the backend, which redirects.
-                  ...(couplePhone
-                    ? [{ label: 'Couple Link', url: `${API_BASE_URL}/api/auth/phone-login/${encodeURIComponent(couplePhone)}` }]
-                    : []),
+                  // Couple login screen: the couple enters their phone or email
+                  // and drops into their gallery (gallery-only owner view).
+                  { label: 'Couple Link', url: `${base}/gallery-login` },
                 ];
                 return (
                   <div className="space-y-2">

@@ -50,6 +50,12 @@ export const authApi = {
     return response.data;
   },
 
+  // Couple gallery login by identifier only (phone or email) — gallery-scoped session.
+  galleryLogin: async (data: { identifier: string }): Promise<ApiResponse<AuthResponse>> => {
+    const response = await api.post('/api/auth/gallery-login', data);
+    return response.data;
+  },
+
   registerSendOtp: async (data: RegisterSendOtpRequest): Promise<ApiResponse<{ message: string; isNewUser: boolean }>> => {
     const response = await api.post(API_ENDPOINTS.AUTH.REGISTER_SEND_OTP, data);
     return response.data;
