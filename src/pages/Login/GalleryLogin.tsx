@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Loader2, Images } from 'lucide-react';
+import { ArrowRight, Loader2, Images } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Navbar } from '@/components/common';
@@ -40,9 +40,13 @@ export const GalleryLogin: React.FC = () => {
     } catch (err: any) {
       const status = err.response?.status;
       const message = err.response?.data?.error || err.response?.data?.message || '';
+      const lower = message.toLowerCase();
       if (status === 429) {
         setError(message || 'יותר מדי ניסיונות. נסו שוב מאוחר יותר.');
-      } else if (status === 404 || message.toLowerCase().includes('not found')) {
+      } else if (lower.includes('does not exist')) {
+        // Route missing (endpoint not deployed) — not a details problem.
+        setError('השירות אינו זמין כרגע. נסו שוב מאוחר יותר.');
+      } else if (status === 404 || lower.includes('not found')) {
         setError('הפרטים לא נמצאו במערכת. בדקו את מספר הטלפון או האימייל.');
       } else {
         setError('שגיאה בכניסה. נסו שוב.');
@@ -106,7 +110,7 @@ export const GalleryLogin: React.FC = () => {
             onClick={() => navigate(ROUTES.HOME)}
             className="text-gray-400 hover:text-black transition-colors text-lg font-medium flex items-center justify-center gap-3 mx-auto mt-6"
           >
-            <ArrowLeft size={24} /> חזרה לדף הבית
+            חזרה לדף הבית <ArrowRight size={24} />
           </button>
         </div>
       </div>
