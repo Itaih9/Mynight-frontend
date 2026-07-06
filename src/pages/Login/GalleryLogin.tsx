@@ -110,7 +110,7 @@ export const GalleryLogin: React.FC = () => {
             onClick={() => navigate(ROUTES.HOME)}
             className="text-gray-400 hover:text-black transition-colors text-lg font-medium flex items-center justify-center gap-3 mx-auto mt-6"
           >
-            חזרה לדף הבית <ArrowRight size={24} />
+            <ArrowRight size={24} /> חזרה לדף הבית
           </button>
         </div>
       </div>
