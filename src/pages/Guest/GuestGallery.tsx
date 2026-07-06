@@ -904,15 +904,14 @@ const GuestGallery: React.FC = () => {
                                     <img
                                         src={selectedItem.thumbnailUrl || getPhotoUrl(selectedItem)}
                                         alt=""
-                                        className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300"
-                                        style={{ opacity: fullImageLoaded ? 0 : 1 }}
+                                        className="absolute inset-0 w-full h-full object-contain"
                                     />
-                                    {/* Web-optimized display rendition fades in on top;
-                                        falls back to the original if display/ is missing */}
+                                    {/* Web-optimized display rendition pops in on top instantly (no
+                                        fade), covering the placeholder — the thumbnail stays behind */}
                                     <img
                                         src={selectedItem.displayUrl || getPhotoUrl(selectedItem)}
                                         alt=""
-                                        className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
+                                        className="absolute inset-0 w-full h-full object-contain"
                                         style={{ opacity: fullImageLoaded ? 1 : 0 }}
                                         // Cached display image won't fire onLoad — mark loaded on mount if already complete.
                                         ref={(node) => { if (node && node.complete && node.naturalWidth > 0) setFullImageLoaded(true); }}

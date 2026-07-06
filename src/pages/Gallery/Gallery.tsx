@@ -517,6 +517,7 @@ const StickyToolbar = ({
   setShowFavoritesOnly,
   setIsSideMenuOpen,
   showMenuButton = true,
+  showFavorites = true,
 }: {
   isMobile: boolean;
   isSearchOpen: boolean;
@@ -534,6 +535,7 @@ const StickyToolbar = ({
   setShowFavoritesOnly: React.Dispatch<React.SetStateAction<boolean>>;
   setIsSideMenuOpen: React.Dispatch<React.SetStateAction<boolean>>;
   showMenuButton?: boolean;
+  showFavorites?: boolean;
 }) => (
   <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-gray-100 px-4 py-3 md:px-6 md:py-4">
     <div className="max-w-[1800px] mx-auto flex items-center justify-between gap-4">
@@ -596,12 +598,14 @@ const StickyToolbar = ({
           )}
 
           <div className="flex items-center gap-3 md:gap-6 shrink-0 -ml-[7px]">
-            <button
-              onClick={() => setShowFavoritesOnly((prev) => !prev)}
-              className={`p-2 rounded-full transition-all -translate-x-[5px] md:translate-x-0 ${showFavoritesOnly ? 'bg-red-50 text-red-500' : 'text-gray-400 hover:text-red-500 hover:bg-gray-50'}`}
-            >
-              <Heart size={20} className={showFavoritesOnly ? 'fill-current' : ''} />
-            </button>
+            {showFavorites && (
+              <button
+                onClick={() => setShowFavoritesOnly((prev) => !prev)}
+                className={`p-2 rounded-full transition-all -translate-x-[5px] md:translate-x-0 ${showFavoritesOnly ? 'bg-red-50 text-red-500' : 'text-gray-400 hover:text-red-500 hover:bg-gray-50'}`}
+              >
+                <Heart size={20} className={showFavoritesOnly ? 'fill-current' : ''} />
+              </button>
+            )}
 
             <div className="hidden md:block relative w-48">
               <Search className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
@@ -1083,9 +1087,11 @@ const LightboxModal = ({
   onFacebook,
   onMore,
   onFaceClick,
+  canFavorite = false,
 }: {
   item: MediaItem | null;
   favorites: Set<string>;
+  canFavorite?: boolean;
   fullImageLoaded: boolean;
   setFullImageLoaded: React.Dispatch<React.SetStateAction<boolean>>;
   onClose: () => void;
@@ -1115,9 +1121,11 @@ const LightboxModal = ({
             <button onClick={onClose} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-full text-black transition-colors shadow-sm">
               <X size={20} />
             </button>
-            <button onClick={(e) => onToggleFavorite(item.id, e)} className="p-3 bg-white border border-gray-100 hover:bg-gray-50 rounded-full shadow-md transition-all group">
-              <Heart size={24} className={favorites.has(item.id) ? 'fill-red-500 text-red-500' : 'text-gray-400 group-hover:text-red-500'} />
-            </button>
+            {canFavorite && (
+              <button onClick={(e) => onToggleFavorite(item.id, e)} className="p-3 bg-white border border-gray-100 hover:bg-gray-50 rounded-full shadow-md transition-all group">
+                <Heart size={24} className={favorites.has(item.id) ? 'fill-red-500 text-red-500' : 'text-gray-400 group-hover:text-red-500'} />
+              </button>
+            )}
           </div>
 
           {/* Actions — top-right (rtl keeps the original Hebrew button layout) */}
@@ -1153,13 +1161,13 @@ const LightboxModal = ({
                 <div className="relative w-full h-full flex items-center justify-center" style={{ filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.20))' }}>
                   <img
                     src={getSafeImageSrc(item.thumbnail || item.url)}
-                    className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300"
-                    style={{ opacity: fullImageLoaded ? 0 : 1, imageOrientation: 'from-image' as any }}
+                    className="absolute inset-0 w-full h-full object-contain"
+                    style={{ imageOrientation: 'from-image' as any }}
                     alt=""
                   />
                   <img
                     src={item.displayUrl || item.url}
-                    className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
+                    className="absolute inset-0 w-full h-full object-contain"
                     style={{ opacity: fullImageLoaded ? 1 : 0, imageOrientation: 'from-image' as any }}
                     alt=""
                     // If the display image is already cached, onLoad won't fire —
@@ -2730,6 +2738,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
         setShowFavoritesOnly={setShowFavoritesOnly}
         setIsSideMenuOpen={setIsSideMenuOpen}
         showMenuButton={isOwnerView || isShowcase}
+        showFavorites={isOwnerView}
       />
 
       {(isOwnerView || effectiveShareSettings.pro || effectiveShareSettings.guests || effectiveShareSettings.stories) && storyGroups.length > 0 && (
@@ -2806,6 +2815,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
         onInstagram={handleInstagramStory}
         onFacebook={handleFacebookShare}
         onMore={handleNativeShare}
+        canFavorite={isOwnerView}
         onFaceClick={(face) => {
           if (!selectedMedia) return;
           setFaceView({
@@ -2827,8 +2837,8 @@ const Gallery: React.FC<GalleryPageProps> = ({
             imgHeight={faceView.imgH}
             coupleName={event?.name || ''}
             onBack={() => window.history.back()}
-            favorites={favorites}
-            onToggleFavorite={toggleFavorite}
+            favorites={isOwnerView ? favorites : undefined}
+            onToggleFavorite={isOwnerView ? toggleFavorite : undefined}
           />
         )}
       </AnimatePresence>

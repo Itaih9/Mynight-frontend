@@ -99,6 +99,22 @@ export const FacePhotosOverlay = ({
     setSelected(photos[nextIdx]);
   };
 
+  // While the full-size photo is open, Esc returns to the face grid (not the
+  // original photo) and arrows navigate within this person's photos. Captured so
+  // the parent gallery's key handler (which would close the whole face gallery)
+  // never sees these keys.
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); setSelected(null); }
+      else if (e.key === 'ArrowLeft') { e.stopPropagation(); navigate('next'); }
+      else if (e.key === 'ArrowRight') { e.stopPropagation(); navigate('prev'); }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, photos]);
+
   const swipeStartX = useRef<number | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     swipeStartX.current = e.touches[0].clientX;
@@ -262,14 +278,14 @@ export const FacePhotosOverlay = ({
                   <img
                     src={selected.thumbnailUrl || selected.url}
                     alt=""
-                    className="absolute inset-0 w-full h-full object-contain transition-opacity duration-300"
-                    style={{ opacity: fullLoaded ? 0 : 1 }}
+                    className="absolute inset-0 w-full h-full object-contain"
                   />
                   <img
                     src={selected.displayUrl || selected.url}
                     alt=""
-                    className="absolute inset-0 w-full h-full object-contain transition-opacity duration-500"
+                    className="absolute inset-0 w-full h-full object-contain"
                     style={{ opacity: fullLoaded ? 1 : 0 }}
+                    ref={(node) => { if (node && node.complete && node.naturalWidth > 0) setFullLoaded(true); }}
                     onLoad={() => setFullLoaded(true)}
                     onError={(e) => {
                       if (selected.displayUrl && e.currentTarget.src !== selected.url) {

@@ -32,6 +32,22 @@ export const FaceCircles = ({ imageUrl, imgWidth, imgHeight, faces, onFaceClick 
     setExpanded(false);
   }, [imageUrl]);
 
+  // Guest-uploaded photos don't store metadata width/height, so the crop math
+  // has no aspect ratio and degenerates to showing the whole photo. When dims
+  // are missing, measure the image's natural size and use that instead.
+  const [measured, setMeasured] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    setMeasured(null);
+    if (imgWidth && imgHeight) return;
+    let cancelled = false;
+    const probe = new Image();
+    probe.onload = () => { if (!cancelled) setMeasured({ w: probe.naturalWidth, h: probe.naturalHeight }); };
+    probe.src = imageUrl;
+    return () => { cancelled = true; };
+  }, [imageUrl, imgWidth, imgHeight]);
+  const effW = imgWidth || measured?.w;
+  const effH = imgHeight || measured?.h;
+
   if (sorted.length === 0) return null;
 
   const previewCount = Math.min(sorted.length, 5);
@@ -45,7 +61,7 @@ export const FaceCircles = ({ imageUrl, imgWidth, imgHeight, faces, onFaceClick 
       className="absolute inset-[2px] rounded-full overflow-hidden bg-gray-200"
       style={{ clipPath: 'circle(50%)' }}
     >
-      <img src={imageUrl} alt="" draggable={false} style={faceCircleImageStyle(box, imgWidth, imgHeight, size - 4)} />
+      <img src={imageUrl} alt="" draggable={false} style={faceCircleImageStyle(box, effW, effH, size - 4)} />
     </span>
   );
 
