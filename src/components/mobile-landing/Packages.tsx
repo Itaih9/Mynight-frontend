@@ -1,87 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
-import { Image as ImageIcon, Send, CheckCircle2, Square, Heart, Smartphone, Sparkles, Users, Search, Camera, ChevronsDown, Info, X } from 'lucide-react';
-import { PackagesTitle } from './PackagesTitle';
-import { GuaranteeHighlightEffect } from './utils/GuaranteeHighlightEffect';
 import { packagesApi } from '@/services/api';
-
-const GuaranteeText = () => {
-  const textRef = useRef<HTMLSpanElement>(null);
-  
-  useEffect(() => {
-    let effect: GuaranteeHighlightEffect | null = null;
-    if (textRef.current) {
-      effect = new GuaranteeHighlightEffect(textRef.current, { rainbow: false });
-    }
-    return () => {
-      if (effect) effect.destroy();
-    };
-  }, []);
-
-  const text = "מתחייבים שתהנו. אחרת - עלינו!";
-  return (
-    <span 
-      ref={textRef} 
-      className="text-white font-['Assistant'] font-bold text-[19px] tracking-[-0.02em] inline-flex"
-      style={{ '--color-highlight-end': '#fde68a', '--color-highlight-end-alt': '#fef3c7' } as React.CSSProperties}
-    >
-      {text.split('').map((char, i) => (
-        <span key={i} className={char === ' ' ? 'whitespace-pre' : 'char inline-block'}>
-          {char}
-        </span>
-      ))}
-    </span>
-  );
-};
-
-const GuaranteeCard = ({ isExpanded }: { isExpanded: boolean }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  return (
-    <>
-      <div className="absolute inset-x-0 -top-9 h-9 overflow-hidden pointer-events-none z-0">
-        <div 
-            className={`absolute left-1/2 w-[calc(87%-40px)] h-[36px] bg-[#f59e0b] rounded-t-xl flex items-center justify-center shadow-sm transition-all duration-500 ease-in-out pb-1 overflow-hidden cursor-pointer pointer-events-auto ${
-                isExpanded ? 'opacity-100' : 'opacity-0'
-            }`}
-            style={{
-              transform: `translateX(-50%) translateY(${isExpanded ? '0' : '100%'})`
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsModalOpen(true);
-            }}
-        >
-            <div className="relative z-10 flex items-center gap-1.5">
-              <GuaranteeText />
-              <Info className="w-4 h-4 text-white opacity-90 translate-y-[2px]" />
-            </div>
-        </div>
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={(e) => { e.stopPropagation(); setIsModalOpen(false); }}>
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()} dir="rtl">
-            <button 
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 left-4 text-gray-400 hover:text-gray-600 transition-colors p-1"
-            >
-              <X size={20} />
-            </button>
-            <div className="flex items-center gap-3 mb-3 text-[#f59e0b]">
-              <h3 className="font-bold text-xl font-['Assistant'] text-gray-900">אחריות מלאה</h3>
-              <Info className="w-6 h-6 translate-y-[2px]" />
-            </div>
-            <p className="text-gray-600 font-['Assistant'] text-lg leading-relaxed">
-              אנחנו בטוחים ב-100% בחוויה שאנחנו מספקים. אם מכל סיבה שהיא לא תהיו מרוצים מהשירות, צרו איתנו קשר עד שלושה חודשים לאחר החתונה ותקבלו החזר כספי מלא. בלי שאלות, בלי אותיות קטנות.
-            </p>
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
 
 interface PackagesProps {
   highlightedPackageIndex: number | null;
@@ -89,303 +9,334 @@ interface PackagesProps {
   isHoverDisabled: boolean;
 }
 
-const defaultPackages = [
-    {
-      key: "morning_after",
-      title: "האוספת",
-      englishTitle: "The Morning After",
-      baseColor: "#F0D9B7",
-      shadow: "shadow-[0_20px_40px_rgba(219,198,167,0.1)]",
-      price: "350₪",
-      ctaText: "לבחירה",
-      iconStyle: "square",
-      textColor: "text-white",
-      isDark: true,
-      features: [
-        { text: "אוספים הכל מהאורחים בשבילכם", Icon: ImageIcon },
-        { text: "נשלח קישור בווצאפ לכל אורח", Icon: Send },
-        { text: "העלאה מהירה ללא אפליקציה", Icon: Smartphone },
-        { text: "איכות מקסימלית ללא כיווץ", Icon: Sparkles },
-        { text: "נהנים מהרגעים עד שהצלם מוכן", Icon: Users }
-      ]
-    },
-    {
-      key: "unlimited",
-      title: "המושלמת",
-      englishTitle: "The Perfect Night",
-      baseColor: "#DBC056",
-      shadow: "shadow-[0_25px_50px_rgba(15,23,42,0.25)]",
-      price: "590₪",
-      ctaText: "לבחירה",
-      isPopular: true,
-      iconStyle: "circle",
-      textColor: "text-white",
-      useStroke: true, 
-      features: [
-        { text: "האוספת + החכמה = [HEART]", Icon: ImageIcon },
-        { text: "מיון אורחים ואלבום אישי בווצאפ", Icon: Users },
-        { text: "אוספים הכל מהאורחים בבוקר שאחרי", Icon: ImageIcon },
-        { text: "אלבום חכם מושלם מקצה לקצה", Icon: Sparkles },
-        { text: "קישור בווצאפ לכל אורח", Icon: Send },
-        { text: "סריקת אלפי תמונות בדיוק מירבי", Icon: Camera },
-        { text: "שליחת אלבום אישי ישירות לנייד", Icon: Smartphone },
-        { text: "חוויה דיגיטלית אישית ויוקרתית", Icon: Sparkles }
-      ]
-    },
-    {
-      key: "here_i_am",
-      title: "החכמה",
-      englishTitle: "Here I Am",
-      baseColor: "#B5D9EA",
-      shadow: "shadow-[0_20px_40px_rgba(181,217,234,0.15)]",
-      price: "450₪",
-      ctaText: "לבחירה",
-      isSmart: true,
-      iconStyle: "square",
-      textColor: "text-white",
-      isDark: true,
-      features: [
-        { text: "מיון אורחים ואלבום אישי בווצאפ", Icon: Users },
-        { text: "שליחת אלבום אישי ישירות לנייד", Icon: Smartphone },
-        { text: "סריקת אלפי תמונות בדיוק מירבי", Icon: Search },
-        { text: "חוסך לאורחים חיפוש בגלריות", Icon: Sparkles },
-        { text: "חוויה אישית לכל אורח ואורחת", Icon: Users }
-      ]
-    }
-  ];
+// Inline fractal-noise texture reused across the stone / gold surfaces.
+const NOISE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
 
-const NOISE_OPTIONS = [
-  { name: "Framer 4K", url: "https://framerusercontent.com/images/rR6HYXBrMmX4cRpXfXUOvpvpB0.png" },
-  { name: "Fine Grain", url: "https://www.transparenttextures.com/patterns/stardust.png" },
-  { name: "Rough Concrete", url: "https://www.transparenttextures.com/patterns/concrete-wall.png" },
-  { name: "Subtle Grey", url: "https://www.transparenttextures.com/patterns/always-grey.png" },
-  { name: "White Wall", url: "https://www.transparenttextures.com/patterns/white-wall-3-2.png" },
-  { name: "Crinkled", url: "https://www.transparenttextures.com/patterns/crinkled-paper.png" }
+// Column highlight tint per package (shown behind the selected column).
+const TINTS: Record<string, string> = {
+  starter: 'rgba(92,92,92,0.13)',
+  smart: 'rgba(36,36,36,0.11)',
+  unlimited: 'rgba(227,180,68,0.22)',
+};
+
+const INFO_CONTENT: Record<string, { title: string; body: string }> = {
+  guarantee: {
+    title: 'הבטחת החזר מלא',
+    body: 'אנחנו בטוחים ב-100% בחוויה שאנחנו מספקים. אם מכל סיבה שהיא לא תהיו מרוצים מהשירות, צרו איתנו קשר עד שלושה חודשים לאחר החתונה ותקבלו החזר כספי מלא. בלי שאלות, בלי אותיות קטנות.',
+  },
+  collect: {
+    title: 'אוספים הכל מהאורחים',
+    body: 'כל אורח מקבל קישור אישי בווצאפ להעלאת התמונות והסרטונים שצילם באירוע, ואתם מקבלים את כולם במקום אחד מיד לאחר החתונה.',
+  },
+};
+
+interface RawPackage {
+  key: string;
+  backendKey: string;
+  name: string;
+  englishName: string;
+  price: number;
+  recommended: boolean;
+  gradient: string;
+  ringColor: string;
+  solidGradient: string;
+  ctaVeil: string;
+}
+
+const RAW_PACKAGES: RawPackage[] = [
+  {
+    key: 'starter', backendKey: 'morning_after', name: 'האוספת', englishName: 'Morning After', price: 425, recommended: false,
+    gradient: 'linear-gradient(299deg,rgba(146,143,142,.78) 0%,rgba(92,92,92,.82) 34%)',
+    ringColor: 'rgba(92,92,92,.7)',
+    solidGradient: 'linear-gradient(299deg,hsl(35,2%,56%) 0%,hsl(35,0%,36%) 34%)',
+    ctaVeil: 'linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22))',
+  },
+  {
+    key: 'smart', backendKey: 'here_i_am', name: 'החכמה', englishName: 'Here I Am', price: 575, recommended: false,
+    gradient: 'linear-gradient(307deg,rgba(85,87,90,.8) 0%,rgba(36,36,36,.85) 41%)',
+    ringColor: 'rgba(36,36,36,.7)',
+    solidGradient: 'linear-gradient(307deg,hsl(200,2%,34%) 0%,hsl(200,0%,14%) 41%)',
+    ctaVeil: 'linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22))',
+  },
+  {
+    key: 'unlimited', backendKey: 'unlimited', name: 'המושלמת', englishName: 'Perfect Night', price: 975, recommended: true,
+    gradient: 'linear-gradient(112deg,rgba(243,221,161,.8) 0%,rgba(227,180,68,.85) 50%)',
+    ringColor: 'rgba(227,180,68,.7)',
+    solidGradient: 'linear-gradient(112deg,hsl(43,80%,80%) 0%,hsl(43,78%,60%) 50%)',
+    ctaVeil: 'linear-gradient(187deg,hsla(45,100%,81%,.44) 0%,hsla(45,100%,66%,.44) 100%)',
+  },
 ];
 
-const HEBREW_FONTS = [
-  "Assistant",
-  "Rubik",
-  "Heebo",
-  "Varela Round",
-  "Secular One",
-  "Amatic SC",
-  "Frank Ruhl Libre",
-  "Miriam Libre"
+// [label, starter?, smart?, unlimited?, bold?, infoKey, shiftInfoRight?]
+const FEATURE_DEFS: Array<[string, boolean, boolean, boolean, boolean, string | null, boolean]> = [
+  ['ללא צורך בהתקנת אפליקציה', true, true, true, false, null, false],
+  ['אוספים הכל מהאורחים', true, false, true, false, 'collect', true],
+  ['מיון אורחים ואלבום אורח בוואטסאפ', false, true, true, false, null, false],
+  ['שליחת אלבום אורח ישירות לנייד', false, true, true, false, null, false],
+  ['סטורי יום אחרי מצילומי האורחים', true, false, true, false, null, false],
+  ['QR לסריקה בחתונה', false, false, true, false, null, false],
+  ['הבטחת החזר מלא', false, false, true, true, 'guarantee', false],
 ];
+
+// A filled circle + checkmark, reused for the per-column marks.
+const CheckMark: React.FC<{ circle: string; stroke: string; strokeWidth?: number }> = ({ circle, stroke, strokeWidth = 2.3 }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ display: 'block' }}>
+    <circle cx="12" cy="12" r="12" fill={circle} />
+    <path d="M7 12.5l3 3 7-7" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, animatingPackageIndex, isHoverDisabled }) => {
   const navigate = useNavigate();
-  const sectionRef = useRef<HTMLElement>(null);
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  const [packages, setPackages] = useState(defaultPackages);
+  const [selected, setSelected] = useState<string>('unlimited');
+  const [infoOpenKey, setInfoOpenKey] = useState<string | null>(null);
+  const [pkgData, setPkgData] = useState<RawPackage[]>(RAW_PACKAGES);
 
+  void highlightedPackageIndex;
+  void animatingPackageIndex;
+  void isHoverDisabled;
+
+  // Override display name / english title / price from the admin-managed packages.
   useEffect(() => {
     let cancelled = false;
     packagesApi.getPublic()
       .then((res) => {
         if (cancelled || !res.data?.length) return;
         const overrides = new Map(res.data.map((p) => [p.key, p]));
-        setPackages(defaultPackages.map((pkg) => {
-          const o = overrides.get(pkg.key);
+        setPkgData(RAW_PACKAGES.map((pkg) => {
+          const o = overrides.get(pkg.backendKey);
           if (!o) return pkg;
-          return { ...pkg, title: o.title, englishTitle: o.englishTitle, price: `${o.price}₪` };
+          return { ...pkg, name: o.title, englishName: o.englishTitle, price: o.price };
         }));
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
 
-  // Configs with updated user specified values + Gradient Controls
-  // Updated Perfect Night (Index 1) with new CTA values: HUE 45, SAT 100, LIG 81, OPACITY 0.44, BLUR 18.5
-  const [configs, setConfigs] = useState([
-    { 
-        h: 35, s: 0, l: 36, noise: 0.43, texture: 0.21, gradType: 'linear', gradAngle: 299, gradPosX: 50, gradPosY: 50, gradSize: 34, 
-        ctaH: 0, ctaS: 0, ctaL: 0, ctaOpacity: 0.2, ctaGradAngle: 0, ctaGradEnabled: false, noiseIdx: 3, bottomShadowOpacity: 0.36, 
-        ctaY: 17, priceY: 63, featuresMargin: 3,
-        priceBgH: 0, priceBgS: 0, priceBgL: 100, priceBgA: 0, priceShowGradient: false, priceGradAngle: 180, priceShadowOpacity: 0, priceSeparatorShow: false,
-        priceX: -13, priceFontSize: 31, ctaHeight: 160, ctaFontSize: 84, ctaTextY: 9, ctaTextX: 0,
-        priceScaleX: 1, priceScaleY: 0.96, priceSymbolScaleX: 0.6, priceSymbolScaleY: 0.59, priceSymbolY: 3, priceSymbolX: -4,
-        priceFont: 'Miriam Libre', ctaFont: 'Assistant', priceColor: '#FFFCF1', ctaColor: '#ffffff'
-    }, // Morning After
-    { 
-        h: 43, s: 78, l: 60, noise: 1.28, texture: 0.19, gradType: 'linear', gradAngle: 112, gradPosX: 50, gradPosY: 50, gradSize: 50, 
-        ctaH: 45, ctaS: 100, ctaL: 81, ctaGradAngle: 187, ctaGradEnabled: true, noiseIdx: 3, ctaBlur: 18.5, ctaOpacity: 0.44, bottomShadowOpacity: 0.01, 
-        ctaY: 19, priceY: 63, featuresMargin: 1,
-        priceBgH: 0, priceBgS: 0, priceBgL: 100, priceBgA: 0, priceShowGradient: false, priceGradAngle: 180, priceShadowOpacity: 0, priceSeparatorShow: false,
-        priceX: -13, priceFontSize: 41, ctaHeight: 183, ctaFontSize: 102.5, ctaTextY: 7, ctaTextX: 3,
-        priceScaleX: 0.94, priceScaleY: 0.93, priceSymbolScaleX: 0.6, priceSymbolScaleY: 0.6, priceSymbolY: 4, priceSymbolX: 1,
-        priceFont: 'Miriam Libre', ctaFont: 'Assistant', priceColor: '#fffee5', ctaColor: '#ffffff'
-    }, // Perfect Night
-    { 
-        h: 200, s: 0, l: 14, noise: 0.73, texture: 0.05, gradType: 'linear', gradAngle: 307, gradPosX: 50, gradPosY: 50, gradSize: 41, 
-        ctaH: 0, ctaS: 0, ctaL: 0, ctaOpacity: 0.2, ctaGradAngle: 0, ctaGradEnabled: false, noiseIdx: 3, bottomShadowOpacity: 0.24, 
-        ctaY: 17, priceY: 63, featuresMargin: 3,
-        priceBgH: 0, priceBgS: 0, priceBgL: 100, priceBgA: 0, priceShowGradient: false, priceGradAngle: 180, priceShadowOpacity: 0, priceSeparatorShow: false,
-        priceX: -13, priceFontSize: 31, ctaHeight: 160, ctaFontSize: 84, ctaTextY: 9, ctaTextX: 0,
-        priceScaleX: 1, priceScaleY: 0.96, priceSymbolScaleX: 0.6, priceSymbolScaleY: 0.59, priceSymbolY: 3, priceSymbolX: -4,
-        priceFont: 'Miriam Libre', ctaFont: 'Assistant', priceColor: '#FFFCF1', ctaColor: '#ffffff'
-    } // Here I Am
-  ]);
-  
-  void highlightedPackageIndex;
-  void animatingPackageIndex;
-  void isHoverDisabled;
+  const infoModal = infoOpenKey ? INFO_CONTENT[infoOpenKey] : null;
+  const closeInfo = () => setInfoOpenKey(null);
 
-  // Title container transforms
-  const containerStyle = {
-  transform: 'translateY(-25px)'
-};
+  const stone = 'linear-gradient(299deg,#9c968f 0%,#6b655e 60%)';
+
+  const labels = {
+    barCellStyle: { display: 'flex', borderRadius: '14px 14px 0 0', padding: '0 0 6px' } as React.CSSProperties,
+    barStyle: {
+      position: 'relative', overflow: 'hidden', width: '100%', background: stone,
+      border: '1px solid rgba(255,255,255,.28)', borderRadius: '12px', padding: '9px 8px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), 0 4px 9px -6px rgba(0,0,0,.42)',
+    } as React.CSSProperties,
+    barNoiseStyle: { position: 'absolute', inset: 0, backgroundImage: NOISE, backgroundSize: '120px 120px', mixBlendMode: 'overlay', opacity: 0.05, filter: 'grayscale(1)', pointerEvents: 'none' } as React.CSSProperties,
+    barSheenStyle: { position: 'absolute', top: 0, left: 0, right: 0, height: '58%', background: 'linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 100%)', pointerEvents: 'none' } as React.CSSProperties,
+    barTextStyle: { position: 'relative', zIndex: 1, fontSize: '13px', fontWeight: 800, color: '#fff', fontFamily: "'Assistant',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.3)', lineHeight: 1.1 } as React.CSSProperties,
+    priceLabelStyle: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '12px', paddingRight: '2px', fontSize: '15px', fontWeight: 800, color: '#232323', fontFamily: "'Assistant',sans-serif" } as React.CSSProperties,
+    ctaCellWrapStyle: { display: 'flex', paddingTop: '6px', paddingBottom: '2px' } as React.CSSProperties,
+    ctaBlockStyle: {
+      position: 'relative', overflow: 'hidden', width: '100%', padding: '11px 0', borderRadius: '12px',
+      border: '1px solid rgba(255,255,255,.28)', fontFamily: "'Assistant',sans-serif", fontSize: '14px', fontWeight: 800,
+      background: `linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22)), ${stone}`,
+      color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,.3)', textAlign: 'center',
+      boxShadow: '0 4px 10px -6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.3)',
+    } as React.CSSProperties,
+    ctaBlockNoiseStyle: { position: 'absolute', inset: 0, backgroundImage: NOISE, backgroundSize: '120px 120px', mixBlendMode: 'overlay', opacity: 0.045, filter: 'grayscale(1)', pointerEvents: 'none' } as React.CSSProperties,
+  };
+
+  const packages = pkgData.map((p) => {
+    const isSelected = selected === p.key;
+    const tint = isSelected ? TINTS[p.key] : 'transparent';
+    return {
+      ...p,
+      selected: isSelected,
+      // The column highlight is clipped to start at the top of the name box and is
+      // hidden behind it (overflow + the name box's higher z-index) so it never
+      // rides up above the box.
+      headerCellStyle: {
+        position: 'relative', display: 'flex', overflow: 'hidden',
+        background: isSelected ? TINTS[p.key] : 'transparent',
+        borderRadius: '0', padding: '0 5px 6px', cursor: 'pointer', zIndex: 1,
+      } as React.CSSProperties,
+      colHeaderStyle: {
+        position: 'relative', overflow: 'hidden', width: '100%', background: p.gradient,
+        backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)',
+        borderRadius: '12px', padding: '9px 2px', textAlign: 'center',
+        border: '1px solid rgba(255,255,255,.28)', cursor: 'pointer',
+        boxShadow: isSelected
+          ? `inset 0 1px 0 rgba(255,255,255,.45), 0 4px 9px -6px rgba(0,0,0,.42), 0 0 0 2px ${p.ringColor}`
+          : 'inset 0 1px 0 rgba(255,255,255,.45), 0 4px 9px -6px rgba(0,0,0,.42)',
+        zIndex: 2,
+      } as React.CSSProperties,
+      noiseStyle: { position: 'absolute', inset: 0, backgroundImage: NOISE, backgroundSize: '120px 120px', mixBlendMode: 'overlay', opacity: p.recommended ? 0.65 : 0.5, pointerEvents: 'none', filter: p.recommended ? 'none' : 'grayscale(1)' } as React.CSSProperties,
+      sheenStyle: { position: 'absolute', top: 0, left: 0, right: 0, height: '58%', background: 'linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 100%)', pointerEvents: 'none' } as React.CSSProperties,
+      colNameStyle: { fontSize: '16px', fontWeight: 800, color: '#fff', fontFamily: "'Assistant',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.3)', lineHeight: 1.05, letterSpacing: '-0.3px', whiteSpace: 'nowrap' } as React.CSSProperties,
+      colEnglishStyle: { fontSize: '8.5px', fontWeight: 600, letterSpacing: '.5px', color: 'rgba(255,255,255,.85)', marginTop: '2px', textShadow: p.recommended ? '0 1px 1px rgba(0,0,0,.2)' : 'none' } as React.CSSProperties,
+      priceCellStyle: { paddingTop: '2px', paddingBottom: '14px', background: tint, borderRadius: '0 0 16px 16px', position: 'relative', zIndex: 1 } as React.CSSProperties,
+      priceNoteStyle: { width: '82%', margin: '0 auto', background: '#fff', padding: '9px 4px', textAlign: 'center', borderRadius: '4px 4px 11px 11px', boxShadow: '0 4px 8px -4px rgba(0,0,0,.28)' } as React.CSSProperties,
+      priceStyle: { position: 'relative', zIndex: 1, fontSize: '17px', fontWeight: 700, color: '#232323', fontFamily: "'Miriam Libre',serif" } as React.CSSProperties,
+      ctaCellStyle: { display: 'flex', paddingTop: '6px', paddingBottom: '0', background: tint, position: 'relative', zIndex: 1 } as React.CSSProperties,
+      ctaText: isSelected ? 'נבחר' : 'לבחירה',
+      ctaCheckStroke: p.recommended ? '#DDA935' : '#3a3a3a',
+      ctaStyle: {
+        position: 'relative', overflow: 'hidden', width: '100%', padding: '11px 0', borderRadius: '12px', cursor: 'pointer',
+        border: '1px solid rgba(255,255,255,.28)', fontFamily: "'Assistant',sans-serif", fontSize: '14px', fontWeight: 800,
+        background: `${p.ctaVeil}, ${p.solidGradient}`, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,.3)',
+        boxShadow: isSelected
+          ? '0 6px 14px -6px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.35), 0 0 0 2px rgba(255,255,255,.7)'
+          : '0 4px 10px -6px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.3)',
+      } as React.CSSProperties,
+      ctaNoiseStyle: { position: 'absolute', inset: 0, backgroundImage: NOISE, backgroundSize: '120px 120px', mixBlendMode: 'overlay', opacity: p.recommended ? 0.6 : 0.45, pointerEvents: 'none', filter: p.recommended ? 'none' : 'grayscale(1)' } as React.CSSProperties,
+      onSelect: () => setSelected(p.key),
+      onCta: () => navigate(`${ROUTES.REGISTER}?package=${p.name}&price=${p.price}`),
+    };
+  });
+
+  const markBase: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '11px 0', borderBottom: '1px solid #e3ddcc', position: 'relative', zIndex: 1 };
+  const baseInfoBtn: React.CSSProperties = { width: '15px', height: '15px', minWidth: '15px', flexShrink: 0, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 0 };
+  const cellBg = (key: string): string => (selected === key ? TINTS[key] : 'transparent');
+
+  const featureRows = FEATURE_DEFS.map(([label, s, sm, u, bold, infoKey, shiftRight]) => ({
+    label,
+    labelStyle: { fontSize: '12px', color: '#232323', lineHeight: 1.25, fontWeight: bold ? 800 : 500, display: 'flex', alignItems: 'center', gap: '5px', fontFamily: "'Assistant',sans-serif", padding: '11px 2px 11px 0', borderBottom: '1px solid #e3ddcc', position: 'relative', zIndex: 1 } as React.CSSProperties,
+    starterCellStyle: { ...markBase, background: cellBg('starter') } as React.CSSProperties,
+    smartCellStyle: { ...markBase, background: cellBg('smart') } as React.CSSProperties,
+    unlimitedCellStyle: { ...markBase, background: cellBg('unlimited') } as React.CSSProperties,
+    starterOn: s, smartOn: sm, unlimitedOn: u,
+    hasInfo: !!infoKey,
+    infoBtnStyle: shiftRight ? { ...baseInfoBtn, transform: 'translateX(8px)' } : { ...baseInfoBtn, transform: 'translateX(-2px)' },
+    onInfo: infoKey ? () => setInfoOpenKey(infoKey) : undefined,
+  }));
+
+  const dashLight: React.CSSProperties = { display: 'block', width: '16px', height: '1px', background: '#c9c0aa' };
 
   return (
-    <section 
-      id="packages" 
-     ref={sectionRef} 
+    <section
+      id="packages"
       className="pt-[35px] mt-[-67px] pb-[68px] bg-[#F7F7F7] rounded-t-[40px] shadow-[0_-25px_50px_rgba(0,0,0,0.15)] relative z-[350]"
->
-        <div className="max-w-[1400px] mx-auto px-6">
-          <style dangerouslySetInnerHTML={{__html: `
-            @import url('https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Assistant:wght@200..800&family=Frank+Ruhl+Libre:wght@300..900&family=Heebo:wght@100..900&family=Miriam+Libre:wght@400;700&family=Rubik:ital,wght@0,300..900;1,300..900&family=Secular+One&family=Varela+Round&display=swap');
-          `}} />
-          <div className="w-full mb-[-34px] flex justify-center overflow-x-clip">
-                <div
-                  className="relative pt-[20px] pb-[55px] px-12 text-center"
-                  style={containerStyle}
-                  dir="rtl"
-                >
-                    <div 
-                      className="absolute left-1/2 -translate-x-1/2 w-screen" 
-                      style={{ 
-                        top: '27px',
-                        bottom: '24px',
-                        zIndex: 0
-                      }} 
-                    />
+    >
+      <style dangerouslySetInnerHTML={{ __html: `
+        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200..800&family=Miriam+Libre:wght@400;700&display=swap');
+      `}} />
 
-		                    <PackagesTitle />
+      <div className="max-w-[1400px] mx-auto px-6" dir="rtl">
+        <div style={{ maxWidth: '440px', margin: '0 auto' }}>
 
-                        <div 
-                          className="absolute left-1/2 -translate-x-1/2 h-[1px] w-screen z-10" 
-                          style={{ 
-                            bottom: '40px',
-                            background: 'linear-gradient(to right, #B0AAA5 0%, #66615F 20%, #66615F 80%, #B0AAA5 100%)',
-                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)' 
-                          }} 
-                        />
+          <div style={{ padding: '20px 20px 8px', textAlign: 'center' }}>
+            <div style={{ fontSize: '59px', fontWeight: 900, color: '#292524', fontFamily: "'Assistant',sans-serif", lineHeight: 0.9 }}>החבילות שלנו</div>
+            <div style={{ fontSize: '27px', fontWeight: 300, color: '#78716c', marginTop: '10px', letterSpacing: '0.1px', whiteSpace: 'nowrap', lineHeight: 1.05 }}>
+              בחרו את הדרך המושלמת לחבר את <br />הרגעים המיוחדים
+            </div>
+          </div>
+
+          <div style={{ padding: '14px 0 4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.1fr minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)', columnGap: '6px', rowGap: 0 }}>
+
+              {/* Header row: label bar + package name boxes */}
+              <div style={labels.barCellStyle}>
+                <div style={labels.barStyle}>
+                  <div style={labels.barNoiseStyle} />
+                  <div style={labels.barSheenStyle} />
+                  <div style={labels.barTextStyle}>בחרו חבילה</div>
                 </div>
-          </div>
-
-          <div className="flex flex-col gap-6" dir="rtl">
-            {[1, 2, 0].map((i) => {
-              const pkg = packages[i];
-              const cfg = configs[i];
-
-                 const isExpanded = expandedIndex === i;
-                 
-                 const color1 = `hsl(${cfg.h}, ${cfg.s + 2}%, ${Math.min(98, cfg.l + 20)}%)`;
-                 const color2 = `hsl(${cfg.h}, ${cfg.s}%, ${cfg.l}%)`;
-                 let background = '';
-                 if (cfg.gradType === 'radial') {
-                    background = `radial-gradient(circle at ${cfg.gradPosX}% ${cfg.gradPosY}%, ${color1} 0%, ${color2} ${cfg.gradSize}%)`;
-                 } else {
-                    background = `linear-gradient(${cfg.gradAngle}deg, ${color1} 0%, ${color2} ${cfg.gradSize}%)`;
-                 }
-                 const backgroundStyle = { background };
-                 const noiseUrl = NOISE_OPTIONS[cfg.noiseIdx || 0].url;
-                 const noiseClass = (i === 0 || i === 2) ? 'grayscale' : '';
-
-                 const opacity = cfg.ctaOpacity ?? 1;
-                 const ctaBgColor = `hsla(${cfg.ctaH}, ${cfg.ctaS}%, ${cfg.ctaL}%, ${opacity})`;
-                 let ctaDynamicStyle: React.CSSProperties = { background: ctaBgColor };
-                 if (pkg.isPopular && cfg.ctaGradEnabled) {
-                     const ctaBgColor2 = `hsla(${cfg.ctaH}, ${cfg.ctaS}%, ${Math.max(0, cfg.ctaL - 15)}%, ${opacity})`;
-                     ctaDynamicStyle = { 
-                        background: `linear-gradient(${cfg.ctaGradAngle}deg, ${ctaBgColor} 0%, ${ctaBgColor2} 100%)`
-                     };
-                 }
-                 
-                 const priceDigits = pkg.price.replace(/\D/g, '');
-                 const priceSymbol = pkg.price.replace(/[0-9]/g, '');
-
-                 return (
-	                    <div 
-	                      key={i}
-	                      className={`relative rounded-[20px] overflow-hidden mb-4 shadow-lg transition-all duration-500`}
-	                      style={{ ...backgroundStyle, paddingBottom: isExpanded ? '1rem' : '0' }}
-	                    >
-                        <div className={`absolute inset-0 pointer-events-none z-[1] mix-blend-overlay ${noiseClass}`} style={{ opacity: cfg.noise, backgroundImage: `url('${noiseUrl}')`, backgroundSize: '100% 100%' }} />
-                        <div className="absolute inset-0 z-[1] brightness-110 contrast-125 bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')] pointer-events-none mix-blend-overlay" style={{ opacity: cfg.texture }} />
-                        
-                        <div 
-                          className="relative z-10 flex items-center justify-between p-6 pb-4 cursor-pointer"
-                          onClick={() => setExpandedIndex(isExpanded ? null : i)}
-                        >
-                            <div className="text-right">
-                                <h3 className="text-[32px] font-black text-white font-['Assistant'] leading-none mb-1 drop-shadow-md">{pkg.title}</h3>
-                                <span className="text-sm font-bold text-white/90 uppercase tracking-widest font-['Assistant'] drop-shadow-sm">{pkg.englishTitle}</span>
-                            </div>
-
-                            <div 
-                                className="w-[42px] h-[42px] rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm shadow-sm active:scale-95 transition-transform"
-                            >
-                                <ChevronsDown className={`text-white w-[25.2px] h-[25.2px] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-                            </div>
-                        </div>
-
-                        <div className="relative z-10 h-[1px] bg-white/30 mx-6 mb-4" />
-
-                        <div className={`relative z-10 grid transition-[grid-template-rows,opacity] duration-500 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`} style={{ willChange: 'grid-template-rows' }}>
-                            <div className="overflow-hidden min-h-0" style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}>
-                                <div className={`px-6 ${(i === 2 || i === 0) ? 'pb-2' : 'pb-8 md:pb-12'}`}>
-                                    <ul className="flex flex-col gap-4">
-                                        {pkg.features.map((feature, idx) => (
-                                            <li key={idx} className="flex items-start gap-3 justify-between text-right flex-row-reverse">
-                                                <div className="min-w-[24px] h-[24px] rounded-lg bg-white/20 flex items-center justify-center shadow-sm">
-                                                    {pkg.iconStyle === 'circle' ? <CheckCircle2 className="w-3.5 h-3.5 text-white" /> : <feature.Icon className="w-3.5 h-3.5 text-white" />}
-                                                </div>
-                                                <span className="font-['Assistant'] font-bold text-lg text-white drop-shadow-sm leading-tight flex-1">
-                                                    {feature.text.replace('[HEART]', '')}
-                                                    {feature.text.includes('[HEART]') && <Heart className="inline-block w-4 h-4 fill-red-500 text-red-500 mx-1" />}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="relative z-10 px-6 transition-all duration-500 ease-in-out" style={{ marginTop: isExpanded && i === 1 ? '1.125rem' : '0' }}>
-                            {i === 1 && (
-                                <GuaranteeCard isExpanded={isExpanded} />
-                            )}
-                            <button
-                                onClick={() => navigate(`${ROUTES.REGISTER}?package=${pkg.title}&price=${priceDigits}`)}
-                                className="w-full py-3 rounded-xl shadow-lg active:scale-[0.98] transition-all duration-500 ease-in-out flex items-center justify-between px-6 relative z-10"
-                                style={ctaDynamicStyle}
-                            >
-                                <div className="flex flex-col items-start">
-                                    <span className="text-white font-['Assistant'] font-bold text-[13px] opacity-90">מחיר לחבילה</span>
-                                    <div className="text-white font-['Miriam_Libre'] font-bold text-2xl leading-none flex items-baseline gap-1">
-                                        <span>{priceDigits}</span>
-                                        <span className="text-lg">{priceSymbol}</span>
-                                    </div>
-                                </div>
-                                <span className="text-white font-['Assistant'] font-black text-2xl tracking-wide drop-shadow-md">
-                                    {pkg.ctaText}
-                                </span>
-                            </button>
-                        </div>
+              </div>
+              {packages.map((pkg) => (
+                <div key={pkg.key} style={pkg.headerCellStyle} onClick={pkg.onSelect}>
+                  <div style={pkg.colHeaderStyle}>
+                    <div style={pkg.noiseStyle} />
+                    <div style={pkg.sheenStyle} />
+                    <div style={{ position: 'relative', zIndex: 1 }}>
+                      <div style={pkg.colNameStyle}>{pkg.name}</div>
+                      <div style={pkg.colEnglishStyle}>{pkg.englishName}</div>
                     </div>
-                 );
-            })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Feature rows */}
+              {featureRows.map((row, ri) => (
+                <React.Fragment key={ri}>
+                  <div style={row.labelStyle}>
+                    {row.label}
+                    {row.hasInfo && (
+                      <button onClick={row.onInfo} style={row.infoBtnStyle}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ position: 'relative', left: '5px' }}>
+                          <circle cx="12" cy="12" r="10" stroke="#f59e0b" strokeWidth="2" />
+                          <path d="M12 11v5" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+                          <circle cx="12" cy="7.8" r="1.1" fill="#f59e0b" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  <div style={row.starterCellStyle}>
+                    {row.starterOn ? <CheckMark circle="#5C5C5C" stroke="#fff" /> : <span style={dashLight} />}
+                  </div>
+                  <div style={row.smartCellStyle}>
+                    {row.smartOn ? <CheckMark circle="#242424" stroke="#fff" /> : <span style={dashLight} />}
+                  </div>
+                  <div style={row.unlimitedCellStyle}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(112deg,#F3DDA1,#E3B444)', borderRadius: '8px', minHeight: '26px', width: '100%' }}>
+                      {row.unlimitedOn
+                        ? <CheckMark circle="#FFFDF5" stroke="#DDA935" strokeWidth={2.8} />
+                        : <span style={{ display: 'block', width: '16px', height: '1.5px', background: 'rgba(255,255,255,.6)' }} />}
+                    </div>
+                  </div>
+                </React.Fragment>
+              ))}
+
+              {/* CTA row */}
+              <div style={labels.ctaCellWrapStyle}>
+                <div style={labels.ctaBlockStyle}>
+                  <div style={labels.ctaBlockNoiseStyle} />
+                  <span style={{ position: 'relative', zIndex: 1, fontSize: '13px' }}>בחרו</span>
+                </div>
+              </div>
+              {packages.map((pkg) => (
+                <div key={pkg.key} style={pkg.ctaCellStyle}>
+                  <button onClick={pkg.onCta} style={pkg.ctaStyle}>
+                    <div style={pkg.ctaNoiseStyle} />
+                    <span style={{ position: 'relative', zIndex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                      {pkg.ctaText}
+                      {pkg.selected && <CheckMark circle="#fff" stroke={pkg.ctaCheckStroke} strokeWidth={2.8} />}
+                    </span>
+                  </button>
+                </div>
+              ))}
+
+              {/* Price row */}
+              <div style={labels.priceLabelStyle} />
+              {packages.map((pkg) => (
+                <div key={pkg.key} style={pkg.priceCellStyle}>
+                  <div style={pkg.priceNoteStyle}>
+                    <div style={pkg.priceStyle}>₪{pkg.price}</div>
+                  </div>
+                </div>
+              ))}
+
+            </div>
           </div>
-
-
-
-
-
         </div>
-        
+      </div>
+
+      {infoModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-6"
+          style={{ background: 'rgba(35,35,35,.55)' }}
+          onClick={closeInfo}
+          dir="rtl"
+        >
+          <div style={{ background: '#fff', borderRadius: '20px', padding: '22px 20px', maxWidth: '280px', boxShadow: '0 20px 40px rgba(0,0,0,.3)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: '#232323', fontFamily: "'Assistant',sans-serif" }}>{infoModal.title}</div>
+              <button onClick={closeInfo} style={{ flexShrink: 0, width: '28px', height: '28px', border: 'none', background: '#f4f0ea', borderRadius: '50%', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 6l12 12M18 6L6 18" stroke="#8a8378" strokeWidth="2.4" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
+            <div style={{ fontSize: '13px', color: '#5F5F5F', lineHeight: 1.6 }}>{infoModal.body}</div>
+            <button onClick={closeInfo} style={{ marginTop: '16px', width: '100%', padding: '10px 0', borderRadius: '10px', border: 'none', background: '#232323', color: '#fff', fontFamily: "'Assistant',sans-serif", fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}>אפשר להתקדם</button>
+          </div>
+        </div>
+      )}
     </section>
   );
-}
+};
