@@ -808,14 +808,22 @@ const MediaCard = React.memo(({ item, priority = false, eager = false, isFavorit
   // they load right after (without all claiming "high" and contending).
   const loading = priority || eager ? 'eager' : 'lazy';
   const fetchPriority = priority ? 'high' : 'auto';
-  const { dataSaver } = useNetworkQuality();
-  const isLandscape = item.orientation !== 'portrait';
-  // On constrained mobile data, keep landscape tiles light: the small thumbnail
-  // only, and if it's missing fall back to the capped display rendition rather
-  // than the full-size original.
-  const gridImgSrc = dataSaver && isLandscape
-    ? getSafeImageSrc(item.thumbnail || item.displayUrl || item.url)
-    : getSafeImageSrc(item.thumbnail || item.url);
+  // Fallback chain: thumbnail → display rendition → original. Older photos with
+  // no generated thumbnail otherwise pull the full-size original (~1MB), which
+  // clogs the grid on slow connections. On a load error we step down to the
+  // capped display rendition before ever touching the original.
+  const srcChain = useMemo(
+    () => Array.from(new Set(
+      [item.thumbnail, item.displayUrl, item.url].map((s) => getSafeImageSrc(s || '')).filter(Boolean)
+    )),
+    [item.thumbnail, item.displayUrl, item.url]
+  );
+  const [srcIdx, setSrcIdx] = useState(0);
+  useEffect(() => { setSrcIdx(0); }, [item.id]);
+  const gridImgSrc = srcChain[Math.min(srcIdx, srcChain.length - 1)] || '';
+  const handleImgError = useCallback(() => {
+    setSrcIdx((i) => (i < srcChain.length - 1 ? i + 1 : i));
+  }, [srcChain.length]);
 
   return (
     <motion.div
@@ -865,6 +873,7 @@ const MediaCard = React.memo(({ item, priority = false, eager = false, isFavorit
           height={item.height || undefined}
           sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
           onLoad={handleImageLoad}
+          onError={handleImgError}
           className="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
           style={{ imageRendering: 'high-quality' as any, imageOrientation: 'from-image' as any }}
         />
