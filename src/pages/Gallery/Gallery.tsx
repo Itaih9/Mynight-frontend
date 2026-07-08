@@ -1253,7 +1253,7 @@ const LightboxModal = ({
 
           {item.type === 'photo' && (item.indexedFaces?.length ?? 0) > 0 && (
             <FaceCircles
-              imageUrl={item.displayUrl || item.url}
+              imageUrl={item.thumbnail || item.displayUrl || item.url}
               imgWidth={item.width}
               imgHeight={item.height}
               faces={item.indexedFaces!.map((f) => ({ faceId: f.faceId, boundingBox: f.boundingBox }))}

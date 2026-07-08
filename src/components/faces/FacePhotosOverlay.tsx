@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronsRight, X, Download, ChevronLeft, ChevronRight, Loader2, Heart } from 'lucide-react';
+import { ChevronsRight, X, Download, Share2, ChevronLeft, ChevronRight, Loader2, Heart } from 'lucide-react';
 import { galleryApi } from '@/services/api';
 import type { Photo } from '@/types/api.types';
 import { faceCircleImageStyle, type FaceEntry } from './faceCrop';
@@ -84,7 +84,7 @@ export const FacePhotosOverlay = ({
     setFullLoaded(false);
     setCurrent({
       face: f,
-      imageUrl: sourcePhoto.displayUrl || sourcePhoto.url,
+      imageUrl: sourcePhoto.thumbnailUrl || sourcePhoto.displayUrl || sourcePhoto.url,
       imgW: sourcePhoto.metadata?.width,
       imgH: sourcePhoto.metadata?.height,
     });
@@ -124,6 +124,21 @@ export const FacePhotosOverlay = ({
     const dx = e.changedTouches[0].clientX - swipeStartX.current;
     if (Math.abs(dx) > 50) navigate(dx < 0 ? 'next' : 'prev');
     swipeStartX.current = null;
+  };
+
+  const handleShare = async (photo: Photo, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const url = photo.displayUrl || photo.url;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'MyNight', text: `תמונה מהלילה של ${coupleName}`, url });
+        return;
+      }
+    } catch {
+      return; // native share dismissed/cancelled
+    }
+    // Fallback for browsers without the Web Share API.
+    window.open(`https://wa.me/?text=${encodeURIComponent(url)}`, '_blank');
   };
 
   const handleDownload = async (photo: Photo, e?: React.MouseEvent) => {
@@ -248,6 +263,9 @@ export const FacePhotosOverlay = ({
               <button onClick={(e) => handleDownload(selected, e)} className="p-3 bg-gray-100 text-black hover:bg-gray-200 rounded-full transition-colors shadow-sm">
                 <Download size={22} />
               </button>
+              <button onClick={(e) => handleShare(selected, e)} className="p-3 bg-black text-white hover:bg-gray-800 rounded-full transition-colors shadow-sm">
+                <Share2 size={22} className="-translate-x-[1px]" />
+              </button>
             </div>
 
             {/* Favorite — top-right */}
@@ -299,7 +317,7 @@ export const FacePhotosOverlay = ({
 
             {!isVideo(selected) && (selected.indexedFaces?.length ?? 0) > 0 && (
               <FaceCircles
-                imageUrl={selected.displayUrl || selected.url}
+                imageUrl={selected.thumbnailUrl || selected.displayUrl || selected.url}
                 imgWidth={selected.metadata?.width}
                 imgHeight={selected.metadata?.height}
                 faces={(selected.indexedFaces ?? []).map((f) => ({ faceId: f.faceId, boundingBox: f.boundingBox }))}
