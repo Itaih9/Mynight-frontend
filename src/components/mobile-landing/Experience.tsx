@@ -732,8 +732,8 @@ export const Experience: React.FC<{ onMoreInfoClick: () => void; onGiantClick: (
                   data-debug-id="exp-subtext"
                   className="mb-8 relative z-20 text-[24px] text-gray-500 leading-relaxed font-normal font-['Assistant'] opacity-80 max-w-2xl mx-auto rounded-lg whitespace-pre-line bg-transparent transform -translate-y-[10px]"
                   style={isMobile ? {
-                    fontSize: `${27 * (windowWidth / 1920) * 3.3}px`,
-                    transform: `translate(${layoutConfig.subtextX}px, ${layoutConfig.subtextY - 17}px)`,
+                    fontSize: '19.4442px',
+                    transform: 'translate(0px, -44px)',
                     transformOrigin: 'center top',
                     ...getElementStyle('exp-subtext')
                   } : {}}
