@@ -37,6 +37,7 @@ interface RawPackage {
   name: string;
   englishName: string;
   price: number;
+  compareAtPrice?: number;
   recommended: boolean;
   gradient: string;
   ringColor: string;
@@ -79,6 +80,9 @@ const FEATURE_DEFS: Array<[string, boolean, boolean, boolean, boolean, string | 
   ['הבטחת החזר מלא', false, false, true, true, 'guarantee', false],
 ];
 
+// Format prices with thousands separators, e.g. 1000 -> "1,000".
+const formatPrice = (n: number) => n.toLocaleString('en-US');
+
 // A filled circle + checkmark, reused for the per-column marks.
 const CheckMark: React.FC<{ circle: string; stroke: string; strokeWidth?: number }> = ({ circle, stroke, strokeWidth = 2.3 }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ display: 'block' }}>
@@ -116,7 +120,7 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
           const o = overrides.get(pkg.backendKey);
           if (!o) return pkg;
           // Strip a leading "The " so e.g. "The Morning After" reads "Morning After".
-          return { ...pkg, name: o.title, englishName: o.englishTitle.replace(/^The\s+/i, ''), price: o.price };
+          return { ...pkg, name: o.title, englishName: o.englishTitle.replace(/^The\s+/i, ''), price: o.price, compareAtPrice: o.compareAtPrice ?? 0 };
         }));
       })
       .catch(() => {});
@@ -151,12 +155,20 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
     ctaBlockNoiseStyle: { position: 'absolute', inset: 0, backgroundImage: NOISE, backgroundSize: '120px 120px', mixBlendMode: 'overlay', opacity: 0.045, filter: 'grayscale(1)', pointerEvents: 'none' } as React.CSSProperties,
   };
 
+  // Perfect Night's struck-through "top" price: the admin-set compareAtPrice,
+  // or (0 = auto) the sum of the other packages' prices.
+  const otherSum = pkgData.filter((p) => p.key !== 'unlimited').reduce((s, p) => s + (p.price || 0), 0);
+
   const packages = pkgData.map((p) => {
     const isSelected = selected === p.key;
     const tint = isSelected ? TINTS[p.key] : 'transparent';
+    const isUnlimited = p.key === 'unlimited';
+    const topPrice = p.compareAtPrice && p.compareAtPrice > 0 ? p.compareAtPrice : otherSum;
     return {
       ...p,
       selected: isSelected,
+      isUnlimited,
+      topPrice,
       // The name box spans the full column width and sits above the tint (higher
       // z-index), so the column highlight stays fully behind/below it — no clipped
       // box top, no highlight corners poking out above the box.
@@ -180,9 +192,19 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
       sheenStyle: { position: 'absolute', top: 0, left: 0, right: 0, height: '58%', background: 'linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 100%)', pointerEvents: 'none' } as React.CSSProperties,
       colNameStyle: { fontSize: '16px', fontWeight: 800, color: '#fff', fontFamily: "'Assistant',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.3)', lineHeight: 1.05, letterSpacing: '-0.3px', whiteSpace: 'nowrap' } as React.CSSProperties,
       colEnglishStyle: { fontSize: '8.5px', fontWeight: 600, letterSpacing: '.5px', color: 'rgba(255,255,255,.85)', marginTop: '2px', textShadow: p.recommended ? '0 1px 1px rgba(0,0,0,.2)' : 'none' } as React.CSSProperties,
-      priceCellStyle: { paddingTop: '2px', paddingBottom: '14px', background: tint, borderRadius: '0 0 16px 16px', position: 'relative', zIndex: 1 } as React.CSSProperties,
-      priceNoteStyle: { width: '82%', margin: '0 auto', background: '#fff', padding: '9px 4px', textAlign: 'center', borderRadius: '4px 4px 11px 11px', boxShadow: '0 4px 8px -4px rgba(0,0,0,.28)' } as React.CSSProperties,
+      // Perfect Night's flag is a taller two-line piece that hangs below the
+      // price row via an absolute, top-anchored wrapper — so only its own column
+      // highlight elongates, and the grid row stays the height of the others.
+      priceCellStyle: isUnlimited
+        ? { paddingTop: '2px', paddingBottom: '0', background: 'transparent', borderRadius: '0', position: 'relative', zIndex: 1 } as React.CSSProperties
+        : { paddingTop: '2px', paddingBottom: '14px', background: tint, borderRadius: '0 0 16px 16px', position: 'relative', zIndex: 1 } as React.CSSProperties,
+      priceFlagWrapStyle: { position: 'absolute', top: 0, left: 0, right: 0, background: tint, borderRadius: '0 0 16px 16px', paddingTop: '2px', paddingBottom: '12px', zIndex: 1 } as React.CSSProperties,
+      priceNoteStyle: isUnlimited
+        ? { width: '82%', margin: '0 auto', background: '#fff', padding: '7px 4px 9px', textAlign: 'center', borderRadius: '4px 4px 11px 11px', boxShadow: '0 4px 8px -4px rgba(0,0,0,.28)' } as React.CSSProperties
+        : { width: '82%', margin: '0 auto', background: '#fff', padding: '9px 4px', textAlign: 'center', borderRadius: '4px 4px 11px 11px', boxShadow: '0 4px 8px -4px rgba(0,0,0,.28)' } as React.CSSProperties,
       priceStyle: { position: 'relative', zIndex: 1, fontSize: '17px', fontWeight: 700, color: '#232323', fontFamily: "'Miriam Libre',serif" } as React.CSSProperties,
+      strikeStyle: { position: 'relative', display: 'inline-block', fontSize: '13px', fontWeight: 600, color: '#a89f97', fontFamily: "'Miriam Libre',serif", lineHeight: 1.15 } as React.CSSProperties,
+      diagonalLineStyle: { position: 'absolute', left: '-3px', right: '-3px', top: '48%', height: '2px', background: '#e0483d', transform: 'rotate(-11deg)', borderRadius: '2px', pointerEvents: 'none' } as React.CSSProperties,
       ctaCellStyle: { display: 'flex', paddingTop: '6px', paddingBottom: '0', background: tint, position: 'relative', zIndex: 1 } as React.CSSProperties,
       ctaText: isSelected ? 'להמשיך' : 'בחירה',
       ctaCheckStroke: p.recommended ? '#DDA935' : '#3a3a3a',
@@ -322,9 +344,21 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
               <div style={labels.priceLabelStyle} />
               {packages.map((pkg) => (
                 <div key={pkg.key} style={pkg.priceCellStyle}>
-                  <div style={pkg.priceNoteStyle}>
-                    <div style={pkg.priceStyle}>₪{pkg.price}</div>
-                  </div>
+                  {pkg.isUnlimited ? (
+                    <div style={pkg.priceFlagWrapStyle}>
+                      <div style={pkg.priceNoteStyle}>
+                        <span style={pkg.strikeStyle}>
+                          ₪{formatPrice(pkg.topPrice)}
+                          <span style={pkg.diagonalLineStyle} />
+                        </span>
+                        <div style={{ ...pkg.priceStyle, marginTop: '2px' }}>₪{formatPrice(pkg.price)}</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={pkg.priceNoteStyle}>
+                      <div style={pkg.priceStyle}>₪{formatPrice(pkg.price)}</div>
+                    </div>
+                  )}
                 </div>
               ))}
 

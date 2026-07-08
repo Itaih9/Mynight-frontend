@@ -35,6 +35,7 @@ export interface PackageItem {
   title: string;
   englishTitle: string;
   price: number;
+  compareAtPrice?: number;
   order: number;
   isActive: boolean;
   createdAt?: string;
@@ -54,7 +55,7 @@ export const packagesApi = {
 
   update: async (
     key: string,
-    data: Partial<Pick<PackageItem, 'title' | 'englishTitle' | 'price' | 'order' | 'isActive'>>
+    data: Partial<Pick<PackageItem, 'title' | 'englishTitle' | 'price' | 'order' | 'isActive' | 'compareAtPrice'>>
   ): Promise<ApiResponse<PackageItem>> => {
     const response = await adminAxios.patch(`/api/packages/admin/${key}`, data);
     return response.data;

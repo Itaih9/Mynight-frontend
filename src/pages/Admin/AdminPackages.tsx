@@ -10,6 +10,7 @@ interface PackageDraft {
   title: string;
   englishTitle: string;
   price: number;
+  compareAtPrice: number;
   isActive: boolean;
 }
 
@@ -37,6 +38,7 @@ export const AdminPackages = () => {
           title: p.title,
           englishTitle: p.englishTitle,
           price: p.price,
+          compareAtPrice: p.compareAtPrice ?? 0,
           isActive: p.isActive,
         };
       });
@@ -88,6 +90,7 @@ export const AdminPackages = () => {
       original.title !== draft.title ||
       original.englishTitle !== draft.englishTitle ||
       original.price !== draft.price ||
+      (original.compareAtPrice ?? 0) !== draft.compareAtPrice ||
       original.isActive !== draft.isActive
     );
   };
@@ -156,6 +159,18 @@ export const AdminPackages = () => {
                         onChange={(e) => updateDraft(pkg.key, 'price', parseInt(e.target.value) || 0)}
                       />
                     </div>
+                    {pkg.key === 'unlimited' && (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Strikethrough Price (₪)</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={draft.compareAtPrice}
+                          onChange={(e) => updateDraft(pkg.key, 'compareAtPrice', parseInt(e.target.value) || 0)}
+                        />
+                        <p className="text-xs text-slate-400 mt-1">Crossed-out price shown above the real price. 0 = auto (sum of the other packages).</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-5 pt-5 border-t border-slate-100">
