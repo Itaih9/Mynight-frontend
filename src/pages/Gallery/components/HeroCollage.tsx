@@ -2,14 +2,16 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MediaItem } from '../types';
 
+// Use the grid-cached thumbnail (not the full-size original) so the top hero
+// photos paint instantly from cache instead of fetching big files.
 const getHeroPreviewSrc = (item?: MediaItem) => {
   if (!item) return '';
-  return item.type === 'photo' ? item.url || '' : '';
+  return item.type === 'photo' ? (item.thumbnail || item.url || '') : '';
 };
 
 const getHeroFullSrc = (item?: MediaItem) => {
   if (!item) return '';
-  return item.type === 'photo' ? item.url || '' : '';
+  return item.type === 'photo' ? (item.thumbnail || item.url || '') : '';
 };
 
 const hashString = (value: string) => {
