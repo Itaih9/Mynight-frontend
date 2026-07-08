@@ -803,6 +803,14 @@ const MediaCard = React.memo(({ item, priority = false, isFavorite, onOpen, onTo
   const handleFavoriteClick = useCallback((e: React.MouseEvent) => onToggleFavorite(item.id, e), [item.id, onToggleFavorite]);
   const loading = priority ? 'eager' : 'lazy';
   const fetchPriority = priority ? 'high' : 'auto';
+  const { dataSaver } = useNetworkQuality();
+  const isLandscape = item.orientation !== 'portrait';
+  // On constrained mobile data, keep landscape tiles light: the small thumbnail
+  // only, and if it's missing fall back to the capped display rendition rather
+  // than the full-size original.
+  const gridImgSrc = dataSaver && isLandscape
+    ? getSafeImageSrc(item.thumbnail || item.displayUrl || item.url)
+    : getSafeImageSrc(item.thumbnail || item.url);
 
   return (
     <motion.div
@@ -843,7 +851,7 @@ const MediaCard = React.memo(({ item, priority = false, isFavorite, onOpen, onTo
         )
       ) : (
         <img
-          src={getSafeImageSrc(item.thumbnail || item.url)}
+          src={gridImgSrc}
           alt={`Wedding Moment ${item.id}`}
           loading={loading}
           decoding="async"
