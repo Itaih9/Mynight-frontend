@@ -365,6 +365,7 @@ export const adminApi = {
     maxUses?: number;
     expiresAt?: string;
     affiliateId?: string;
+    ownerEventId?: string;
   }): Promise<AdminCoupon> => {
     const response = await adminAxios.post<ApiResponse<AdminCoupon>>('/api/admin/coupons', data);
     return response.data.data!;

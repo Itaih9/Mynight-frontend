@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { adminApi, type AdminCoupon, type AdminAffiliate, type CouponDefaults } from '@/services/api/admin.api';
+import { adminApi, type AdminCoupon, type AdminAffiliate, type AdminEvent, type CouponDefaults } from '@/services/api/admin.api';
 import { Loader } from '@/components/common/Loader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,9 +31,11 @@ export const AdminCoupons = () => {
     maxUses: '',
     expiresAt: '',
     affiliateId: '',
+    eventId: '',
   });
   const [formError, setFormError] = useState('');
   const [affiliateOptions, setAffiliateOptions] = useState<AdminAffiliate[]>([]);
+  const [eventOptions, setEventOptions] = useState<AdminEvent[]>([]);
 
   // Event-coupon defaults panel
   const [defaults, setDefaults] = useState<CouponDefaults | null>(null);
@@ -53,6 +55,7 @@ export const AdminCoupons = () => {
   useEffect(() => {
     loadCoupons(1);
     adminApi.getAffiliates(1, 200).then((res) => setAffiliateOptions(res.affiliates || [])).catch(() => {});
+    adminApi.getEvents(1, 500).then((res) => setEventOptions(res.events || [])).catch(() => {});
     adminApi.getCouponDefaults().then(setDefaults).catch(() => {});
   }, []);
 
@@ -83,12 +86,13 @@ export const AdminCoupons = () => {
         maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined,
         expiresAt: formData.expiresAt || undefined,
         affiliateId: formData.affiliateId || undefined,
+        ownerEventId: formData.eventId || undefined,
       });
       setShowModal(false);
-      setFormData({ code: '', discountType: 'percent', discountValue: 100, maxUses: '', expiresAt: '', affiliateId: '' });
+      setFormData({ code: '', discountType: 'percent', discountValue: 100, maxUses: '', expiresAt: '', affiliateId: '', eventId: '' });
       loadCoupons(1);
     } catch (err: any) {
-      setFormError(err.response?.data?.message || 'Failed to create coupon');
+      setFormError(err.response?.data?.message || err.response?.data?.error || 'Failed to create coupon');
     } finally {
       setCreating(false);
     }
@@ -179,7 +183,7 @@ export const AdminCoupons = () => {
 
         {/* Event gift-coupon defaults */}
         {defaults && (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 mb-6">
+          <div dir="ltr" className="bg-white rounded-xl shadow-sm border border-slate-100 p-5 mb-6">
             <div className="mb-3">
               <h2 className="text-base font-semibold text-slate-900">Event gift-coupon defaults</h2>
               <p className="text-sm text-slate-500 mt-0.5">
@@ -347,7 +351,7 @@ export const AdminCoupons = () => {
             </div>
 
             {pagination.pages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
+              <div dir="ltr" className="flex items-center justify-center gap-2 mt-6">
                 <button
                   onClick={() => loadCoupons(pagination.page - 1)}
                   disabled={pagination.page === 1}
@@ -373,7 +377,7 @@ export const AdminCoupons = () => {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-full max-w-md mx-4 overflow-hidden">
+          <div dir="ltr" className="bg-white rounded-2xl w-full max-w-md mx-4 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h2 className="text-lg font-semibold text-slate-900">Create Coupon</h2>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -443,6 +447,23 @@ export const AdminCoupons = () => {
                 <p className="text-xs text-slate-400 mt-1">If linked, every use of this coupon credits the partner with 2% commission.</p>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Link to Event (optional)</label>
+                <select
+                  value={formData.eventId}
+                  onChange={(e) => setFormData({ ...formData, eventId: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm bg-white"
+                >
+                  <option value="">No event</option>
+                  {eventOptions.map((ev) => (
+                    <option key={ev._id} value={ev._id}>
+                      {(ev.name || ev.customSlug || ev.eventCode)} ({ev.eventCode})
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Associate this coupon with a specific event.</p>
+              </div>
+
               {formError && (
                 <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{formError}</p>
               )}
@@ -467,7 +488,7 @@ export const AdminCoupons = () => {
 
       {editCoupon && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl w-full max-w-md mx-4 overflow-hidden">
+          <div dir="ltr" className="bg-white rounded-2xl w-full max-w-md mx-4 overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">Edit event coupon</h2>

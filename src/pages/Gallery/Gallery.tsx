@@ -338,12 +338,56 @@ const GiftModal = ({
   </AnimatePresence>
 );
 
+// The event's auto gift coupon, shown inline in the couple's slug menu.
+const SlugMenuGiftCoupon = ({ eventId }: { eventId?: string }) => {
+  const [coupon, setCoupon] = useState<{ code: string; discountAmount?: number; discountPercent: number } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!eventId || eventId === '__showcase__') return;
+    let cancelled = false;
+    couponApi.getEventCoupon(eventId)
+      .then((res) => {
+        if (!cancelled && res.data && res.data.isActive) setCoupon(res.data);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [eventId]);
+
+  if (!coupon) return null;
+
+  const label = coupon.discountAmount && coupon.discountAmount > 0 ? `${coupon.discountAmount}₪` : `${coupon.discountPercent}%`;
+  const copy = () => {
+    navigator.clipboard.writeText(coupon.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="rounded-2xl border border-gold-primary/30 bg-gold-primary/5 p-4 text-right" dir="rtl">
+      <div className="flex items-center gap-2 text-black mb-1 flex-row-reverse justify-end">
+        <Ticket size={22} strokeWidth={1.5} className="text-gold-primary" />
+        <span className="text-lg font-semibold">קופון מתנה לחברים</span>
+      </div>
+      <p className="text-sm text-gray-500 mb-3">שתפו את הקוד וחברים יקבלו {label} הנחה</p>
+      <button
+        onClick={copy}
+        className="w-full flex items-center justify-between gap-3 rounded-xl bg-white border border-gray-200 px-4 py-2.5 hover:border-gold-primary transition-colors"
+      >
+        <span className="font-mono font-bold tracking-wider text-black">{coupon.code}</span>
+        <span className="text-xs text-gray-400">{copied ? 'הועתק!' : 'העתקה'}</span>
+      </button>
+    </div>
+  );
+};
+
 const SideMenu = ({
   open,
   onClose,
   isShowcase,
   event,
   eventId,
+  couponEventId,
   navigate,
   allowManagement = true,
 }: {
@@ -352,6 +396,7 @@ const SideMenu = ({
   isShowcase: boolean;
   event: any;
   eventId?: string;
+  couponEventId?: string;
   navigate: ReturnType<typeof useNavigate>;
   allowManagement?: boolean;
 }) => (
@@ -407,7 +452,8 @@ const SideMenu = ({
             </>
           ) : (
             <>
-              <div className="mt-24 flex flex-col gap-8">
+              <div className="mt-20 flex flex-col gap-8">
+                <SlugMenuGiftCoupon eventId={couponEventId} />
                 {allowManagement && (
                   <button onClick={() => navigate(ROUTES.UPLOAD)} className="flex items-center gap-4 text-xl font-medium text-black hover:text-gold-primary transition-colors text-right group">
                     <LayoutDashboard size={24} strokeWidth={1.5} className="text-gray-400 group-hover:text-gold-primary transition-colors" />
@@ -2744,7 +2790,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
       </section>
 
       {(isOwnerView || isShowcase) && (
-        <SideMenu open={isSideMenuOpen} onClose={() => setIsSideMenuOpen(false)} isShowcase={isShowcase} event={event} eventId={eventId} navigate={navigate} allowManagement={getTokenScope(token) !== 'gallery'} />
+        <SideMenu open={isSideMenuOpen} onClose={() => setIsSideMenuOpen(false)} isShowcase={isShowcase} event={event} eventId={eventId} couponEventId={resolvedEventId} navigate={navigate} allowManagement={getTokenScope(token) !== 'gallery'} />
       )}
 
       <StickyToolbar
