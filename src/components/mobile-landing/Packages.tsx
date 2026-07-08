@@ -29,6 +29,10 @@ const INFO_CONTENT: Record<string, { title: string; body: string }> = {
     title: 'אוספים הכל מהאורחים',
     body: 'כל אורח מקבל קישור אישי בווצאפ להעלאת התמונות והסרטונים שצילם באירוע, ואתם מקבלים את כולם במקום אחד מיד לאחר החתונה.',
   },
+  story: {
+    title: 'סטורי יום אחרי',
+    body: 'תקבלי סטורי מושלם באלבום מכל האורחים שיעלו צילומים, כבר יום אחרי החתונה!',
+  },
 };
 
 interface RawPackage {
@@ -75,7 +79,7 @@ const FEATURE_DEFS: Array<[string, boolean, boolean, boolean, boolean, string | 
   ['אוספים הכל מהאורחים', true, false, true, false, 'collect', true],
   ['מיון אורחים ואלבום אורח בוואטסאפ', false, true, true, false, null, false],
   ['שליחת אלבום אורח ישירות לנייד', false, true, true, false, null, false],
-  ['סטורי יום אחרי מצילומי האורחים', true, false, true, false, null, false],
+  ['סטורי יום אחרי מצילומי האורחים', true, false, true, false, 'story', false],
   ['QR לסריקה בחתונה', false, false, true, false, null, false],
   ['הבטחת החזר מלא', false, false, true, true, 'guarantee', false],
 ];
