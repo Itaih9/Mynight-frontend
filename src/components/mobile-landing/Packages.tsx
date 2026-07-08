@@ -227,7 +227,7 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
   return (
     <section
       id="packages"
-      className="pt-[35px] mt-[-67px] pb-[68px] bg-[#F7F7F7] rounded-t-[40px] shadow-[0_-25px_50px_rgba(0,0,0,0.15)] relative z-[350] overflow-x-clip"
+      className="pt-[16px] mt-[-67px] pb-[68px] bg-[#F7F7F7] rounded-t-[40px] shadow-[0_-25px_50px_rgba(0,0,0,0.15)] relative z-[350] overflow-x-clip"
     >
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@200..800&family=Miriam+Libre:wght@400;700&display=swap');
@@ -238,13 +238,13 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
 
           <div style={{ padding: '24px 8px 14px', textAlign: 'center' }}>
             <div style={{ fontSize: 'clamp(42px, 14vw, 66px)', fontWeight: 900, color: '#292524', fontFamily: "'Assistant',sans-serif", lineHeight: 1, whiteSpace: 'nowrap' }}>החבילות שלנו</div>
-            <div style={{ fontSize: 'clamp(20px, 5.5vw, 24px)', fontWeight: 300, color: '#78716c', marginTop: '12px', letterSpacing: '0.1px', lineHeight: 1.25, maxWidth: '360px', marginInline: 'auto' }}>
+            <div style={{ fontSize: 'clamp(20px, 5.5vw, 24px)', fontWeight: 310, color: 'rgb(120, 113, 108)', marginTop: '6px', letterSpacing: '0.1px', lineHeight: 1.25, maxWidth: '360px', marginInline: 'auto' }}>
               <span style={{ whiteSpace: 'nowrap' }}>בחרו את הדרך המושלמת לחבר את</span>{' '}
               <span style={{ whiteSpace: 'nowrap' }}>הרגעים המיוחדים</span>
             </div>
           </div>
 
-          <div style={{ padding: '14px 0 4px' }}>
+          <div style={{ padding: '10px 0 4px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1.1fr minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)', columnGap: '6px', rowGap: 0 }}>
 
               {/* Header row: label bar + package name boxes */}
