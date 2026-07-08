@@ -162,7 +162,9 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
       // box top, no highlight corners poking out above the box.
       headerCellStyle: {
         position: 'relative', display: 'flex',
-        background: isSelected ? TINTS[p.key] : 'transparent',
+        // Start the column tint 8px below the top so the highlight's corners
+        // stay tucked behind the rounded name box instead of peeking out.
+        background: isSelected ? `linear-gradient(to bottom, transparent 8px, ${TINTS[p.key]} 8px)` : 'transparent',
         borderRadius: '0', padding: '0 0 6px', cursor: 'pointer', zIndex: 1,
       } as React.CSSProperties,
       colHeaderStyle: {
@@ -234,10 +236,11 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
       <div className="max-w-[1400px] mx-auto px-6" dir="rtl">
         <div style={{ maxWidth: '520px', margin: '0 auto' }}>
 
-          <div style={{ padding: '16px 12px 10px', textAlign: 'center' }}>
-            <div style={{ fontSize: 'clamp(40px, 13.5vw, 62px)', fontWeight: 900, color: '#292524', fontFamily: "'Assistant',sans-serif", lineHeight: 1, whiteSpace: 'nowrap' }}>החבילות שלנו</div>
-            <div style={{ fontSize: 'clamp(16px, 4.6vw, 20px)', fontWeight: 300, color: '#78716c', marginTop: '10px', letterSpacing: '0.1px', lineHeight: 1.2, maxWidth: '330px', marginInline: 'auto' }}>
-              בחרו את הדרך המושלמת לחבר את הרגעים המיוחדים
+          <div style={{ padding: '24px 8px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: 'clamp(42px, 14vw, 66px)', fontWeight: 900, color: '#292524', fontFamily: "'Assistant',sans-serif", lineHeight: 1, whiteSpace: 'nowrap' }}>החבילות שלנו</div>
+            <div style={{ fontSize: 'clamp(20px, 5.5vw, 24px)', fontWeight: 300, color: '#78716c', marginTop: '12px', letterSpacing: '0.1px', lineHeight: 1.25, maxWidth: '360px', marginInline: 'auto' }}>
+              <span style={{ whiteSpace: 'nowrap' }}>בחרו את הדרך המושלמת לחבר את</span>{' '}
+              <span style={{ whiteSpace: 'nowrap' }}>הרגעים המיוחדים</span>
             </div>
           </div>
 
