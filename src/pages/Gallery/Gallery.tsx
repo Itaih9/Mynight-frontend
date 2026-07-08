@@ -1998,21 +1998,6 @@ const Gallery: React.FC<GalleryPageProps> = ({
     return () => observer.disconnect();
   }, [isShowcase, galleryData.hasMore, galleryData.isLoadingMore, galleryData.loadMore, mediaItems.length]);
 
-  // With small page blocks, pull the first ~30 photos up front (without waiting
-  // for scroll) so the "eager top 30" tiles actually have data to load.
-  useEffect(() => {
-    if (isShowcase) return;
-    if (galleryData.hasMore && !galleryData.isLoadingMore && mediaItems.length < 30) {
-      galleryData.loadMore();
-    }
-  }, [isShowcase, galleryData.hasMore, galleryData.isLoadingMore, galleryData.loadMore, mediaItems.length]);
-
-  // TEMP perf probe — logs how fast photos accumulate so page-size choices
-  // (8 vs 50) can be compared in the browser console. Remove once tuned.
-  useEffect(() => {
-    if (mediaItems.length) console.info(`[gallery-perf] ${mediaItems.length} photos @ ${Math.round(performance.now())}ms`);
-  }, [mediaItems.length]);
-
   const storyGroups = useMemo<StoryGroup[]>(() => {
     const sourceItems = !isShowcase && allStoryItems.length > 0 ? allStoryItems : mediaItems;
     if (!sourceItems.length) return [];

@@ -125,10 +125,13 @@ const VerticalColumn = ({ images, delay }: { images: MediaItem[], delay: number 
 
 export const HeroVerticalCollage = React.memo(({ items }: { items: MediaItem[] }) => {
   useEffect(() => {
+    // Only warm the 3 initially-visible collage images (one per column). The
+    // rest cycle in over seconds and eager-load then — preloading 9 at high
+    // priority just starved the grid's first thumbnails on slow mobile.
     const preloadImages = items
       .map(getHeroPreviewSrc)
       .filter(Boolean)
-      .slice(0, 9);
+      .slice(0, 3);
     const preloadLinks: HTMLLinkElement[] = [];
 
     preloadImages.forEach(item => {
