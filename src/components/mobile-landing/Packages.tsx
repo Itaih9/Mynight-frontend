@@ -93,6 +93,14 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
   const [infoOpenKey, setInfoOpenKey] = useState<string | null>(null);
   const [pkgData, setPkgData] = useState<RawPackage[]>(RAW_PACKAGES);
 
+  // Force one repaint after mount so the noise-blend / gradient layers paint on
+  // first load instead of only appearing after the first interaction.
+  const [, setPainted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setPainted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   void highlightedPackageIndex;
   void animatingPackageIndex;
   void isHoverDisabled;
@@ -130,7 +138,7 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
     } as React.CSSProperties,
     barNoiseStyle: { position: 'absolute', inset: 0, backgroundImage: NOISE, backgroundSize: '120px 120px', mixBlendMode: 'overlay', opacity: 0.05, filter: 'grayscale(1)', pointerEvents: 'none' } as React.CSSProperties,
     barSheenStyle: { position: 'absolute', top: 0, left: 0, right: 0, height: '58%', background: 'linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 100%)', pointerEvents: 'none' } as React.CSSProperties,
-    barTextStyle: { position: 'relative', zIndex: 1, fontSize: '14px', fontWeight: 800, color: '#fff', fontFamily: "'Assistant',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.3)', lineHeight: 1.1 } as React.CSSProperties,
+    barTextStyle: { position: 'relative', zIndex: 1, fontSize: '13px', fontWeight: 800, color: '#fff', fontFamily: "'Assistant',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.3)', lineHeight: 1.1 } as React.CSSProperties,
     priceLabelStyle: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingTop: '12px', paddingRight: '2px', fontSize: '15px', fontWeight: 800, color: '#232323', fontFamily: "'Assistant',sans-serif" } as React.CSSProperties,
     ctaCellWrapStyle: { display: 'flex', paddingTop: '6px', paddingBottom: '2px' } as React.CSSProperties,
     ctaBlockStyle: {
@@ -159,7 +167,6 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
       } as React.CSSProperties,
       colHeaderStyle: {
         position: 'relative', overflow: 'hidden', width: '100%', background: p.gradient,
-        backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)',
         borderRadius: '12px', padding: '9px 2px', textAlign: 'center',
         border: '1px solid rgba(255,255,255,.28)', cursor: 'pointer',
         boxShadow: isSelected
@@ -169,13 +176,13 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
       } as React.CSSProperties,
       noiseStyle: { position: 'absolute', inset: 0, backgroundImage: NOISE, backgroundSize: '120px 120px', mixBlendMode: 'overlay', opacity: p.recommended ? 0.65 : 0.5, pointerEvents: 'none', filter: p.recommended ? 'none' : 'grayscale(1)' } as React.CSSProperties,
       sheenStyle: { position: 'absolute', top: 0, left: 0, right: 0, height: '58%', background: 'linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 100%)', pointerEvents: 'none' } as React.CSSProperties,
-      colNameStyle: { fontSize: '18px', fontWeight: 800, color: '#fff', fontFamily: "'Assistant',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.3)', lineHeight: 1.05, letterSpacing: '-0.3px', whiteSpace: 'nowrap' } as React.CSSProperties,
-      colEnglishStyle: { fontSize: '9.5px', fontWeight: 600, letterSpacing: '.5px', color: 'rgba(255,255,255,.85)', marginTop: '2px', textShadow: p.recommended ? '0 1px 1px rgba(0,0,0,.2)' : 'none' } as React.CSSProperties,
+      colNameStyle: { fontSize: '16px', fontWeight: 800, color: '#fff', fontFamily: "'Assistant',sans-serif", textShadow: '0 1px 2px rgba(0,0,0,.3)', lineHeight: 1.05, letterSpacing: '-0.3px', whiteSpace: 'nowrap' } as React.CSSProperties,
+      colEnglishStyle: { fontSize: '8.5px', fontWeight: 600, letterSpacing: '.5px', color: 'rgba(255,255,255,.85)', marginTop: '2px', textShadow: p.recommended ? '0 1px 1px rgba(0,0,0,.2)' : 'none' } as React.CSSProperties,
       priceCellStyle: { paddingTop: '2px', paddingBottom: '14px', background: tint, borderRadius: '0 0 16px 16px', position: 'relative', zIndex: 1 } as React.CSSProperties,
       priceNoteStyle: { width: '82%', margin: '0 auto', background: '#fff', padding: '9px 4px', textAlign: 'center', borderRadius: '4px 4px 11px 11px', boxShadow: '0 4px 8px -4px rgba(0,0,0,.28)' } as React.CSSProperties,
-      priceStyle: { position: 'relative', zIndex: 1, fontSize: '19px', fontWeight: 700, color: '#232323', fontFamily: "'Miriam Libre',serif" } as React.CSSProperties,
+      priceStyle: { position: 'relative', zIndex: 1, fontSize: '17px', fontWeight: 700, color: '#232323', fontFamily: "'Miriam Libre',serif" } as React.CSSProperties,
       ctaCellStyle: { display: 'flex', paddingTop: '6px', paddingBottom: '0', background: tint, position: 'relative', zIndex: 1 } as React.CSSProperties,
-      ctaText: isSelected ? 'להמשיך' : 'ADD',
+      ctaText: isSelected ? 'להמשיך' : 'בחירה',
       ctaCheckStroke: p.recommended ? '#DDA935' : '#3a3a3a',
       ctaStyle: {
         position: 'relative', overflow: 'hidden', width: '100%', padding: '11px 0', borderRadius: '12px', cursor: 'pointer',
@@ -203,7 +210,7 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
 
   const featureRows = FEATURE_DEFS.map(([label, s, sm, u, bold, infoKey, shiftRight]) => ({
     label,
-    labelStyle: { fontSize: '13px', color: '#232323', lineHeight: 1.25, fontWeight: bold ? 800 : 500, display: 'flex', alignItems: 'center', gap: '5px', fontFamily: "'Assistant',sans-serif", padding: '11px 2px 11px 0', borderBottom: '1px solid #e3ddcc', position: 'relative', zIndex: 1 } as React.CSSProperties,
+    labelStyle: { fontSize: '12px', color: '#232323', lineHeight: 1.25, fontWeight: bold ? 800 : 500, display: 'flex', alignItems: 'center', gap: '5px', fontFamily: "'Assistant',sans-serif", padding: '11px 2px 11px 0', borderBottom: '1px solid #e3ddcc', position: 'relative', zIndex: 1 } as React.CSSProperties,
     starterCellStyle: { ...markBase, background: cellBg('starter') } as React.CSSProperties,
     smartCellStyle: { ...markBase, background: cellBg('smart') } as React.CSSProperties,
     unlimitedCellStyle: { ...markBase, background: cellBg('unlimited') } as React.CSSProperties,
@@ -228,7 +235,7 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
         <div style={{ maxWidth: '520px', margin: '0 auto' }}>
 
           <div style={{ padding: '16px 12px 10px', textAlign: 'center' }}>
-            <div style={{ fontSize: 'clamp(40px, 13vw, 58px)', fontWeight: 900, color: '#292524', fontFamily: "'Assistant',sans-serif", lineHeight: 1, whiteSpace: 'nowrap' }}>החבילות שלנו</div>
+            <div style={{ fontSize: 'clamp(40px, 13.5vw, 62px)', fontWeight: 900, color: '#292524', fontFamily: "'Assistant',sans-serif", lineHeight: 1, whiteSpace: 'nowrap' }}>החבילות שלנו</div>
             <div style={{ fontSize: 'clamp(16px, 4.6vw, 20px)', fontWeight: 300, color: '#78716c', marginTop: '10px', letterSpacing: '0.1px', lineHeight: 1.2, maxWidth: '330px', marginInline: 'auto' }}>
               בחרו את הדרך המושלמת לחבר את הרגעים המיוחדים
             </div>
