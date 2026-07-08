@@ -47,6 +47,7 @@ import {
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
+import { useNetworkQuality } from '@/hooks/useNetworkQuality';
 
 const SAMPLE_UPLOADER_NAMES = ['דנה', 'יוסי', 'מיכל', 'אורן', 'שירה', 'עומר', 'נועה', 'איתי'];
 
@@ -1379,14 +1380,17 @@ const StoryViewerModal = ({
     ? (nextStoryItem.displayUrl || nextStoryItem.url)
     : null;
 
+  // Skip warming the next clip on Data Saver / slow connections so we don't
+  // burn cellular data on a video the viewer may never reach.
+  const { dataSaver } = useNetworkQuality();
   useEffect(() => {
-    if (!prefetchVideoUrl) return;
+    if (!prefetchVideoUrl || dataSaver) return;
     const link = document.createElement('link');
     link.rel = 'prefetch';
     link.href = prefetchVideoUrl;
     document.head.appendChild(link);
     return () => { link.parentNode?.removeChild(link); };
-  }, [prefetchVideoUrl]);
+  }, [prefetchVideoUrl, dataSaver]);
 
   void favorites;
   void deletedIds;
