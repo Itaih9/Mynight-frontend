@@ -109,11 +109,19 @@ export interface AdminCoupon {
   isActive: boolean;
   affiliateId?: string;
   ownerUserId?: string;
-  type?: 'standard' | 'affiliate' | 'prepaid' | 'personal';
+  ownerEventId?: string;
+  customized?: boolean;
+  type?: 'standard' | 'affiliate' | 'prepaid' | 'personal' | 'event';
   ownerCoupleName?: string;
   ownerEventCode?: string;
   ownerEventName?: string;
   createdAt: string;
+}
+
+export interface CouponDefaults {
+  discountType: 'percent' | 'fixed';
+  discountValue: number;
+  maxUses: number;
 }
 
 export interface PaginatedResponse<T> {
@@ -352,7 +360,8 @@ export const adminApi = {
 
   createCoupon: async (data: {
     code: string;
-    discountPercent: number;
+    discountPercent?: number;
+    discountAmount?: number;
     maxUses?: number;
     expiresAt?: string;
     affiliateId?: string;
@@ -361,8 +370,31 @@ export const adminApi = {
     return response.data.data!;
   },
 
+  updateCoupon: async (
+    couponId: string,
+    data: { discountType?: 'percent' | 'fixed'; discountValue?: number; maxUses?: number; isActive?: boolean }
+  ): Promise<AdminCoupon> => {
+    const response = await adminAxios.patch<ApiResponse<AdminCoupon>>(`/api/admin/coupons/${couponId}`, data);
+    return response.data.data!;
+  },
+
   deleteCoupon: async (couponId: string): Promise<void> => {
     await adminAxios.delete(`/api/admin/coupons/${couponId}`);
+  },
+
+  getCouponDefaults: async (): Promise<CouponDefaults> => {
+    const response = await adminAxios.get<ApiResponse<CouponDefaults>>('/api/admin/coupon-defaults');
+    return response.data.data!;
+  },
+
+  updateCouponDefaults: async (data: Partial<CouponDefaults>): Promise<CouponDefaults> => {
+    const response = await adminAxios.put<ApiResponse<CouponDefaults>>('/api/admin/coupon-defaults', data);
+    return response.data.data!;
+  },
+
+  applyCouponDefaults: async (): Promise<{ updated: number }> => {
+    const response = await adminAxios.post<ApiResponse<{ updated: number }>>('/api/admin/coupon-defaults/apply-existing', {});
+    return response.data.data!;
   },
 
   getReferrals: async (page: number = 1, limit: number = 20): Promise<{ referrals: AdminReferral[]; pagination: any }> => {

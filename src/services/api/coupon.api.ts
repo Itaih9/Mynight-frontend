@@ -46,6 +46,18 @@ export const couponApi = {
     return response.data;
   },
 
+  getEventCoupon: async (eventId: string): Promise<ApiResponse<{
+    code: string;
+    discountAmount?: number;
+    discountPercent: number;
+    maxUses: number;
+    usedCount: number;
+    isActive: boolean;
+  } | null>> => {
+    const response = await api.get(`/api/coupons/event/${eventId}`);
+    return response.data;
+  },
+
   deactivate: async (couponId: string): Promise<ApiResponse<void>> => {
     const response = await api.patch(API_ENDPOINTS.COUPONS.DEACTIVATE(couponId));
     return response.data;

@@ -2538,15 +2538,37 @@ const Gallery: React.FC<GalleryPageProps> = ({
     });
 
     try {
-      const response = await couponApi.getActiveStandard();
-      if (response.data) {
-        setDiscountCode(response.data.code);
-        setDiscountAmount(response.data.discountPercent === 100 ? '100%' : `${response.data.discountPercent}%`);
+      let code: string | null = null;
+      let label: string | null = null;
+
+      // Prefer this event's own gift coupon; fall back to the global standard one.
+      if (resolvedEventId && resolvedEventId !== '__showcase__') {
+        const response = await couponApi.getEventCoupon(resolvedEventId);
+        const d = response.data;
+        if (d && d.isActive) {
+          code = d.code;
+          label = d.discountAmount && d.discountAmount > 0
+            ? `${d.discountAmount}₪`
+            : (d.discountPercent === 100 ? '100%' : `${d.discountPercent}%`);
+        }
+      }
+
+      if (!code) {
+        const fallback = await couponApi.getActiveStandard();
+        if (fallback.data) {
+          code = fallback.data.code;
+          label = fallback.data.discountPercent === 100 ? '100%' : `${fallback.data.discountPercent}%`;
+        }
+      }
+
+      if (code) {
+        setDiscountCode(code);
+        setDiscountAmount(label || '');
       }
     } catch {}
 
     setIsGiftModalOpen(true);
-  }, []);
+  }, [resolvedEventId]);
 
   const handleCopyDiscountCode = useCallback(() => {
     navigator.clipboard.writeText(discountCode);
