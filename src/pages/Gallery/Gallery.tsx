@@ -933,7 +933,7 @@ const GalleryGrid = ({
         <MediaCard
           key={item.id}
           item={item}
-          priority={index < 8}
+          priority={index < 12}
           isFavorite={favorites.has(item.id)}
           onOpen={onOpen}
           onToggleFavorite={onToggleFavorite}

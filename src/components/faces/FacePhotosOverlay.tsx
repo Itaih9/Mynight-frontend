@@ -57,6 +57,7 @@ export const FacePhotosOverlay = ({
   const [isLoading, setIsLoading] = useState(true);
   const [selected, setSelected] = useState<Photo | null>(null);
   const [fullLoaded, setFullLoaded] = useState(false);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,6 +127,29 @@ export const FacePhotosOverlay = ({
     swipeStartX.current = null;
   };
 
+  // Download every photo of the current person as a zip (same backend stream
+  // as the rekognition/guest gallery's "download all").
+  const handleDownloadAll = async () => {
+    if (photos.length === 0 || isDownloadingAll) return;
+    setIsDownloadingAll(true);
+    try {
+      const blob = await galleryApi.downloadFaceZip(eventId, current.face.faceId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mynight-${coupleName || 'album'}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download all failed:', err);
+      alert('שגיאה בהורדת התמונות. נסו שוב.');
+    } finally {
+      setIsDownloadingAll(false);
+    }
+  };
+
   const handleShare = async (photo: Photo, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const url = photo.displayUrl || photo.url;
@@ -185,11 +209,22 @@ export const FacePhotosOverlay = ({
             </span>
           </span>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-bold text-base md:text-lg text-black leading-tight truncate">
               {photoCountText(photos.length)} בלילה של {coupleName}
             </p>
           </div>
+
+          {photos.length > 0 && (
+            <button
+              onClick={handleDownloadAll}
+              disabled={isDownloadingAll}
+              className="shrink-0 flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-60"
+            >
+              {isDownloadingAll ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+              <span className="text-sm font-medium whitespace-nowrap">הורדת הכל</span>
+            </button>
+          )}
         </div>
       </div>
 
