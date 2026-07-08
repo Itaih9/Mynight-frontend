@@ -3,7 +3,7 @@ import { eventsApi, galleryApi } from '@/services/api';
 import type { Event, Photo } from '@/types/api.types';
 import type { MediaItem } from '../types';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 8;
 const WARM_ASSET_COUNT = 18;
 
 interface PhotosPage {

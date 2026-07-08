@@ -769,13 +769,16 @@ const StoriesRail = ({
 
 interface MediaCardProps {
   item: MediaItem;
+  /** High priority (fetchpriority=high) + eager — the first screenful. */
   priority?: boolean;
+  /** Eager (load immediately) but normal priority — the rest of the top block. */
+  eager?: boolean;
   isFavorite: boolean;
   onOpen: (item: MediaItem) => void;
   onToggleFavorite: (id: string, e?: React.MouseEvent) => void;
 }
 
-const MediaCard = React.memo(({ item, priority = false, isFavorite, onOpen, onToggleFavorite }: MediaCardProps) => {
+const MediaCard = React.memo(({ item, priority = false, eager = false, isFavorite, onOpen, onToggleFavorite }: MediaCardProps) => {
   // If the backend provides intrinsic dimensions, use them directly — no measurement, no setState
   const knownRatio = item.width && item.height ? item.width / item.height : null;
   const [measuredRatio, setMeasuredRatio] = useState<number | null>(null);
@@ -801,7 +804,9 @@ const MediaCard = React.memo(({ item, priority = false, isFavorite, onOpen, onTo
 
   const handleClick = useCallback(() => onOpen(item), [item, onOpen]);
   const handleFavoriteClick = useCallback((e: React.MouseEvent) => onToggleFavorite(item.id, e), [item.id, onToggleFavorite]);
-  const loading = priority ? 'eager' : 'lazy';
+  // Top 8: eager + high priority. Next up to 30: eager at normal priority so
+  // they load right after (without all claiming "high" and contending).
+  const loading = priority || eager ? 'eager' : 'lazy';
   const fetchPriority = priority ? 'high' : 'auto';
   const { dataSaver } = useNetworkQuality();
   const isLandscape = item.orientation !== 'portrait';
@@ -934,6 +939,7 @@ const GalleryGrid = ({
           key={item.id}
           item={item}
           priority={index < 8}
+          eager={index < 30}
           isFavorite={favorites.has(item.id)}
           onOpen={onOpen}
           onToggleFavorite={onToggleFavorite}
@@ -1991,6 +1997,21 @@ const Gallery: React.FC<GalleryPageProps> = ({
     observer.observe(node);
     return () => observer.disconnect();
   }, [isShowcase, galleryData.hasMore, galleryData.isLoadingMore, galleryData.loadMore, mediaItems.length]);
+
+  // With small page blocks, pull the first ~30 photos up front (without waiting
+  // for scroll) so the "eager top 30" tiles actually have data to load.
+  useEffect(() => {
+    if (isShowcase) return;
+    if (galleryData.hasMore && !galleryData.isLoadingMore && mediaItems.length < 30) {
+      galleryData.loadMore();
+    }
+  }, [isShowcase, galleryData.hasMore, galleryData.isLoadingMore, galleryData.loadMore, mediaItems.length]);
+
+  // TEMP perf probe — logs how fast photos accumulate so page-size choices
+  // (8 vs 50) can be compared in the browser console. Remove once tuned.
+  useEffect(() => {
+    if (mediaItems.length) console.info(`[gallery-perf] ${mediaItems.length} photos @ ${Math.round(performance.now())}ms`);
+  }, [mediaItems.length]);
 
   const storyGroups = useMemo<StoryGroup[]>(() => {
     const sourceItems = !isShowcase && allStoryItems.length > 0 ? allStoryItems : mediaItems;
