@@ -1021,13 +1021,18 @@ const StoryMedia = ({
 }) => {
   const [fullLoaded, setFullLoaded] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
+  const [displayFailed, setDisplayFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const previewSrc = getSafeImageSrc(item.type === 'video' ? getVideoThumb(item) : item.thumbnail || item.url);
   const hasPreview = Boolean(previewSrc && !previewFailed);
+  // Prefer the transcoded rendition; fall back to the original if it 404s
+  // (not yet transcoded / legacy upload).
+  const videoSrc = !displayFailed && item.displayUrl ? item.displayUrl : item.url;
 
   useEffect(() => {
     setFullLoaded(false);
     setPreviewFailed(false);
+    setDisplayFailed(false);
   }, [item.id]);
 
   useEffect(() => {
@@ -1067,13 +1072,14 @@ const StoryMedia = ({
         <video
           ref={videoRef}
           key={`fg-${item.id}`}
-          src={item.url}
+          src={videoSrc}
           poster={previewSrc || undefined}
           className={`absolute inset-0 w-full h-full object-contain shadow-[0_0_40px_rgba(0,0,0,0.5)] transition-opacity duration-500 ease-in-out ${fullLoaded ? 'opacity-100' : 'opacity-0'}`}
           autoPlay={!paused}
           playsInline
           loop={false}
           preload="auto"
+          onError={() => { if (item.displayUrl && !displayFailed) setDisplayFailed(true); }}
           onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }}
           onLoadedData={(e) => {
             setFullLoaded(true);
@@ -1202,7 +1208,7 @@ const LightboxModal = ({
               className="relative w-full h-full flex items-center justify-center"
             >
               {item.type === 'video' ? (
-                <video key={`lb-${item.id}`} src={item.url} poster={getVideoThumb(item) || undefined} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" autoPlay controls playsInline loop preload="metadata" onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }} />
+                <video key={`lb-${item.id}`} src={item.displayUrl || item.url} poster={getVideoThumb(item) || undefined} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" autoPlay controls playsInline loop preload="metadata" onError={(e) => { const v = e.currentTarget; if (item.displayUrl && !v.dataset.fellBack) { v.dataset.fellBack = '1'; v.src = item.url; v.load(); } }} onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }} />
               ) : (
                 // Both imgs fill the same box (absolute inset-0 w-full h-full +
                 // object-contain), so the blurry thumbnail is scaled to the exact
@@ -1363,6 +1369,24 @@ const StoryViewerModal = ({
   const currentGroupIndex = group ? storyGroups.findIndex((g) => g.uploaderName === group.uploaderName) : -1;
   const prevGroup = currentGroupIndex > 0 ? storyGroups[currentGroupIndex - 1] : null;
   const nextGroup = currentGroupIndex >= 0 && currentGroupIndex < storyGroups.length - 1 ? storyGroups[currentGroupIndex + 1] : null;
+
+  // Warm the next slide's video so advancing is instant. Only one clip ahead,
+  // low priority, so it barely competes with the one that's playing.
+  const nextStoryItem = group
+    ? (activeIndex < group.items.length - 1 ? group.items[activeIndex + 1] : nextGroup?.items?.[0] ?? null)
+    : null;
+  const prefetchVideoUrl = nextStoryItem && nextStoryItem.type === 'video'
+    ? (nextStoryItem.displayUrl || nextStoryItem.url)
+    : null;
+
+  useEffect(() => {
+    if (!prefetchVideoUrl) return;
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = prefetchVideoUrl;
+    document.head.appendChild(link);
+    return () => { link.parentNode?.removeChild(link); };
+  }, [prefetchVideoUrl]);
 
   void favorites;
   void deletedIds;
