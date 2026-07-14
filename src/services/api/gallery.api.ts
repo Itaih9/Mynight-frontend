@@ -5,6 +5,10 @@ import axios from 'axios';
 
 export interface ShowcaseMedia {
   url: string;
+  /** Small rendition (thumbnails/{key}) when it exists. */
+  thumbnailUrl?: string;
+  /** Capped rendition (display/{key}) when it exists. */
+  displayUrl?: string;
   type: 'photo' | 'video';
   /** Story name (S3 subfolder under gallery_showcase/), or null for grid-only. */
   story: string | null;

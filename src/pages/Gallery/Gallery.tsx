@@ -65,7 +65,10 @@ const createSampleMediaItems = (media: ShowcaseMedia[]): MediaItem[] => {
     type: m.type,
     source: i % 3 === 0 ? 'pro' : 'guest',
     url: m.url,
-    thumbnail: m.type === 'photo' ? m.url : undefined,
+    // Prefer the generated renditions; fall back to the original only when a
+    // showcase file has none (grid/hero use thumbnail, lightbox uses display).
+    thumbnail: m.thumbnailUrl || (m.type === 'photo' ? m.url : undefined),
+    displayUrl: m.displayUrl,
     // Story = the S3 subfolder name; blank means grid-only (no story).
     uploaderName: m.story || '',
     timestamp: new Date(Date.now() - i * 3600000),
@@ -1789,16 +1792,20 @@ const Gallery: React.FC<GalleryPageProps> = ({
         const media: ShowcaseMedia[] = response.data || [];
         setShowcaseMedia(media);
 
-        // Preload the first photos (skip videos) at high priority.
-        media.filter((m) => m.type === 'photo').slice(0, 20).forEach((m) => {
-          const link = document.createElement('link');
-          link.rel = 'preload';
-          link.as = 'image';
-          link.href = m.url;
-          link.fetchPriority = 'high' as any;
-          document.head.appendChild(link);
-          preloadLinks.push(link);
-        });
+        // Warm the first thumbnails (what the grid/hero actually render). Only
+        // when a real rendition exists — never preload full-size originals.
+        media
+          .filter((m) => m.type === 'photo' && m.thumbnailUrl)
+          .slice(0, 20)
+          .forEach((m) => {
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'image';
+            link.href = m.thumbnailUrl!;
+            link.fetchPriority = 'high' as any;
+            document.head.appendChild(link);
+            preloadLinks.push(link);
+          });
       })
       .catch(() => {})
       .finally(() => {
