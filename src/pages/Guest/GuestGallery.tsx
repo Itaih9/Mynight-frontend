@@ -13,7 +13,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { eventsApi, galleryApi } from '@/services/api';
 import type { Event, Photo } from '@/types/api.types';
 import { formatCategoryLabel } from '@/lib/utils';
-import { FaceCircles } from '@/components/faces/FaceCircles';
 import { FacePhotosOverlay } from '@/components/faces/FacePhotosOverlay';
 import type { FaceEntry } from '@/components/faces/faceCrop';
 import logoSvg from '@/assets/logo.svg';
@@ -928,21 +927,6 @@ const GuestGallery: React.FC = () => {
                         </motion.div>
                     </AnimatePresence>
                 </div>
-
-                {!isVideo(selectedItem) && (selectedItem.indexedFaces?.length ?? 0) > 0 && (
-                  <FaceCircles
-                    imageUrl={selectedItem.displayUrl || getPhotoUrl(selectedItem)}
-                    imgWidth={selectedItem.metadata?.width}
-                    imgHeight={selectedItem.metadata?.height}
-                    faces={selectedItem.indexedFaces!.map((f) => ({ faceId: f.faceId, boundingBox: f.boundingBox }))}
-                    onFaceClick={(face) => setFaceView({
-                      face,
-                      imageUrl: selectedItem.displayUrl || getPhotoUrl(selectedItem),
-                      imgW: selectedItem.metadata?.width,
-                      imgH: selectedItem.metadata?.height,
-                    })}
-                  />
-                )}
 
             </motion.div>
         )}
