@@ -3,6 +3,13 @@ import { API_ENDPOINTS } from '@/config/api';
 import type { Photo, PresignedUrlResponse, MatchPhotosResponse, FaceGroup, ApiResponse } from '@/types/api.types';
 import axios from 'axios';
 
+export interface ShowcaseMedia {
+  url: string;
+  type: 'photo' | 'video';
+  /** Story name (S3 subfolder under gallery_showcase/), or null for grid-only. */
+  story: string | null;
+}
+
 export interface GetPresignedUrlRequest {
   eventId: string;
   fileName: string;
@@ -170,7 +177,7 @@ export const galleryApi = {
     return response.data;
   },
 
-  getShowcaseImages: async (): Promise<ApiResponse<string[]>> => {
+  getShowcaseImages: async (): Promise<ApiResponse<ShowcaseMedia[]>> => {
     const response = await api.get(API_ENDPOINTS.PHOTOS.SHOWCASE_IMAGES);
     return response.data;
   },

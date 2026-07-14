@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import { useUserStore } from '@/store/userStore';
 import { eventsApi, galleryApi, couponApi } from '@/services/api';
+import type { ShowcaseMedia } from '@/services/api/gallery.api';
 import type { MediaItem, StoryGroup, GalleryPageProps } from './types';
 import { cubeVariants } from './constants';
 import { useGalleryData } from './hooks';
@@ -49,8 +50,6 @@ import confetti from 'canvas-confetti';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useNetworkQuality } from '@/hooks/useNetworkQuality';
 
-const SAMPLE_UPLOADER_NAMES = ['דנה', 'יוסי', 'מיכל', 'אורן', 'שירה', 'עומר', 'נועה', 'איתי'];
-
 type ShareTarget = 'lightbox' | 'story';
 
 const WhatsAppIcon = React.memo(({ size = 24, className = '' }: { size?: number; className?: string }) => (
@@ -60,14 +59,15 @@ const WhatsAppIcon = React.memo(({ size = 24, className = '' }: { size?: number;
 ));
 WhatsAppIcon.displayName = 'WhatsAppIcon';
 
-const createSampleMediaItems = (urls: string[]): MediaItem[] => {
-  return urls.map((url, i) => ({
+const createSampleMediaItems = (media: ShowcaseMedia[]): MediaItem[] => {
+  return media.map((m, i) => ({
     id: `sample-${i}`,
-    type: 'photo',
+    type: m.type,
     source: i % 3 === 0 ? 'pro' : 'guest',
-    url,
-    thumbnail: url,
-    uploaderName: SAMPLE_UPLOADER_NAMES[i % SAMPLE_UPLOADER_NAMES.length],
+    url: m.url,
+    thumbnail: m.type === 'photo' ? m.url : undefined,
+    // Story = the S3 subfolder name; blank means grid-only (no story).
+    uploaderName: m.story || '',
     timestamp: new Date(Date.now() - i * 3600000),
     orientation: i % 3 === 0 ? 'portrait' : 'landscape',
   })) as MediaItem[];
@@ -1664,7 +1664,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
   const [prefetchedEvent, setPrefetchedEvent] = useState<any | null>(null);
   const [eventCodeError, setEventCodeError] = useState<string | null>(null);
 
-  const [showcaseImageUrls, setShowcaseImageUrls] = useState<string[]>([]);
+  const [showcaseMedia, setShowcaseMedia] = useState<ShowcaseMedia[]>([]);
   const [showcaseLoading, setShowcaseLoading] = useState(false);
   const [allStoryItems, setAllStoryItems] = useState<MediaItem[]>([]);
 
@@ -1784,17 +1784,17 @@ const Gallery: React.FC<GalleryPageProps> = ({
     setShowcaseLoading(true);
     galleryApi
       .getShowcaseImages()
-      .then((response: any) => {
+      .then((response) => {
         if (cancelled) return;
-        const urls = response.data || [];
-        setShowcaseImageUrls(urls);
+        const media: ShowcaseMedia[] = response.data || [];
+        setShowcaseMedia(media);
 
-        // Single preload mechanism — browser will fetch with high priority
-        urls.slice(0, 20).forEach((url: string) => {
+        // Preload the first photos (skip videos) at high priority.
+        media.filter((m) => m.type === 'photo').slice(0, 20).forEach((m) => {
           const link = document.createElement('link');
           link.rel = 'preload';
           link.as = 'image';
-          link.href = url;
+          link.href = m.url;
           link.fetchPriority = 'high' as any;
           document.head.appendChild(link);
           preloadLinks.push(link);
@@ -1812,8 +1812,8 @@ const Gallery: React.FC<GalleryPageProps> = ({
   }, [isShowcase]);
 
   const sampleMediaItems = useMemo(
-    () => (isShowcase ? createSampleMediaItems(showcaseImageUrls) : []),
-    [isShowcase, showcaseImageUrls]
+    () => (isShowcase ? createSampleMediaItems(showcaseMedia) : []),
+    [isShowcase, showcaseMedia]
   );
 
   const shuffleSeed = useMemo<string | undefined>(() => {
@@ -2012,6 +2012,8 @@ const Gallery: React.FC<GalleryPageProps> = ({
     if (!sourceItems.length) return [];
 
     const filteredForStories = sourceItems.filter((item) => {
+      // Showcase grid-only media (no S3 subfolder) has no story name — skip it.
+      if (!item.uploaderName) return false;
       if (item.source === 'pro' && !effectiveShareSettings.pro) return false;
       if (item.source === 'guest' && !effectiveShareSettings.guests) return false;
       if (item.source === 'guest' && !effectiveShareSettings.stories) return false;
