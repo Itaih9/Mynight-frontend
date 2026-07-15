@@ -59,6 +59,8 @@ const WhatsAppIcon = React.memo(({ size = 24, className = '' }: { size?: number;
 ));
 WhatsAppIcon.displayName = 'WhatsAppIcon';
 
+const SHOWCASE_PAGE_SIZE = 60;
+
 const createSampleMediaItems = (media: ShowcaseMedia[]): MediaItem[] => {
   return media.map((m, i) => ({
     id: `sample-${i}`,
@@ -1751,6 +1753,9 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
   // Sentinel for IntersectionObserver-driven infinite scroll
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // The showcase arrives as one big list rather than paged from the API, so the
+  // grid would mount every card at once. Reveal it a screenful at a time.
+  const [showcaseLimit, setShowcaseLimit] = useState(SHOWCASE_PAGE_SIZE);
   const heroCollageItemsRef = useRef<MediaItem[]>([]);
   const heroCollageKeyRef = useRef('');
 
@@ -1995,28 +2000,6 @@ const Gallery: React.FC<GalleryPageProps> = ({
     };
   }, []);
 
-  // IntersectionObserver-driven infinite scroll — no document.body layout reads
-  useEffect(() => {
-    if (isShowcase) return;
-    if (!galleryData.hasMore) return;
-
-    const node = sentinelRef.current;
-    if (!node) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry.isIntersecting && galleryData.hasMore && !galleryData.isLoadingMore) {
-          galleryData.loadMore();
-        }
-      },
-      { rootMargin: '600px 0px 600px 0px' }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [isShowcase, galleryData.hasMore, galleryData.isLoadingMore, galleryData.loadMore, mediaItems.length]);
-
   const storyGroups = useMemo<StoryGroup[]>(() => {
     const sourceItems = !isShowcase && allStoryItems.length > 0 ? allStoryItems : mediaItems;
     if (!sourceItems.length) return [];
@@ -2081,6 +2064,45 @@ const Gallery: React.FC<GalleryPageProps> = ({
       })
       .sort((a, b) => getItemTime(b) - getItemTime(a));
   }, [mediaItems, filterType, filterSource, selectedCategory, searchQuery, deletedIds, showFavoritesOnly, favorites, effectiveShareSettings]);
+
+  // What the grid actually mounts. Stories and categories keep reading the full
+  // filteredMedia, so windowing the grid never hides a story.
+  const visibleMedia = useMemo(
+    () => (isShowcase ? filteredMedia.slice(0, showcaseLimit) : filteredMedia),
+    [isShowcase, filteredMedia, showcaseLimit]
+  );
+
+  // Any filter change re-shows from the top.
+  useEffect(() => {
+    setShowcaseLimit(SHOWCASE_PAGE_SIZE);
+  }, [filterType, filterSource, selectedCategory, searchQuery, showFavoritesOnly]);
+
+  const showcaseHasMore = isShowcase && showcaseLimit < filteredMedia.length;
+
+  // IntersectionObserver-driven infinite scroll — no document.body layout reads.
+  // The showcase pages through an already-loaded list; events fetch the next page.
+  useEffect(() => {
+    if (!(isShowcase ? showcaseHasMore : galleryData.hasMore)) return;
+
+    const node = sentinelRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry.isIntersecting) return;
+        if (isShowcase) {
+          setShowcaseLimit((n) => n + SHOWCASE_PAGE_SIZE);
+        } else if (galleryData.hasMore && !galleryData.isLoadingMore) {
+          galleryData.loadMore();
+        }
+      },
+      { rootMargin: '600px 0px 600px 0px' }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [isShowcase, showcaseHasMore, galleryData.hasMore, galleryData.isLoadingMore, galleryData.loadMore, mediaItems.length]);
 
   // Categories present among the event's photos. Prefer the complete flat list
   // (allStoryItems, loaded unpaginated) so every category shows even before its
@@ -2897,18 +2919,18 @@ const Gallery: React.FC<GalleryPageProps> = ({
       ) : (
         <>
           <GalleryGrid
-            items={filteredMedia}
+            items={visibleMedia}
             favorites={favorites}
             onOpen={openLightbox}
             onToggleFavorite={toggleFavorite}
             isLoadingMore={galleryData.isLoadingMore}
             loadMoreError={galleryData.loadMoreError}
             onRetryLoadMore={galleryData.retryLoadMore}
-            hasMore={!isShowcase && galleryData.hasMore}
+            hasMore={isShowcase ? showcaseHasMore : galleryData.hasMore}
             sentinelRef={sentinelRef}
           />
 
-          {!galleryData.hasMore && filteredMedia.length > 0 && (
+          {!(isShowcase ? showcaseHasMore : galleryData.hasMore) && filteredMedia.length > 0 && (
             <footer className="pb-8 pt-20 px-6 bg-white border-t border-gray-100">
               <div className="max-w-[1800px] mx-auto flex flex-col gap-16">
                 <div className="flex flex-col items-center justify-center gap-3 text-center">
