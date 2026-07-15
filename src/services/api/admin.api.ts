@@ -221,6 +221,14 @@ export interface AdminPrepaidSummary {
   linkedCoupons?: AdminLinkedCoupon[];
 }
 
+export interface AdminAccount {
+  _id: string;
+  email: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface AdminReview {
   _id: string;
   rating: number;
@@ -638,5 +646,27 @@ export const adminApi = {
 
   deleteCoverImage: async (eventId: string): Promise<void> => {
     await adminAxios.delete(`/api/admin/events/${eventId}/cover-image`);
+  },
+
+  listAdmins: async (): Promise<AdminAccount[]> => {
+    const response = await adminAxios.get<ApiResponse<AdminAccount[]>>('/api/admin/admins');
+    return response.data.data!;
+  },
+
+  createAdmin: async (data: { email: string; password: string; name: string }): Promise<AdminAccount> => {
+    const response = await adminAxios.post<ApiResponse<AdminAccount>>('/api/admin/admins', data);
+    return response.data.data!;
+  },
+
+  setAdminActive: async (adminId: string, isActive: boolean): Promise<AdminAccount> => {
+    const response = await adminAxios.patch<ApiResponse<AdminAccount>>(
+      `/api/admin/admins/${adminId}/active`,
+      { isActive }
+    );
+    return response.data.data!;
+  },
+
+  deleteAdmin: async (adminId: string): Promise<void> => {
+    await adminAxios.delete(`/api/admin/admins/${adminId}`);
   },
 };

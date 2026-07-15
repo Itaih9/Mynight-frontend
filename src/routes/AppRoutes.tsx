@@ -30,6 +30,7 @@ import {
   AdminAffiliates,
   AdminContacts,
   AdminReviews,
+  AdminAdmins,
   AdminPhotoUpload,
   AdminWithdrawals,
   AdminPackages,
@@ -63,6 +64,7 @@ export const AppRoutes = () => {
       <Route path={ROUTES.ADMIN_USERS} element={<AdminUsers />} />
       <Route path={ROUTES.ADMIN_EVENTS} element={<AdminEvents />} />
       <Route path={ROUTES.ADMIN_COUPONS} element={<AdminCoupons />} />
+      <Route path={ROUTES.ADMIN_ADMINS} element={<AdminAdmins />} />
       <Route path={ROUTES.ADMIN_REFERRALS} element={<AdminReferrals />} />
       <Route path={ROUTES.ADMIN_AFFILIATES} element={<AdminAffiliates />} />
       <Route path={ROUTES.ADMIN_CONTACTS} element={<AdminContacts />} />

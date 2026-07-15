@@ -7,6 +7,7 @@ export { AdminReferrals } from './AdminReferrals';
 export { AdminAffiliates } from './AdminAffiliates';
 export { AdminContacts } from './AdminContacts';
 export { AdminReviews } from './AdminReviews';
+export { AdminAdmins } from './AdminAdmins';
 export { AdminPhotoUpload } from './AdminPhotoUpload';
 export { AdminWithdrawals } from './AdminWithdrawals';
 export { AdminPackages } from './AdminPackages';

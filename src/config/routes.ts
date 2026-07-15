@@ -28,6 +28,7 @@ export const ROUTES = {
   ADMIN_AFFILIATES: '/admin/affiliates',
   ADMIN_CONTACTS: '/admin/contacts',
   ADMIN_REVIEWS: '/admin/reviews',
+  ADMIN_ADMINS: '/admin/admins',
   ADMIN_WITHDRAWALS: '/admin/withdrawals',
   ADMIN_PACKAGES: '/admin/packages',
   ADMIN_UPLOAD: '/admin/upload/:eventId',

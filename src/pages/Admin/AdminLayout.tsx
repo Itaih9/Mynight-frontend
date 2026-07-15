@@ -16,6 +16,7 @@ import {
   Wallet,
   KeyRound,
   Package as PackageIcon,
+  ShieldCheck,
 } from 'lucide-react';
 
 const navItems = [
@@ -29,6 +30,7 @@ const navItems = [
   { path: '/admin/withdrawals', label: 'Withdrawals', icon: Wallet },
   { path: '/admin/contacts', label: 'Contacts', icon: MessageSquare },
   { path: '/admin/reviews', label: 'Reviews', icon: Star },
+  { path: '/admin/admins', label: 'Admins', icon: ShieldCheck },
 ];
 
 export const AdminLayout = ({ children }: { children: React.ReactNode }) => {
