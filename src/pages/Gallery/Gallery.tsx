@@ -68,6 +68,9 @@ const createSampleMediaItems = (media: ShowcaseMedia[]): MediaItem[] => {
     // Prefer the generated renditions; fall back to the original only when a
     // showcase file has none (grid/hero use thumbnail, lightbox uses display).
     thumbnail: m.thumbnailUrl || (m.type === 'photo' ? m.url : undefined),
+    // Videos have no usable still of their own — the poster is the generated
+    // thumbnail, so the story shows a frame instead of black while it buffers.
+    poster: m.type === 'video' ? m.thumbnailUrl : undefined,
     displayUrl: m.displayUrl,
     // Story = the S3 subfolder name; blank means grid-only (no story).
     uploaderName: m.story || '',
