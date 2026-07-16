@@ -67,10 +67,9 @@
       // PixelPageViews — without it, an SPA reports one PageView per session.
       fbq('track', 'PageView');
     </script>
-    <noscript><img height="1" width="1" style="display:none"
-    src="https://www.facebook.com/tr?id=1718541075819599&ev=PageView&noscript=1"
-    /></noscript>
     <!-- End Meta Pixel Code -->
+    <!-- The <noscript> fallback lives in <body> — an <img> inside <noscript>
+         in <head> is invalid HTML and vite's parser rejects it. -->
     <style>
       body {
         font-family: 'Heebo', sans-serif;
@@ -124,6 +123,9 @@
     </style>
 </head>
   <body class="bg-white text-charcoal">
+    <!-- Meta Pixel <noscript> fallback (valid here in <body>, not in <head>) -->
+    <noscript><img height="1" width="1" style="display:none"
+      src="https://www.facebook.com/tr?id=1718541075819599&ev=PageView&noscript=1" /></noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
