@@ -660,25 +660,11 @@ const Upload: React.FC = () => {
     }
   }, [token, navigate]);
 
-  useEffect(() => {
-    if (!token || !currentEvent) return;
-    if ((currentEvent as any).isPaid === false) {
-      const pkgName = (currentEvent as any).packageName || 'UNLIMITED';
-      const englishMap: Record<string, string> = {
-        'האוספת': 'The Morning After',
-        'המושלמת': 'UNLIMITED',
-        'החכמה': 'Here I Am',
-      };
-      const priceMap: Record<string, number> = {
-        'האוספת': 350,
-        'המושלמת': 590,
-        'החכמה': 450,
-      };
-      const englishPkg = englishMap[pkgName] || pkgName;
-      const price = priceMap[pkgName] || 590;
-      navigate(`${ROUTES.REGISTER}?package=${encodeURIComponent(englishPkg)}&price=${price}&resumePayment=1`);
-    }
-  }, [token, currentEvent, navigate]);
+  // Note: previously this force-redirected unpaid events to the payment page
+  // using a hardcoded price map. Those prices went stale when packages were
+  // repriced, sending couples to a checkout that no longer matched. A logged-in
+  // couple should always land on their event management page; payment is offered
+  // from the packages flow, not forced here.
 
   useEffect(() => {
     if (currentEvent?.customSlug && !customSlug) {
