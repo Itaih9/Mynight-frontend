@@ -7,7 +7,13 @@ import { faceCircleImageStyle, type FaceEntry } from './faceCrop';
 import { FaceCircles } from './FaceCircles';
 
 interface FacePhotosOverlayProps {
-  eventId: string;
+  /** Present for event galleries; omitted for the showcase (uses fetchPhotos). */
+  eventId?: string;
+  /**
+   * Override how this person's photos are fetched. The showcase passes a
+   * faceId-only fetch since it has no eventId. Defaults to the event endpoint.
+   */
+  fetchPhotos?: (faceId: string) => Promise<Photo[]>;
   face: FaceEntry;
   /** Display rendition of the source photo, cropped for the header face thumb. */
   faceImageUrl: string;
@@ -34,6 +40,7 @@ const previewUrl = (photo: Photo) => (isVideo(photo) ? photo.posterUrl || photo.
  */
 export const FacePhotosOverlay = ({
   eventId,
+  fetchPhotos,
   face,
   faceImageUrl,
   imgWidth,
@@ -43,6 +50,8 @@ export const FacePhotosOverlay = ({
   favorites,
   onToggleFavorite,
 }: FacePhotosOverlayProps) => {
+  // Download-all needs the event zip endpoint; the showcase (no eventId) hides it.
+  const canDownloadAll = Boolean(eventId);
   // The "current person" — starts from the tapped face and its source photo, but
   // changes when the user taps another face inside a photo in this gallery
   // (recursive: person A's photo → tap person B → person B's gallery).
@@ -62,11 +71,12 @@ export const FacePhotosOverlay = ({
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    galleryApi
-      .getFacePhotos(eventId, current.face.faceId)
-      .then((res) => {
-        if (cancelled) return;
-        setPhotos(Array.isArray(res.data) ? res.data : []);
+    const load = fetchPhotos
+      ? fetchPhotos(current.face.faceId)
+      : galleryApi.getFacePhotos(eventId!, current.face.faceId).then((res) => (Array.isArray(res.data) ? res.data : []));
+    load
+      .then((list) => {
+        if (!cancelled) setPhotos(Array.isArray(list) ? list : []);
       })
       .catch(() => {
         if (!cancelled) setPhotos([]);
@@ -77,7 +87,7 @@ export const FacePhotosOverlay = ({
     return () => {
       cancelled = true;
     };
-  }, [eventId, current.face.faceId]);
+  }, [eventId, fetchPhotos, current.face.faceId]);
 
   // Open another person's gallery from a face tapped inside the currently-open photo.
   const openPerson = (f: FaceEntry, sourcePhoto: Photo) => {
@@ -130,7 +140,7 @@ export const FacePhotosOverlay = ({
   // Download every photo of the current person as a zip (same backend stream
   // as the rekognition/guest gallery's "download all").
   const handleDownloadAll = async () => {
-    if (photos.length === 0 || isDownloadingAll) return;
+    if (!eventId || photos.length === 0 || isDownloadingAll) return;
     setIsDownloadingAll(true);
     try {
       const blob = await galleryApi.downloadFaceZip(eventId, current.face.faceId);
@@ -215,7 +225,7 @@ export const FacePhotosOverlay = ({
             </p>
           </div>
 
-          {photos.length > 0 && (
+          {photos.length > 0 && canDownloadAll && (
             <button
               onClick={handleDownloadAll}
               disabled={isDownloadingAll}

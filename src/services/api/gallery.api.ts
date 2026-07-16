@@ -3,6 +3,11 @@ import { API_ENDPOINTS } from '@/config/api';
 import type { Photo, PresignedUrlResponse, MatchPhotosResponse, FaceGroup, ApiResponse } from '@/types/api.types';
 import axios from 'axios';
 
+export interface ShowcaseFace {
+  faceId: string;
+  boundingBox: { Width: number; Height: number; Left: number; Top: number };
+}
+
 export interface ShowcaseMedia {
   url: string;
   /** Small rendition (thumbnails/{key}) when it exists. */
@@ -12,6 +17,8 @@ export interface ShowcaseMedia {
   type: 'photo' | 'video';
   /** Story name (S3 subfolder under gallery_showcase/), or null for grid-only. */
   story: string | null;
+  /** Faces detected in this photo, for the face circles (when indexed). */
+  indexedFaces?: ShowcaseFace[];
 }
 
 export interface GetPresignedUrlRequest {
@@ -183,6 +190,11 @@ export const galleryApi = {
 
   getShowcaseImages: async (): Promise<ApiResponse<ShowcaseMedia[]>> => {
     const response = await api.get(API_ENDPOINTS.PHOTOS.SHOWCASE_IMAGES);
+    return response.data;
+  },
+
+  getShowcaseFacePhotos: async (faceId: string): Promise<ApiResponse<ShowcaseMedia[]>> => {
+    const response = await api.get(`/api/photos/showcase/faces/${faceId}`);
     return response.data;
   },
 };

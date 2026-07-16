@@ -4,6 +4,7 @@ import { ROUTES } from '@/config/routes';
 import { useUserStore } from '@/store/userStore';
 import { eventsApi, galleryApi, couponApi } from '@/services/api';
 import type { ShowcaseMedia } from '@/services/api/gallery.api';
+import type { Photo } from '@/types/api.types';
 import type { MediaItem, StoryGroup, GalleryPageProps } from './types';
 import { cubeVariants } from './constants';
 import { useGalleryData } from './hooks';
@@ -74,6 +75,7 @@ const createSampleMediaItems = (media: ShowcaseMedia[]): MediaItem[] => {
     // thumbnail, so the story shows a frame instead of black while it buffers.
     poster: m.type === 'video' ? m.thumbnailUrl : undefined,
     displayUrl: m.displayUrl,
+    indexedFaces: m.indexedFaces,
     // Story = the S3 subfolder name; blank means grid-only (no story).
     uploaderName: m.story || '',
     timestamp: new Date(Date.now() - i * 3600000),
@@ -2996,6 +2998,28 @@ const Gallery: React.FC<GalleryPageProps> = ({
             onBack={() => window.history.back()}
             favorites={isOwnerView ? favorites : undefined}
             onToggleFavorite={isOwnerView ? toggleFavorite : undefined}
+          />
+        )}
+        {faceView && isShowcase && (
+          <FacePhotosOverlay
+            face={faceView.face}
+            faceImageUrl={faceView.imageUrl}
+            imgWidth={faceView.imgW}
+            imgHeight={faceView.imgH}
+            coupleName={coupleName}
+            onBack={() => window.history.back()}
+            fetchPhotos={async (faceId) => {
+              const res = await galleryApi.getShowcaseFacePhotos(faceId);
+              return (res.data || []).map((m, i) => ({
+                _id: `showcase-face-${i}`,
+                url: m.url,
+                thumbnailUrl: m.thumbnailUrl || m.url,
+                displayUrl: m.displayUrl,
+                posterUrl: m.type === 'video' ? m.thumbnailUrl : undefined,
+                indexedFaces: m.indexedFaces,
+                metadata: { mimeType: m.type === 'video' ? 'video/mp4' : 'image/jpeg' },
+              })) as unknown as Photo[];
+            }}
           />
         )}
       </AnimatePresence>
