@@ -111,6 +111,7 @@ export interface AdminCoupon {
   ownerUserId?: string;
   ownerEventId?: string;
   customized?: boolean;
+  packageName?: string;
   type?: 'standard' | 'affiliate' | 'prepaid' | 'personal' | 'event';
   ownerCoupleName?: string;
   ownerEventCode?: string;
@@ -374,6 +375,7 @@ export const adminApi = {
     expiresAt?: string;
     affiliateId?: string;
     ownerEventId?: string;
+    packageName?: string;
   }): Promise<AdminCoupon> => {
     const response = await adminAxios.post<ApiResponse<AdminCoupon>>('/api/admin/coupons', data);
     return response.data.data!;

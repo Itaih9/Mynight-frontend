@@ -32,6 +32,7 @@ export const AdminCoupons = () => {
     expiresAt: '',
     affiliateId: '',
     eventId: '',
+    packageName: '',
   });
   const [formError, setFormError] = useState('');
   const [affiliateOptions, setAffiliateOptions] = useState<AdminAffiliate[]>([]);
@@ -87,9 +88,10 @@ export const AdminCoupons = () => {
         expiresAt: formData.expiresAt || undefined,
         affiliateId: formData.affiliateId || undefined,
         ownerEventId: formData.eventId || undefined,
+        packageName: formData.packageName || undefined,
       });
       setShowModal(false);
-      setFormData({ code: '', discountType: 'percent', discountValue: 100, maxUses: '', expiresAt: '', affiliateId: '', eventId: '' });
+      setFormData({ code: '', discountType: 'percent', discountValue: 100, maxUses: '', expiresAt: '', affiliateId: '', eventId: '', packageName: '' });
       loadCoupons(1);
     } catch (err: any) {
       setFormError(err.response?.data?.message || err.response?.data?.error || 'Failed to create coupon');
@@ -264,6 +266,11 @@ export const AdminCoupons = () => {
                     <tr key={coupon._id} className="hover:bg-slate-50">
                       <td className="px-6 py-4">
                         <code className="text-sm font-semibold bg-slate-100 px-2 py-1 rounded">{coupon.code}</code>
+                        {coupon.packageName && (
+                          <span className="block mt-1 text-[11px] font-medium text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full w-fit" dir="rtl">
+                            חבילת {coupon.packageName}
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {couponType === 'prepaid' ? (
@@ -462,6 +469,22 @@ export const AdminCoupons = () => {
                   ))}
                 </select>
                 <p className="text-xs text-slate-400 mt-1">Associate this coupon with a specific event.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Restrict to Package (optional)</label>
+                <select
+                  value={formData.packageName}
+                  onChange={(e) => setFormData({ ...formData, packageName: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm bg-white"
+                >
+                  {/* Values must match event.packageName exactly (Register.tsx PACKAGE_DATA hebrewName). */}
+                  <option value="">All packages</option>
+                  <option value="האוספת">האוספת (The Morning After)</option>
+                  <option value="המושלמת">המושלמת (Unlimited)</option>
+                  <option value="החכמה">החכמה (Here I Am)</option>
+                </select>
+                <p className="text-xs text-slate-400 mt-1">If set, the coupon only works when buying this package.</p>
               </div>
 
               {formError && (

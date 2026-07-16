@@ -696,7 +696,7 @@ export const Register: React.FC = () => {
       setCouponError(false);
 
       try {
-          const response = await couponApi.validate({ code: formData.coupon });
+          const response = await couponApi.validate({ code: formData.coupon, packageName: currentPackage.hebrewName });
           const data = response.data;
           if (data?.valid && ((data.discountAmount && data.discountAmount > 0) || (data.discountPercent && data.discountPercent > 0))) {
               const fixed = data.discountAmount && data.discountAmount > 0 ? data.discountAmount : 0;

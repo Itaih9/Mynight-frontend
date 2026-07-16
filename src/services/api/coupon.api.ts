@@ -4,6 +4,8 @@ import type { Coupon, CouponValidation, ApiResponse } from '@/types/api.types';
 
 export interface ValidateCouponRequest {
   code: string;
+  /** Package being purchased — lets package-restricted coupons validate correctly. */
+  packageName?: string;
 }
 
 export interface CreateCouponRequest {
