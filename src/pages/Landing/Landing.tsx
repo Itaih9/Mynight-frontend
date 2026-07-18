@@ -53,7 +53,12 @@ const Landing: React.FC = () => {
   const handleSmartPackageClick = () => triggerPackageHighlight(2);
   const handleMorningAfterClick = () => triggerPackageHighlight(0);
 
-  if (isMobile) return <MobileLandingPage />;
+  if (isMobile) return (
+    <>
+      <DiscountPopup />
+      <MobileLandingPage />
+    </>
+  );
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] font-['Assistant'] text-stone-900 selection:bg-rose-100 selection:text-rose-600">
