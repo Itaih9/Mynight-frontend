@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/common';
 import { ROUTES } from '@/config/routes';
-import { TopPage, LandingMarquee, Experience, LandingPackages, LandingReviews, LandingFeatures, VendorCTA, LandingFooter } from '@/components/landing';
+import { TopPage, LandingMarquee, Experience, LandingPackages, LandingReviews, LandingFeatures, VendorCTA, LandingFooter, DiscountPopup } from '@/components/landing';
 import { MobileLandingPage } from '@/components/mobile-landing/MobileLandingPage';
 
 const useIsMobile = () => {
@@ -57,6 +57,7 @@ const Landing: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] font-['Assistant'] text-stone-900 selection:bg-rose-100 selection:text-rose-600">
+      <DiscountPopup />
       <Navbar />
 
       <div dir="ltr">

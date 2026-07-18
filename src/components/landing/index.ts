@@ -12,6 +12,7 @@ export { default as LandingReviews } from './LandingReviews';
 export { default as LandingFeatures } from './LandingFeatures';
 export { default as VendorCTA } from './VendorCTA';
 export { default as LandingFooter } from './LandingFooter';
+export { default as DiscountPopup } from './DiscountPopup';
 export { default as LandingCelebrationButton } from './CelebrationButton';
 export { default as FloatingPhoto } from './FloatingPhoto';
 export { default as PhoneMockup } from './PhoneMockup';
