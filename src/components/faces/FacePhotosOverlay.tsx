@@ -5,6 +5,7 @@ import { galleryApi } from '@/services/api';
 import type { Photo } from '@/types/api.types';
 import { faceCircleImageStyle, type FaceEntry } from './faceCrop';
 import { FaceCircles } from './FaceCircles';
+import { PhotographerCard } from '@/components/gallery/PhotographerCard';
 
 interface FacePhotosOverlayProps {
   /** Present for event galleries; omitted for the showcase (uses fetchPhotos). */
@@ -25,6 +26,8 @@ interface FacePhotosOverlayProps {
   /** Optional favorites support (Gallery passes these; GuestGallery omits them). */
   favorites?: Set<string>;
   onToggleFavorite?: (id: string, e?: React.MouseEvent) => void;
+  /** Event photographer, credited at the bottom of this gallery when present. */
+  photographer?: { name?: string; instagram?: string };
 }
 
 const photoCountText = (n: number) => (n === 1 ? 'תמונה אחת' : `${n} תמונות`);
@@ -49,9 +52,12 @@ export const FacePhotosOverlay = ({
   onBack,
   favorites,
   onToggleFavorite,
+  photographer,
 }: FacePhotosOverlayProps) => {
   // Download-all needs the event zip endpoint; the showcase (no eventId) hides it.
   const canDownloadAll = Boolean(eventId);
+  const [showPhotog, setShowPhotog] = useState(false);
+  const hasPhotographer = Boolean(photographer && (photographer.name || photographer.instagram));
   // The "current person" — starts from the tapped face and its source photo, but
   // changes when the user taps another face inside a photo in this gallery
   // (recursive: person A's photo → tap person B → person B's gallery).
@@ -285,9 +291,20 @@ export const FacePhotosOverlay = ({
                 </div>
               ))}
             </div>
+            {hasPhotographer && (
+              <div className="text-center pt-10 pb-4">
+                <button onClick={() => setShowPhotog(true)} className="text-xs text-gray-500 hover:text-black transition-colors" dir="rtl">
+                  צילום: <span className="font-semibold">{photographer!.name || `@${photographer!.instagram}`}</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {showPhotog && hasPhotographer && (
+        <PhotographerCard photographer={photographer!} onClose={() => setShowPhotog(false)} />
+      )}
 
       {/* Internal viewer */}
       <AnimatePresence>

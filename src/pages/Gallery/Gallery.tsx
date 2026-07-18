@@ -5,6 +5,7 @@ import { useUserStore } from '@/store/userStore';
 import { eventsApi, galleryApi, couponApi } from '@/services/api';
 import type { ShowcaseMedia } from '@/services/api/gallery.api';
 import type { Photo } from '@/types/api.types';
+import { PhotographerCard } from '@/components/gallery/PhotographerCard';
 import type { MediaItem, StoryGroup, GalleryPageProps } from './types';
 import { cubeVariants } from './constants';
 import { useGalleryData } from './hooks';
@@ -1178,6 +1179,7 @@ const LightboxModal = ({
   onMore,
   onFaceClick,
   canFavorite = false,
+  onShowPhotographer,
 }: {
   item: MediaItem | null;
   favorites: Set<string>;
@@ -1197,6 +1199,8 @@ const LightboxModal = ({
   onFacebook: () => void;
   onMore: () => void;
   onFaceClick: (face: FaceEntry) => void;
+  /** Present only when this is a pro photo and the event has a photographer. */
+  onShowPhotographer?: () => void;
 }) => {
   const swipeHandlers = useSwipeNavigation(onNavigate);
   return (
@@ -1301,7 +1305,16 @@ const LightboxModal = ({
           <div className="flex flex-col items-start pointer-events-auto order-first md:order-last">
             <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-sm border border-gray-100 text-right">
               <p className="font-bold text-sm text-black">{item.uploaderName}</p>
-              <p className="text-xs text-gray-500">{formatItemTime(item)}</p>
+              {onShowPhotographer ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onShowPhotographer(); }}
+                  className="text-xs font-semibold text-gold-primary hover:text-gold-secondary underline underline-offset-2"
+                >
+                  לפרטים
+                </button>
+              ) : (
+                <p className="text-xs text-gray-500">{formatItemTime(item)}</p>
+              )}
             </div>
           </div>
 
@@ -1920,6 +1933,17 @@ const Gallery: React.FC<GalleryPageProps> = ({
   }, [isShowcase, resolvedEventId, galleryData.isLoading]);
 
   const coupleName = isShowcase ? 'נועה ואיתי' : event?.name || propCoupleName || 'נועה ואיתי';
+
+  // Photographer credit (per event, set by admin). Shows on pro photos and at
+  // the gallery footer when present.
+  const photographer = useMemo(
+    () => ({ name: event?.photographerName, instagram: event?.photographerInstagram }),
+    [event?.photographerName, event?.photographerInstagram]
+  );
+  const hasPhotographer = Boolean(photographer.name || photographer.instagram);
+  const [showPhotographer, setShowPhotographer] = useState(false);
+  const isProItem = (it?: MediaItem | null) =>
+    !!it && (it.source === 'pro' || it.uploaderName === 'צלם האירוע');
 
   const isOwnerView = useMemo(() => {
     if (isShowcase) return false;
@@ -2938,6 +2962,15 @@ const Gallery: React.FC<GalleryPageProps> = ({
                 <div className="flex flex-col items-center justify-center gap-3 text-center">
                   <span className="font-serif italic text-5xl md:text-6xl leading-none" dir="ltr">The End.</span>
                   <p className="text-gray-400 text-[10px] md:text-xs uppercase tracking-[0.3em] whitespace-nowrap" dir="ltr">Thank you for being a part of our story</p>
+                  {hasPhotographer && (
+                    <button
+                      onClick={() => setShowPhotographer(true)}
+                      className="mt-2 text-xs text-gray-500 hover:text-black transition-colors"
+                      dir="rtl"
+                    >
+                      צילום: <span className="font-semibold">{photographer.name || `@${photographer.instagram}`}</span>
+                    </button>
+                  )}
                 </div>
                 <div className="flex flex-row items-center justify-between w-full">
                   <button onClick={handleGiftClick} className="group flex items-center gap-3 bg-gray-50 hover:bg-gold-primary/10 border border-gray-200 hover:border-gold-primary/30 px-4 py-2 md:px-6 md:py-3 rounded-full transition-all duration-300 shadow-sm hover:shadow-md">
@@ -2984,7 +3017,14 @@ const Gallery: React.FC<GalleryPageProps> = ({
             imgH: selectedMedia.height,
           });
         }}
+        onShowPhotographer={
+          hasPhotographer && isProItem(selectedMedia) ? () => setShowPhotographer(true) : undefined
+        }
       />
+
+      {showPhotographer && hasPhotographer && (
+        <PhotographerCard photographer={photographer} onClose={() => setShowPhotographer(false)} />
+      )}
 
       <AnimatePresence>
         {faceView && resolvedEventId && resolvedEventId !== '__showcase__' && (
@@ -2998,6 +3038,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
             onBack={() => window.history.back()}
             favorites={isOwnerView ? favorites : undefined}
             onToggleFavorite={isOwnerView ? toggleFavorite : undefined}
+            photographer={hasPhotographer ? photographer : undefined}
           />
         )}
         {faceView && isShowcase && (

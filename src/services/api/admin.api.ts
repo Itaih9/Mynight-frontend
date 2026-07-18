@@ -75,6 +75,8 @@ export interface AdminEvent {
   slugChangeCount?: number;
   isPaid: boolean;
   packageName?: string;
+  photographerName?: string;
+  photographerInstagram?: string;
   photoCount: number;
   userId: {
     _id: string;
@@ -458,6 +460,17 @@ export const adminApi = {
     const response = await adminAxios.patch<ApiResponse<AdminEvent>>(
       `/api/admin/events/${eventId}/slug`,
       { customSlug, resetCount }
+    );
+    return response.data.data!;
+  },
+
+  updateEventPhotographer: async (
+    eventId: string,
+    data: { photographerName?: string; photographerInstagram?: string }
+  ): Promise<{ photographerName?: string; photographerInstagram?: string }> => {
+    const response = await adminAxios.patch<ApiResponse<{ photographerName?: string; photographerInstagram?: string }>>(
+      `/api/admin/events/${eventId}/photographer`,
+      data
     );
     return response.data.data!;
   },

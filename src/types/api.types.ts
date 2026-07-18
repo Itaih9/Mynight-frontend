@@ -35,6 +35,8 @@ export interface Event {
   uploadExpiresAt?: string;
   expiresAt: string;
   eventDate?: string;
+  photographerName?: string;
+  photographerInstagram?: string;
   sharingPermissions?: SharingPermissions;
   coverImage?: { s3Key: string; url: string; uploadedAt: string };
   createdAt: string;

@@ -21,6 +21,7 @@ import {
   Download,
   FileText,
   Link2,
+  Camera,
   Eye,
   MessageCircle,
   Film,
@@ -52,6 +53,12 @@ export const AdminEvents = () => {
   const [slugResetCount, setSlugResetCount] = useState(false);
   const [slugSaving, setSlugSaving] = useState(false);
   const [slugError, setSlugError] = useState('');
+
+  const [photogModalEvent, setPhotogModalEvent] = useState<AdminEvent | null>(null);
+  const [photogName, setPhotogName] = useState('');
+  const [photogIg, setPhotogIg] = useState('');
+  const [photogSaving, setPhotogSaving] = useState(false);
+  const [photogError, setPhotogError] = useState('');
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   const [photoSelectMode, setPhotoSelectMode] = useState(false);
@@ -166,6 +173,31 @@ export const AdminEvents = () => {
       setSlugError(msg);
     } finally {
       setSlugSaving(false);
+    }
+  };
+
+  const openPhotogModal = (event: AdminEvent) => {
+    setPhotogModalEvent(event);
+    setPhotogName(event.photographerName || '');
+    setPhotogIg(event.photographerInstagram || '');
+    setPhotogError('');
+  };
+
+  const handleSavePhotographer = async () => {
+    if (!photogModalEvent) return;
+    setPhotogSaving(true);
+    setPhotogError('');
+    try {
+      await adminApi.updateEventPhotographer(photogModalEvent._id, {
+        photographerName: photogName,
+        photographerInstagram: photogIg,
+      });
+      await loadEvents(pagination.page);
+      setPhotogModalEvent(null);
+    } catch (err: any) {
+      setPhotogError(err?.response?.data?.error || err?.response?.data?.message || 'Failed to save');
+    } finally {
+      setPhotogSaving(false);
     }
   };
 
@@ -674,6 +706,39 @@ export const AdminEvents = () => {
         </div>
       )}
 
+      {photogModalEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="ltr">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setPhotogModalEvent(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">Photographer credit</h3>
+            <p className="text-sm text-slate-500 mb-4">{photogModalEvent.name}</p>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Photographer name</label>
+            <input
+              value={photogName}
+              onChange={(e) => setPhotogName(e.target.value)}
+              placeholder="e.g. Studio Noa"
+              className="w-full px-3 py-2 mb-4 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm"
+            />
+            <label className="block text-sm font-medium text-slate-700 mb-1">Instagram handle</label>
+            <div className="flex items-center rounded-lg border border-slate-200 focus-within:border-slate-400 px-3">
+              <span className="text-slate-400 text-sm">@</span>
+              <input
+                value={photogIg}
+                onChange={(e) => setPhotogIg(e.target.value)}
+                placeholder="studio.noa"
+                className="w-full py-2 pl-1 outline-none text-sm"
+              />
+            </div>
+            <p className="text-xs text-slate-400 mt-1">Handle, @handle, or full instagram.com URL — all work.</p>
+            {photogError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mt-3">{photogError}</p>}
+            <div className="flex gap-2 mt-5">
+              <button onClick={() => setPhotogModalEvent(null)} className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+              <button onClick={handleSavePhotographer} disabled={photogSaving} className="flex-1 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50">{photogSaving ? 'Saving…' : 'Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {slugModalEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={closeSlugModal} />
@@ -971,6 +1036,14 @@ export const AdminEvents = () => {
                           >
                             <Link2 className="w-3 h-3" />
                             Slug
+                          </button>
+                          <button
+                            onClick={() => openPhotogModal(event)}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-pink-600 hover:text-pink-700"
+                            title={event.photographerName ? `Photographer: ${event.photographerName}` : 'Set photographer'}
+                          >
+                            <Camera className="w-3 h-3" />
+                            Photographer
                           </button>
                           <button
                             onClick={() => handleDeleteEvent(event)}

@@ -14,6 +14,7 @@ import { eventsApi, galleryApi } from '@/services/api';
 import type { Event, Photo } from '@/types/api.types';
 import { formatCategoryLabel } from '@/lib/utils';
 import { FacePhotosOverlay } from '@/components/faces/FacePhotosOverlay';
+import { PhotographerCard } from '@/components/gallery/PhotographerCard';
 import type { FaceEntry } from '@/components/faces/faceCrop';
 import logoSvg from '@/assets/logo.svg';
 
@@ -203,6 +204,9 @@ const GuestGallery: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const coupleName = event?.name || '';
+  const photographer = { name: event?.photographerName, instagram: event?.photographerInstagram };
+  const hasPhotographer = Boolean(photographer.name || photographer.instagram);
+  const [showPhotog, setShowPhotog] = useState(false);
 
   // Categories present among the matched photos. Uncategorized photos are left
   // out so they only appear under the "all" view. Sorted for a stable order.
@@ -796,6 +800,13 @@ const GuestGallery: React.FC = () => {
                     />
                   ))}
               </div>
+              {hasPhotographer && (
+                <div className="text-center pt-8 pb-4">
+                  <button onClick={() => setShowPhotog(true)} className="text-xs text-gray-500 hover:text-black transition-colors" dir="rtl">
+                    צילום: <span className="font-semibold">{photographer.name || `@${photographer.instagram}`}</span>
+                  </button>
+                </div>
+              )}
            </div>
          ) : !showAuthModal && (
            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
@@ -942,9 +953,14 @@ const GuestGallery: React.FC = () => {
             imgHeight={faceView.imgH}
             coupleName={coupleName}
             onBack={() => window.history.back()}
+            photographer={hasPhotographer ? photographer : undefined}
           />
         )}
       </AnimatePresence>
+
+      {showPhotog && hasPhotographer && (
+        <PhotographerCard photographer={photographer} onClose={() => setShowPhotog(false)} />
+      )}
 
       <AnimatePresence>
         {isShareMenuOpen && (shareTarget || selectedItem) && (
