@@ -53,17 +53,19 @@ export const AdminCoupons = () => {
   const [toast, setToast] = useState('');
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 2500); };
 
+  const [couponFilter, setCouponFilter] = useState<'mine' | 'auto' | 'all'>('mine');
+
   useEffect(() => {
-    loadCoupons(1);
+    loadCoupons(1, couponFilter);
     adminApi.getAffiliates(1, 200).then((res) => setAffiliateOptions(res.affiliates || [])).catch(() => {});
     adminApi.getEvents(1, 500).then((res) => setEventOptions(res.events || [])).catch(() => {});
     adminApi.getCouponDefaults().then(setDefaults).catch(() => {});
   }, []);
 
-  const loadCoupons = async (page: number) => {
+  const loadCoupons = async (page: number, filter: 'mine' | 'auto' | 'all' = couponFilter) => {
     try {
       setLoading(true);
-      const data = await adminApi.getCoupons(page, 20);
+      const data = await adminApi.getCoupons(page, 20, filter);
       setCoupons(data.coupons);
       setPagination(data.pagination);
     } catch (err) {
@@ -71,6 +73,11 @@ export const AdminCoupons = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const changeFilter = (filter: 'mine' | 'auto' | 'all') => {
+    setCouponFilter(filter);
+    loadCoupons(1, filter);
   };
 
   const handleCreateCoupon = async (e: React.FormEvent) => {
@@ -232,6 +239,24 @@ export const AdminCoupons = () => {
             </div>
           </div>
         )}
+
+        <div className="flex gap-2 mb-4" dir="ltr">
+          {([
+            ['mine', 'Added by me'],
+            ['auto', 'Couple coupons'],
+            ['all', 'All'],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => changeFilter(key)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                couponFilter === key ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-12">

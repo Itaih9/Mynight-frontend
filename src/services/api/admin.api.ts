@@ -362,9 +362,13 @@ export const adminApi = {
     return response.data.data!;
   },
 
-  getCoupons: async (page: number = 1, limit: number = 20): Promise<{ coupons: AdminCoupon[]; pagination: any }> => {
+  getCoupons: async (
+    page: number = 1,
+    limit: number = 20,
+    filter: 'mine' | 'auto' | 'all' = 'mine'
+  ): Promise<{ coupons: AdminCoupon[]; pagination: any }> => {
     const response = await adminAxios.get<ApiResponse<{ coupons: AdminCoupon[]; pagination: any }>>(
-      `/api/admin/coupons?page=${page}&limit=${limit}`
+      `/api/admin/coupons?page=${page}&limit=${limit}&filter=${filter}`
     );
     return response.data.data!;
   },
