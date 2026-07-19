@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/common';
 import { Packages } from '@/components/mobile-landing/Packages';
 import { giftApi } from '@/services/api/gift.api';
@@ -18,6 +19,7 @@ const KEY_TO_PACKAGE_NAME: Record<string, string> = {
 };
 
 export const Gift = () => {
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('select');
   const [mode, setMode] = useState<Mode>('amount');
   const [amount, setAmount] = useState<number | null>(null);
@@ -85,7 +87,16 @@ export const Gift = () => {
         message: message.trim() || undefined,
         couponCode: couponApplied ? coupon.trim() : undefined,
       });
-      const { redirectUrl } = (await giftApi.beginRedirect(created.data!.giftId)).data!;
+      const giftId = created.data!.giftId;
+
+      // Fully covered by a coupon → no Sumit; finalize and go straight to share.
+      if (created.data!.chargeAmount <= 0) {
+        const done = await giftApi.completeFree(giftId);
+        navigate('/gift-callback', { state: { gift: done.data } });
+        return;
+      }
+
+      const { redirectUrl } = (await giftApi.beginRedirect(giftId)).data!;
       // Hand off to Sumit's hosted payment page; return lands on /gift-callback.
       window.location.href = redirectUrl;
     } catch (e: any) {
@@ -214,7 +225,7 @@ export const Gift = () => {
                 disabled={busy}
                 className="w-full bg-gradient-to-r from-gold-primary to-gold-secondary text-white font-bold text-xl py-5 rounded-2xl shadow-lg flex items-center justify-center gap-3 disabled:opacity-60"
               >
-                {busy ? <Loader2 className="animate-spin" /> : <><span>המשך לתשלום מאובטח</span><Lock size={22} /></>}
+                {busy ? <Loader2 className="animate-spin" /> : total <= 0 ? <><span>קבלת המתנה 🎁</span></> : <><span>המשך לתשלום מאובטח</span><Lock size={22} /></>}
               </button>
               <button onClick={() => setStep('details')} className="w-full mt-3 text-gray-500 text-sm">חזרה</button>
             </>

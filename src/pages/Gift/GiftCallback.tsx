@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/common';
 import { giftApi } from '@/services/api/gift.api';
 import { Loader2, Check, Copy, Share2 } from 'lucide-react';
@@ -10,13 +10,21 @@ import { Loader2, Check, Copy, Share2 } from 'lucide-react';
  */
 export const GiftCallback = () => {
   const [params] = useSearchParams();
+  const location = useLocation();
   const giftId = params.get('giftId') || '';
-  const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
+  // A free (100%-coupon) gift is finalized before navigating here and passed in
+  // via router state, so no Sumit verification is needed.
+  const preFinalized = (location.state as any)?.gift as
+    | { couponCode: string; amount: number; coupleName?: string }
+    | undefined;
+
+  const [status, setStatus] = useState<'loading' | 'success' | 'failed'>(preFinalized ? 'success' : 'loading');
   const [error, setError] = useState('');
-  const [result, setResult] = useState<{ couponCode: string; amount: number; coupleName?: string } | null>(null);
+  const [result, setResult] = useState<{ couponCode: string; amount: number; coupleName?: string } | null>(preFinalized || null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    if (preFinalized) return;
     if (!giftId) {
       setStatus('failed');
       setError('חסר מזהה מתנה');
@@ -32,7 +40,7 @@ export const GiftCallback = () => {
         setError(e?.response?.data?.error || e?.response?.data?.message || 'התשלום לא הושלם');
         setStatus('failed');
       });
-  }, [giftId]);
+  }, [giftId, preFinalized]);
 
   const giftLink = result ? `${window.location.origin}/gift/${result.couponCode}` : '';
 
