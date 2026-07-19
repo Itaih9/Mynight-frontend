@@ -1,6 +1,9 @@
 export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
+  START: '/start',
+  GIFT: '/gift',
+  GIFT_CLAIM: '/gift/:code',
   REGISTER: '/register',
   UPLOAD: '/upload',
   GALLERY: '/gallery',

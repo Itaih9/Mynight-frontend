@@ -96,7 +96,7 @@ const PhaseSection: React.FC<PhaseSectionProps> = ({
 
                     {showActionButton && (
                       <button
-                        onClick={() => navigate(ROUTES.REGISTER)}
+                        onClick={() => navigate(ROUTES.START)}
                         className="inline-flex items-center gap-2 text-black font-medium border-b-2 border-black pb-1 hover:text-gold-primary hover:border-gold-primary transition-colors"
                       >
                         <span>התחילו עכשיו</span>

@@ -322,7 +322,7 @@ export const Login: React.FC = () => {
                   <div className="h-px bg-gray-100 flex-grow"></div>
                 </div>
 
-                <CelebrationButton onClick={() => navigate(ROUTES.REGISTER)} label="הרשמה לאלבום חכם" fullWidth={true} className="lg:py-8 lg:text-3xl" />
+                <CelebrationButton onClick={() => navigate(ROUTES.START)} label="הרשמה לאלבום חכם" fullWidth={true} className="lg:py-8 lg:text-3xl" />
 
                 <button
                   type="button"
@@ -425,7 +425,7 @@ export const Login: React.FC = () => {
                   <div className="h-px bg-gray-100 flex-grow"></div>
                 </div>
 
-                <CelebrationButton onClick={() => navigate(ROUTES.REGISTER)} label="הרשמה לאלבום חכם" fullWidth={true} className="lg:py-8 lg:text-3xl" />
+                <CelebrationButton onClick={() => navigate(ROUTES.START)} label="הרשמה לאלבום חכם" fullWidth={true} className="lg:py-8 lg:text-3xl" />
 
                 <button
                   type="button"

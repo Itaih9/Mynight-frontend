@@ -226,7 +226,7 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
       // package proceeds. Perfect Night is selected by default, so it needs only
       // a single tap to continue.
       onCta: () => {
-        if (isSelected) navigate(`${ROUTES.REGISTER}?package=${p.name}&price=${p.price}`);
+        if (isSelected) navigate(`${ROUTES.START}?package=${p.name}&price=${p.price}`);
         else setSelected(p.key);
       },
     };

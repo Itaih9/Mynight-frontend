@@ -170,7 +170,9 @@ export const Register: React.FC = () => {
     eventDate: '',
     phone: '',
     otp: '',
-    coupon: ''
+    // Prefill from a gift the couple opened (GiftClaim stored the code), so it's
+    // ready to apply at checkout.
+    coupon: (typeof window !== 'undefined' && sessionStorage.getItem('mynight_gift_coupon')) || '',
   });
   const [paymentData, setPaymentData] = useState({
     cardNumber: '',

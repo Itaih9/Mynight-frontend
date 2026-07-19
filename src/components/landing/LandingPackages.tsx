@@ -523,7 +523,7 @@ const LandingPackages: React.FC<LandingPackagesProps> = ({ highlightedPackageInd
 
                                 <div className={`relative group/btn w-full ${pkg.isPopular ? '' : 'mt-[12px]'} z-20`}>
                                     <button
-                                      onClick={() => navigate(`${ROUTES.REGISTER}?package=${encodeURIComponent(pkg.englishTitle)}&price=${pkg.price.replace(/\D/g, '')}`)}
+                                      onClick={() => navigate(`${ROUTES.START}?package=${encodeURIComponent(pkg.englishTitle)}&price=${pkg.price.replace(/\D/g, '')}`)}
                                       className={`py-4.5 rounded-none transition-transform duration-300 relative overflow-hidden group mb-0 z-10 block cursor-pointer
                                         ${ctaColorClass}
                                         w-[calc(100%+64px)] -mx-8

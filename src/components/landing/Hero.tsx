@@ -88,7 +88,7 @@ const Hero: React.FC = () => {
                     />
 
                     <button
-                        onClick={() => navigate(ROUTES.REGISTER)}
+                        onClick={() => navigate(ROUTES.START)}
                         className="group flex items-center gap-2 text-[14.4px] text-gray-500 font-secular hover:text-black transition-colors -translate-y-[9px] translate-x-[4px] cursor-pointer relative z-20"
                     >
                         <span className="underline underline-offset-4 decoration-gray-300 group-hover:decoration-black transition-all">לרכישה מהירה | פתיחה מיידית</span>
