@@ -7,11 +7,13 @@ export interface CreateGiftRequest {
   coupleName?: string;
   gifterEmail?: string;
   message?: string;
+  couponCode?: string;
 }
 
 export interface CreateGiftResponse {
   giftId: string;
   amount: number;
+  chargeAmount: number;
   publicKey?: string;
   companyId?: string;
 }
