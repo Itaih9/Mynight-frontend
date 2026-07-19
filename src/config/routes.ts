@@ -3,6 +3,7 @@ export const ROUTES = {
   LOGIN: '/login',
   START: '/start',
   GIFT: '/gift',
+  GIFT_CALLBACK: '/gift-callback',
   GIFT_CLAIM: '/gift/:code',
   REGISTER: '/register',
   UPLOAD: '/upload',

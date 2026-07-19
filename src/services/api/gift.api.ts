@@ -40,6 +40,14 @@ export const giftApi = {
     const res = await api.post('/api/gifts/charge', { giftId, token });
     return res.data;
   },
+  beginRedirect: async (giftId: string): Promise<ApiResponse<{ redirectUrl: string }>> => {
+    const res = await api.post('/api/gifts/begin-redirect', { giftId });
+    return res.data;
+  },
+  verifyRedirect: async (giftId: string): Promise<ApiResponse<ChargeGiftResponse>> => {
+    const res = await api.post('/api/gifts/verify-redirect', { giftId });
+    return res.data;
+  },
   getByCode: async (code: string): Promise<ApiResponse<GiftInfo>> => {
     const res = await api.get(`/api/gifts/${code}`);
     return res.data;

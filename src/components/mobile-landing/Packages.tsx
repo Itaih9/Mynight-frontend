@@ -4,9 +4,16 @@ import { ROUTES } from '@/config/routes';
 import { packagesApi } from '@/services/api';
 
 interface PackagesProps {
-  highlightedPackageIndex: number | null;
-  animatingPackageIndex: number | null;
-  isHoverDisabled: boolean;
+  highlightedPackageIndex?: number | null;
+  animatingPackageIndex?: number | null;
+  isHoverDisabled?: boolean;
+  /**
+   * When provided, choosing a package calls this (with the stable package key
+   * 'starter'|'smart'|'unlimited' + price) instead of navigating — used to reuse
+   * this exact layout as the gift-flow package selector. The key (not the
+   * display title) is passed so the caller can map to the canonical package name.
+   */
+  onChoosePackage?: (key: string, price: number) => void;
 }
 
 // Inline fractal-noise texture reused across the stone / gold surfaces.
@@ -95,7 +102,7 @@ const CheckMark: React.FC<{ circle: string; stroke: string; strokeWidth?: number
   </svg>
 );
 
-export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, animatingPackageIndex, isHoverDisabled }) => {
+export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, animatingPackageIndex, isHoverDisabled, onChoosePackage }) => {
   const navigate = useNavigate();
   const [selected, setSelected] = useState<string>('unlimited');
   const [infoOpenKey, setInfoOpenKey] = useState<string | null>(null);
@@ -226,8 +233,12 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
       // package proceeds. Perfect Night is selected by default, so it needs only
       // a single tap to continue.
       onCta: () => {
-        if (isSelected) navigate(`${ROUTES.START}?package=${p.name}&price=${p.price}`);
-        else setSelected(p.key);
+        if (isSelected) {
+          if (onChoosePackage) onChoosePackage(p.key, p.price);
+          else navigate(`${ROUTES.START}?package=${p.name}&price=${p.price}`);
+        } else {
+          setSelected(p.key);
+        }
       },
     };
   });
