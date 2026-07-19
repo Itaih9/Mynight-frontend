@@ -1180,6 +1180,7 @@ const LightboxModal = ({
   onFaceClick,
   canFavorite = false,
   onShowPhotographer,
+  photographerName,
 }: {
   item: MediaItem | null;
   favorites: Set<string>;
@@ -1201,6 +1202,7 @@ const LightboxModal = ({
   onFaceClick: (face: FaceEntry) => void;
   /** Present only when this is a pro photo and the event has a photographer. */
   onShowPhotographer?: () => void;
+  photographerName?: string;
 }) => {
   const swipeHandlers = useSwipeNavigation(onNavigate);
   return (
@@ -1304,16 +1306,22 @@ const LightboxModal = ({
               (the desktop face circles live on the right, mobile faces bottom-left). */}
           <div className="flex flex-col items-start pointer-events-auto order-first md:order-last">
             <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-sm border border-gray-100 text-right">
-              <p className="font-bold text-sm text-black">{item.uploaderName}</p>
               {onShowPhotographer ? (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onShowPhotographer(); }}
-                  className="text-xs font-semibold text-gold-primary hover:text-gold-secondary underline underline-offset-2"
-                >
-                  לפרטים
-                </button>
+                <>
+                  <p className="text-[10px] text-gray-400 leading-tight">צלם</p>
+                  <p className="font-bold text-sm text-black leading-tight">{photographerName}</p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onShowPhotographer(); }}
+                    className="text-xs font-semibold text-gold-primary hover:text-gold-secondary underline underline-offset-2"
+                  >
+                    לפרטים
+                  </button>
+                </>
               ) : (
-                <p className="text-xs text-gray-500">{formatItemTime(item)}</p>
+                <>
+                  <p className="font-bold text-sm text-black">{item.uploaderName}</p>
+                  <p className="text-xs text-gray-500">{formatItemTime(item)}</p>
+                </>
               )}
             </div>
           </div>
@@ -3020,6 +3028,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
         onShowPhotographer={
           hasPhotographer && isProItem(selectedMedia) ? () => setShowPhotographer(true) : undefined
         }
+        photographerName={photographer.name || `@${photographer.instagram}`}
       />
 
       {showPhotographer && hasPhotographer && (
