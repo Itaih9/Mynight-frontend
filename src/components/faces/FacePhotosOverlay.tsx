@@ -386,6 +386,16 @@ export const FacePhotosOverlay = ({
                 onFaceClick={(f) => openPerson(f, selected)}
               />
             )}
+
+            {hasPhotographer && (
+              <div className="absolute bottom-6 right-6 z-20 pointer-events-auto">
+                <button onClick={(e) => { e.stopPropagation(); setShowPhotog(true); }} className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-sm border border-gray-100 text-right block">
+                  <span className="block text-[10px] text-gray-400 leading-none">צלם</span>
+                  <span className="block font-bold text-sm text-black leading-tight">{photographer!.name || `@${photographer!.instagram}`}</span>
+                  <span className="block text-xs font-semibold text-gold-primary underline underline-offset-2 leading-none -mt-0.5">לפרטים</span>
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

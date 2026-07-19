@@ -1308,11 +1308,11 @@ const LightboxModal = ({
             <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-2xl shadow-sm border border-gray-100 text-right">
               {onShowPhotographer ? (
                 <>
-                  <p className="text-[10px] text-gray-400 leading-tight">צלם</p>
+                  <p className="text-[10px] text-gray-400 leading-none">צלם</p>
                   <p className="font-bold text-sm text-black leading-tight">{photographerName}</p>
                   <button
                     onClick={(e) => { e.stopPropagation(); onShowPhotographer(); }}
-                    className="text-xs font-semibold text-gold-primary hover:text-gold-secondary underline underline-offset-2"
+                    className="block text-xs font-semibold text-gold-primary hover:text-gold-secondary underline underline-offset-2 leading-none -mt-0.5"
                   >
                     לפרטים
                   </button>
