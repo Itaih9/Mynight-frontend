@@ -2,6 +2,7 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   START: '/start',
+  DISPOSABLE_CAMERA: '/camera/:code',
   GIFT: '/gift',
   GIFT_CALLBACK: '/gift-callback',
   GIFT_CLAIM: '/gift/:code',

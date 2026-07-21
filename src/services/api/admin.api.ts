@@ -77,6 +77,8 @@ export interface AdminEvent {
   packageName?: string;
   photographerName?: string;
   photographerInstagram?: string;
+  disposableEnabled?: boolean;
+  disposableShotLimit?: number;
   photoCount: number;
   userId: {
     _id: string;
@@ -474,6 +476,17 @@ export const adminApi = {
   ): Promise<{ photographerName?: string; photographerInstagram?: string }> => {
     const response = await adminAxios.patch<ApiResponse<{ photographerName?: string; photographerInstagram?: string }>>(
       `/api/admin/events/${eventId}/photographer`,
+      data
+    );
+    return response.data.data!;
+  },
+
+  updateEventDisposable: async (
+    eventId: string,
+    data: { enabled?: boolean; shotLimit?: number }
+  ): Promise<{ disposableEnabled?: boolean; disposableShotLimit?: number }> => {
+    const response = await adminAxios.patch<ApiResponse<{ disposableEnabled?: boolean; disposableShotLimit?: number }>>(
+      `/api/admin/events/${eventId}/disposable`,
       data
     );
     return response.data.data!;
