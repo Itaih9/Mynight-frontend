@@ -1908,6 +1908,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
               displayUrl: photo.displayUrl,
               poster: photo.posterUrl,
               category: photo.category ?? null,
+              aiCategories: photo.aiCategories ?? [],
               indexedFaces: photo.indexedFaces,
               uploaderName:
                 photo.uploaderName || (photo.uploadedBy === 'guest' ? 'אורח' : 'צלם האירוע'),
@@ -2090,7 +2091,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
         if (filterType !== 'all' && item.type !== filterType) return false;
         if (filterSource !== 'all' && item.source !== filterSource) return false;
-        if (selectedCategory && item.category !== selectedCategory) return false;
+        if (selectedCategory && item.category !== selectedCategory && !(item.aiCategories?.includes(selectedCategory))) return false;
         if (showFavoritesOnly && !favorites.has(item.id)) return false;
         if (q !== '' && !(item.uploaderName?.toLowerCase().includes(q) ?? false)) return false;
 
@@ -2152,6 +2153,8 @@ const Gallery: React.FC<GalleryPageProps> = ({
       if (item.source === 'pro' && !effectiveShareSettings.pro) continue;
       if (item.source === 'guest' && !effectiveShareSettings.guests) continue;
       if (item.category) seen.add(item.category);
+      // AI wedding categories share the same filter — only shown when photos match.
+      for (const c of item.aiCategories ?? []) seen.add(c);
     }
     return Array.from(seen).sort((a, b) => a.localeCompare(b, 'he'));
   }, [isShowcase, allStoryItems, mediaItems, deletedIds, effectiveShareSettings]);

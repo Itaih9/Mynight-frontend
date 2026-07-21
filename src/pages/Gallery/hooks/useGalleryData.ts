@@ -64,6 +64,7 @@ export const useGalleryData = (eventId?: string, preloadedEvent?: Event | null, 
         displayUrl: photo.displayUrl,
         poster: photo.posterUrl,
         category: photo.category ?? null,
+        aiCategories: photo.aiCategories ?? [],
         indexedFaces: photo.indexedFaces,
         uploaderName:
           photo.uploaderName || (photo.uploadedBy === 'guest' ? 'אורח' : 'צלם האירוע'),

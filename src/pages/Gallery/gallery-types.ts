@@ -11,6 +11,8 @@ export interface MediaItem {
   /** Moment/subfolder this photo was uploaded under (e.g. "huppah"); null when
    *  uncategorized. Used by the gallery category filter. */
   category?: string | null;
+  /** AI-detected wedding categories (dance, kids…); shown in the same filter. */
+  aiCategories?: string[];
   /** Faces detected in this photo (from stored Rekognition data). boundingBox
    *  coords are 0–1 fractions of the image, used to crop face circles in the
    *  lightbox. */
