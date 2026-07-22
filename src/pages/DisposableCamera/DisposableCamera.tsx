@@ -38,7 +38,8 @@ export const DisposableCamera = () => {
   const [flash, setFlash] = useState(false);
   const [mode, setMode] = useState<Mode>('photo');
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
-  const [torchOn, setTorchOn] = useState(false);
+  // Flash fires only during a photo (like a real camera), not a constant torch.
+  const [flashMode, setFlashMode] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recPct, setRecPct] = useState(0);
   const [toast, setToast] = useState('');
@@ -73,7 +74,6 @@ export const DisposableCamera = () => {
   // (Re)start the camera stream for the current facing.
   const startStream = useCallback(async (which: 'environment' | 'user') => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
-    setTorchOn(false);
     const constraints: MediaStreamConstraints = {
       video: { facingMode: { ideal: which }, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: true,
@@ -123,15 +123,23 @@ export const DisposableCamera = () => {
     if (!video || remainingRef.current <= 0) return;
     flashOnce();
     setRemaining((r) => Math.max(0, r - 1)); // instant counter — capture never waits on network
+    const track = streamRef.current?.getVideoTracks()[0];
     try {
+      // Real flash: pulse the torch on just for the exposure, then off.
+      if (flashMode && track) {
+        try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
+      }
       const blob = await renderFilmFrame(video, { maxWidth: 1280 });
+      if (flashMode && track) {
+        try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
+      }
       void uploadShot(blob, 'jpg', 'image/jpeg');
       if (remainingRef.current - 1 <= 0) setTimeout(() => remainingRef.current <= 0 && setPhase('empty'), 400);
     } catch {
       setRemaining((r) => r + 1);
       showToast('צילום נכשל, נסו שוב');
     }
-  }, [uploadShot]);
+  }, [uploadShot, flashMode]);
 
   const startVideo = useCallback(() => {
     const stream = streamRef.current;
@@ -172,17 +180,6 @@ export const DisposableCamera = () => {
 
   const flip = () => setFacing((f) => (f === 'environment' ? 'user' : 'environment'));
 
-  const toggleTorch = async () => {
-    const track = streamRef.current?.getVideoTracks()[0];
-    if (!track) return;
-    try {
-      await track.applyConstraints({ advanced: [{ torch: !torchOn } as any] });
-      setTorchOn((v) => !v);
-    } catch {
-      showToast('אין פלאש במצלמה הזו');
-    }
-  };
-
   // ---- Non-camera screens ----
   if (phase === 'loading') return <Screen><p className="text-white/70">רק רגע…</p></Screen>;
   if (phase === 'disabled') return <Screen><h1 className="text-2xl font-bold mb-2">המצלמה סגורה</h1><p className="text-white/60">האירוע הזה לא הפעיל את המצלמה החד-פעמית.</p></Screen>;
@@ -212,8 +209,10 @@ export const DisposableCamera = () => {
     );
   }
 
-  const now = new Date();
-  const dateLabel = `${String(now.getDate()).padStart(2, '0')}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getFullYear()).slice(2)}`;
+  const weddingDate = status?.weddingDate ? new Date(status.weddingDate) : null;
+  const dateLabel = weddingDate
+    ? `${String(weddingDate.getDate()).padStart(2, '0')}.${String(weddingDate.getMonth() + 1).padStart(2, '0')}.${String(weddingDate.getFullYear()).slice(2)}`
+    : '';
 
   // ---- Viewfinder ----
   return (
@@ -222,14 +221,18 @@ export const DisposableCamera = () => {
       <div className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-200 ${flash ? 'opacity-90' : 'opacity-0'}`} />
       <div className="absolute inset-5 border border-white/25 rounded-sm pointer-events-none" />
 
-      {/* Top: couple names + date */}
-      <div className="absolute top-5 left-5 right-5 flex items-start justify-between pointer-events-none">
-        <span className="text-red-500 text-xs mt-1 animate-pulse" dir="ltr">{recording ? '● REC' : '●'}</span>
-        <div className="text-center flex-1">
-          <div className="text-white font-bold text-lg leading-tight drop-shadow">{status?.coupleName}</div>
-          <div className="text-white/60 text-xs" dir="ltr">{dateLabel}</div>
+      {/* REC — top-left */}
+      {recording && (
+        <div className="absolute top-5 left-5 flex items-center gap-1.5 pointer-events-none" dir="ltr">
+          <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+          <span className="text-red-500 text-xs font-bold tracking-wider">REC</span>
         </div>
-        <div className="w-10" />
+      )}
+
+      {/* Couple names + wedding date — top center */}
+      <div className="absolute top-5 left-0 right-0 text-center pointer-events-none px-16">
+        <div className="text-white font-bold text-lg leading-tight drop-shadow">{status?.coupleName}</div>
+        {dateLabel && <div className="text-white/60 text-xs mt-0.5" dir="ltr">{dateLabel}</div>}
       </div>
 
       {/* Remaining counter */}
@@ -248,7 +251,7 @@ export const DisposableCamera = () => {
 
       {/* Bottom controls: flash · shutter · flip */}
       <div className="absolute bottom-10 left-0 right-0 flex items-center justify-around px-10">
-        <button onClick={toggleTorch} aria-label="פלאש" className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${torchOn ? 'bg-yellow-400 text-black' : 'bg-white/15 text-white'}`}>⚡</button>
+        <button onClick={() => setFlashMode((v) => !v)} aria-label="פלאש" className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${flashMode ? 'bg-yellow-400 text-black' : 'bg-white/15 text-white'}`}>⚡</button>
 
         <button
           onClick={() => (mode === 'photo' ? takePhoto() : recording ? stopVideo() : startVideo())}

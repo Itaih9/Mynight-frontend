@@ -818,6 +818,8 @@ export const AdminEvents = () => {
                   { label: 'Gallery', url: `${base}/gallery/${id}` },
                   { label: 'Guest Upload', url: `${base}/guest/${id}/upload` },
                   { label: 'Guest Selfie', url: `${base}/guest/${id}/selfie` },
+                  // Disposable camera uses the event code (not the slug).
+                  { label: 'Disposable Camera', url: `${base}/camera/${slugModalEvent.eventCode}` },
                   // Couple login screen: the couple enters their phone or email
                   // and drops into their gallery (gallery-only owner view).
                   { label: 'Couple Link', url: `${base}/gallery-login` },

@@ -5,6 +5,7 @@ import type { ApiResponse } from '@/types/api.types';
 export interface DisposableStatus {
   enabled: boolean;
   coupleName: string;
+  weddingDate: string | null;
   shotLimit: number;
   taken: number;
   remaining: number;
