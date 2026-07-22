@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Zap, ZapOff, SwitchCamera } from 'lucide-react';
 import { disposableApi, type DisposableStatus } from '@/services/api/disposable.api';
 import { renderFilmFrame } from './filmFilter';
 
@@ -47,7 +48,6 @@ export const DisposableCamera = () => {
   const [toast, setToast] = useState('');
 
   const secondsLeft = Math.max(0, Math.ceil((MAX_VIDEO_MS / 1000) * (1 - recPct / 100)));
-  const taken = (status?.shotLimit ?? 16) - remaining;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -76,24 +76,25 @@ export const DisposableCamera = () => {
     return () => { cancelled = true; };
   }, [code, deviceId]);
 
-  // (Re)start the camera stream for the current facing.
+  // (Re)start the camera stream for the current facing. VIDEO ONLY — requesting
+  // the mic up front makes getUserMedia fail whenever the mic is busy/partial,
+  // which is why the camera "often didn't start". Audio is grabbed on-demand
+  // only when recording a video (below).
   const startStream = useCallback(async (which: 'environment' | 'user') => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
-    const constraints: MediaStreamConstraints = {
-      video: { facingMode: { ideal: which }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-      audio: true,
-    };
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: which } });
     } catch {
-      // Mic denied or unavailable — fall back to video only (photos still work).
-      stream = await navigator.mediaDevices.getUserMedia({ video: constraints.video, audio: false });
+      // Some devices reject an unmet facingMode — retry with any camera.
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
     }
     streamRef.current = stream;
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play().catch(() => {});
+    const v = videoRef.current;
+    if (v) {
+      v.srcObject = stream;
+      // autoPlay handles most cases; retry play() for the rest.
+      v.play().catch(() => setTimeout(() => v.play().catch(() => {}), 150));
     }
   }, []);
 
@@ -171,15 +172,26 @@ export const DisposableCamera = () => {
     }
   }, [uploadShot, flashMode, zoom, nativeZoom]);
 
-  const startVideo = useCallback(() => {
+  const startVideo = useCallback(async () => {
     const stream = streamRef.current;
     if (!stream || remainingRef.current <= 0 || recording) return;
     const mime = pickVideoMime();
     const chunks: BlobPart[] = [];
+
+    // The viewfinder is video-only for reliable startup; grab the mic just for
+    // the clip so videos still have sound, then combine the tracks.
+    let micTrack: MediaStreamTrack | undefined;
+    try {
+      const a = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micTrack = a.getAudioTracks()[0];
+    } catch { /* record silent if mic denied */ }
+    const recStream = new MediaStream([...stream.getVideoTracks(), ...(micTrack ? [micTrack] : [])]);
+
     let rec: MediaRecorder;
     try {
-      rec = new MediaRecorder(stream, { mimeType: mime });
+      rec = new MediaRecorder(recStream, { mimeType: mime });
     } catch {
+      micTrack?.stop();
       showToast('הקלטת וידאו לא נתמכת במכשיר');
       return;
     }
@@ -190,6 +202,7 @@ export const DisposableCamera = () => {
     rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     rec.onstop = () => {
       window.clearInterval(recTimerRef.current);
+      micTrack?.stop();
       if (flashMode && track) { track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {}); }
       setRecording(false);
       setRecPct(0);
@@ -255,6 +268,8 @@ export const DisposableCamera = () => {
         ref={videoRef}
         playsInline
         muted
+        autoPlay
+        onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-200"
         style={{ transform: `${facing === 'user' ? 'scaleX(-1) ' : ''}scale(${nativeZoom ? 1 : zoom})` }}
       />
@@ -305,11 +320,14 @@ export const DisposableCamera = () => {
         <div className="flex items-center justify-between px-8">
           {/* left: flash + film shot-counter */}
           <div className="flex flex-col items-center gap-3 w-16">
-            <button onClick={() => setFlashMode((v) => !v)} aria-label="פלאש" className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${flashMode ? 'bg-yellow-400 text-black' : 'bg-white/15 text-white'}`}>⚡</button>
+            <button onClick={() => setFlashMode((v) => !v)} aria-label="פלאש" className={`w-11 h-11 rounded-full flex items-center justify-center ${flashMode ? 'bg-yellow-400 text-black' : 'bg-white/10 text-white'}`}>
+              {flashMode ? <Zap size={20} className="fill-current" /> : <ZapOff size={20} />}
+            </button>
+            {/* Film counter — counts down the shots left, center bold */}
             <div className="bg-black/55 rounded-lg px-2 py-1 flex items-baseline justify-center" dir="ltr">
-              <span className="text-white/35 text-xs w-5 text-center tabular-nums">{taken > 0 ? taken - 1 : ''}</span>
-              <span className="text-white text-lg font-bold w-7 text-center tabular-nums">{taken}</span>
-              <span className="text-white/35 text-xs w-5 text-center tabular-nums">{taken < (status?.shotLimit ?? 16) ? taken + 1 : ''}</span>
+              <span className="text-white/35 text-xs w-5 text-center tabular-nums">{remaining + 1 <= (status?.shotLimit ?? 16) ? remaining + 1 : ''}</span>
+              <span className="text-white text-lg font-bold w-7 text-center tabular-nums">{remaining}</span>
+              <span className="text-white/35 text-xs w-5 text-center tabular-nums">{remaining - 1 >= 0 ? remaining - 1 : ''}</span>
             </div>
           </div>
 
@@ -341,7 +359,9 @@ export const DisposableCamera = () => {
 
           {/* right: flip */}
           <div className="w-16 flex justify-center">
-            <button onClick={flip} aria-label="החלפת מצלמה" className="w-12 h-12 rounded-full bg-white/15 text-white flex items-center justify-center text-xl">🔄</button>
+            <button onClick={flip} aria-label="החלפת מצלמה" className="w-11 h-11 rounded-full bg-white/10 text-white flex items-center justify-center">
+              <SwitchCamera size={20} />
+            </button>
           </div>
         </div>
       </div>
