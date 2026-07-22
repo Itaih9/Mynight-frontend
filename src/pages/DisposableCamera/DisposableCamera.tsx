@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Zap, ZapOff, SwitchCamera, Trash2, Play, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Zap, ZapOff, SwitchCamera, Trash2, Play, ArrowLeft } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { disposableApi, type DisposableStatus, type DisposableShot } from '@/services/api/disposable.api';
@@ -121,20 +121,26 @@ export const DisposableCamera = () => {
   const startStream = useCallback(async (which: 'environment' | 'user') => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     let stream: MediaStream;
+    // Ask for a high-resolution stream — without this the browser hands back a
+    // low default (often 640×480), which is why captured shots were tiny (~60KB)
+    // and looked soft. `ideal` lets the device fall back if it can't hit it.
+    const hi = { width: { ideal: 2560 }, height: { ideal: 1440 } };
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: which } });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: which, ...hi } });
     } catch {
       // Some devices reject an unmet facingMode — retry with any camera.
-      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: hi });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
     }
     streamRef.current = stream;
-    // Continuous autofocus where the device exposes it, so the scene stays sharp.
+    // Continuous autofocus — best effort. Some devices don't report focusMode in
+    // getCapabilities yet still honour the constraint, so just try and ignore.
     try {
       const track = stream.getVideoTracks()[0] as any;
-      const caps = track?.getCapabilities?.();
-      if (caps?.focusMode?.includes?.('continuous')) {
-        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-      }
+      await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
     } catch { /* focus not controllable — ignore */ }
     const v = videoRef.current;
     if (v) {
@@ -198,7 +204,7 @@ export const DisposableCamera = () => {
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
       }
-      const blob = await renderFilmFrame(video, { maxWidth: 1280, dateStamp: false, zoom });
+      const blob = await renderFilmFrame(video, { maxWidth: 1920, dateStamp: false, zoom });
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
@@ -287,13 +293,7 @@ export const DisposableCamera = () => {
 
   const fireConfetti = () => {
     const colors = ['#f5c518', '#ffffff', '#ffb454', '#ffd700'];
-    confetti({ particleCount: 130, spread: 90, startVelocity: 42, origin: { y: 0.62 }, colors });
-    const end = Date.now() + 900;
-    (function frame() {
-      confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors });
-      confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    })();
+    confetti({ particleCount: 50, spread: 70, startVelocity: 38, origin: { y: 0.65 }, colors });
   };
 
   const finishRoll = () => {
@@ -310,10 +310,6 @@ export const DisposableCamera = () => {
   // Enlarged shot with a (non-refunding) delete — shared by the strip and review.
   const previewOverlay = preview && (
     <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" dir="rtl">
-      {/* Back — returns to the screen you came from (camera or review) */}
-      <button onClick={() => setPreview(null)} aria-label="חזרה" className="absolute top-5 right-5 z-10 w-11 h-11 rounded-full bg-white/12 text-white flex items-center justify-center active:scale-90 transition-transform">
-        <ArrowRight size={22} />
-      </button>
       <div className="flex-1 flex items-center justify-center p-4 min-h-0">
         {preview.type === 'video' ? (
           <video src={preview.url} controls autoPlay playsInline className="max-w-full max-h-full rounded-2xl" />
@@ -323,9 +319,12 @@ export const DisposableCamera = () => {
       </div>
       <div className="px-6 pb-8 pt-2">
         <p className="text-center text-white/40 text-xs mb-3">מחיקה מסירה את הצילום — אבל לא מחזירה לך צילום</p>
-        <button onClick={() => deleteShot(preview)} disabled={deleting} className="w-full py-3.5 rounded-2xl bg-red-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50">
-          <Trash2 size={18} /> {deleting ? 'מוחק…' : 'מחיקה'}
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => setPreview(null)} className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-bold">חזרה</button>
+          <button onClick={() => deleteShot(preview)} disabled={deleting} className="flex-1 py-3.5 rounded-2xl bg-red-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+            <Trash2 size={18} /> {deleting ? 'מוחק…' : 'מחיקה'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -361,7 +360,7 @@ export const DisposableCamera = () => {
             <ArrowLeft size={20} />
           </a>
         </div>
-        <div className="pb-10 font-cursive text-gold-primary text-5xl" dir="ltr">mynight.co.il</div>
+        <div className="pb-10 font-rouge text-white text-6xl" dir="ltr">mynight.co.il</div>
       </div>
     );
   }
@@ -455,7 +454,7 @@ export const DisposableCamera = () => {
           {finishing && (
             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
               <div className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              <p className="text-white/80 text-sm">מפתחים את הצילומים…</p>
+              <p className="text-white/80 text-sm">מפתח את הצילומים</p>
             </div>
           )}
 
