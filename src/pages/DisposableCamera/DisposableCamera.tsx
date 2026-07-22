@@ -42,7 +42,10 @@ export const DisposableCamera = () => {
   const [flashMode, setFlashMode] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recPct, setRecPct] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const [toast, setToast] = useState('');
+
+  const secondsLeft = Math.max(0, Math.ceil((MAX_VIDEO_MS / 1000) * (1 - recPct / 100)));
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -129,7 +132,7 @@ export const DisposableCamera = () => {
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
       }
-      const blob = await renderFilmFrame(video, { maxWidth: 1280 });
+      const blob = await renderFilmFrame(video, { maxWidth: 1280, zoom });
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
@@ -139,7 +142,7 @@ export const DisposableCamera = () => {
       setRemaining((r) => r + 1);
       showToast('צילום נכשל, נסו שוב');
     }
-  }, [uploadShot, flashMode]);
+  }, [uploadShot, flashMode, zoom]);
 
   const startVideo = useCallback(() => {
     const stream = streamRef.current;
@@ -217,9 +220,14 @@ export const DisposableCamera = () => {
   // ---- Viewfinder ----
   return (
     <div className="fixed inset-0 bg-black overflow-hidden select-none" dir="rtl">
-      <video ref={videoRef} playsInline muted className={`absolute inset-0 w-full h-full object-cover ${facing === 'user' ? 'scale-x-[-1]' : ''}`} />
+      <video
+        ref={videoRef}
+        playsInline
+        muted
+        className={`absolute inset-0 w-full h-full object-cover transition-transform duration-200 ${facing === 'user' ? 'scale-x-[-1]' : ''}`}
+        style={{ transform: `${facing === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})` }}
+      />
       <div className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-200 ${flash ? 'opacity-90' : 'opacity-0'}`} />
-      <div className="absolute inset-5 border border-white/25 rounded-sm pointer-events-none" />
 
       {/* REC — top-left */}
       {recording && (
@@ -235,45 +243,69 @@ export const DisposableCamera = () => {
         {dateLabel && <div className="text-white/60 text-xs mt-0.5" dir="ltr">{dateLabel}</div>}
       </div>
 
-      {/* Remaining counter */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-black/45 backdrop-blur-sm rounded-full px-5 py-1.5 flex items-center gap-2 pointer-events-none">
-        <span className="text-white/50 text-xs">נותרו</span>
-        <span className="text-2xl font-black text-white leading-none tabular-nums" dir="ltr">{remaining}</span>
-      </div>
+      {/* Video countdown — large, center */}
+      {mode === 'video' && recording && (
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 text-white text-6xl font-black tabular-nums drop-shadow-lg pointer-events-none" dir="ltr">
+          0:{String(secondsLeft).padStart(2, '0')}
+        </div>
+      )}
 
-      {toast && <div className="absolute top-32 left-1/2 -translate-x-1/2 bg-black/70 text-white text-sm px-4 py-2 rounded-full">{toast}</div>}
+      {toast && <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-black/70 text-white text-sm px-4 py-2 rounded-full">{toast}</div>}
 
-      {/* Photo / video mode toggle */}
-      <div className="absolute bottom-36 left-1/2 -translate-x-1/2 flex bg-black/40 rounded-full p-1 text-sm">
-        <button onClick={() => !recording && setMode('photo')} className={`px-5 py-1.5 rounded-full font-bold transition-colors ${mode === 'photo' ? 'bg-white text-black' : 'text-white/70'}`}>תמונה</button>
-        <button onClick={() => !recording && setMode('video')} className={`px-5 py-1.5 rounded-full font-bold transition-colors ${mode === 'video' ? 'bg-white text-black' : 'text-white/70'}`}>וידאו</button>
-      </div>
+      {/* Bottom control area on a dark gradient */}
+      <div className="absolute bottom-0 left-0 right-0 pb-9 pt-16 bg-gradient-to-t from-black/85 to-transparent">
+        {/* zoom pills */}
+        <div className="flex justify-center gap-2 mb-4">
+          {[1, 2].map((z) => (
+            <button
+              key={z}
+              onClick={() => setZoom(z)}
+              className={`w-10 h-10 rounded-full text-sm font-bold transition-all ${zoom === z ? 'bg-white/90 text-black scale-105' : 'bg-black/40 text-white/80'}`}
+            >
+              {z}×
+            </button>
+          ))}
+        </div>
 
-      {/* Bottom controls: flash · shutter · flip */}
-      <div className="absolute bottom-10 left-0 right-0 flex items-center justify-around px-10">
-        <button onClick={() => setFlashMode((v) => !v)} aria-label="פלאש" className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${flashMode ? 'bg-yellow-400 text-black' : 'bg-white/15 text-white'}`}>⚡</button>
+        {/* mode toggle */}
+        <div className="flex justify-center mb-5">
+          <div className="flex bg-black/40 rounded-full p-1 text-sm">
+            <button onClick={() => !recording && setMode('photo')} className={`px-6 py-1.5 rounded-full font-bold transition-colors ${mode === 'photo' ? 'bg-white text-black' : 'text-white/70'}`}>תמונה</button>
+            <button onClick={() => !recording && setMode('video')} className={`px-6 py-1.5 rounded-full font-bold transition-colors ${mode === 'video' ? 'bg-white text-black' : 'text-white/70'}`}>וידאו</button>
+          </div>
+        </div>
 
-        <button
-          onClick={() => (mode === 'photo' ? takePhoto() : recording ? stopVideo() : startVideo())}
-          aria-label="צילום"
-          className="relative w-20 h-20 rounded-full active:scale-90 transition-transform"
-        >
-          {/* progress ring while recording */}
-          {mode === 'video' && recording && (
-            <svg className="absolute inset-0 w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="37" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="4" />
-              <circle cx="40" cy="40" r="37" fill="none" stroke="#ef4444" strokeWidth="4" strokeDasharray={2 * Math.PI * 37} strokeDashoffset={2 * Math.PI * 37 * (1 - recPct / 100)} strokeLinecap="round" />
-            </svg>
-          )}
-          <span className="absolute inset-0 rounded-full bg-white/30" />
-          {mode === 'video' && recording ? (
-            <span className="absolute inset-[26px] rounded-md bg-red-500" />
-          ) : (
-            <span className={`absolute inset-2 rounded-full ${mode === 'video' ? 'bg-red-500' : 'bg-white'} shadow-[0_0_20px_rgba(255,255,255,0.5)]`} />
-          )}
-        </button>
+        {/* flash · shutter+counter · flip */}
+        <div className="flex items-center justify-around px-10">
+          <button onClick={() => setFlashMode((v) => !v)} aria-label="פלאש" className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl ${flashMode ? 'bg-yellow-400 text-black' : 'bg-white/15 text-white'}`}>⚡</button>
 
-        <button onClick={flip} aria-label="החלפת מצלמה" className="w-12 h-12 rounded-full bg-white/15 text-white flex items-center justify-center text-xl">🔄</button>
+          <div className="relative flex flex-col items-center">
+            <button
+              onClick={() => (mode === 'photo' ? takePhoto() : recording ? stopVideo() : startVideo())}
+              aria-label="צילום"
+              className="relative w-[76px] h-[76px] rounded-full active:scale-90 transition-transform"
+            >
+              {mode === 'video' && recording && (
+                <svg className="absolute inset-0 w-[76px] h-[76px] -rotate-90" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="37" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="4" />
+                  <circle cx="40" cy="40" r="37" fill="none" stroke="#ef4444" strokeWidth="4" strokeDasharray={2 * Math.PI * 37} strokeDashoffset={2 * Math.PI * 37 * (1 - recPct / 100)} strokeLinecap="round" />
+                </svg>
+              )}
+              <span className="absolute inset-0 rounded-full border-4 border-white/80" />
+              {mode === 'video' && recording ? (
+                <span className="absolute inset-[24px] rounded-md bg-red-500" />
+              ) : (
+                <span className={`absolute inset-1.5 rounded-full ${mode === 'video' ? 'bg-red-500' : 'bg-white'}`} />
+              )}
+            </button>
+            {/* frame counter, film-style, under the shutter */}
+            <div className="mt-1.5 text-white/90 text-[11px] font-mono tracking-tight tabular-nums" dir="ltr">
+              {remaining} / {status?.shotLimit}
+            </div>
+          </div>
+
+          <button onClick={flip} aria-label="החלפת מצלמה" className="w-12 h-12 rounded-full bg-white/15 text-white flex items-center justify-center text-xl">🔄</button>
+        </div>
       </div>
     </div>
   );

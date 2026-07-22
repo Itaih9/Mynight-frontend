@@ -5,20 +5,26 @@
  */
 export async function renderFilmFrame(
   video: HTMLVideoElement,
-  opts: { maxWidth?: number; dateStamp?: boolean } = {}
+  opts: { maxWidth?: number; dateStamp?: boolean; zoom?: number } = {}
 ): Promise<Blob> {
   const maxW = opts.maxWidth ?? 1280;
+  const zoom = Math.max(1, opts.zoom ?? 1);
   const vw = video.videoWidth || 1280;
   const vh = video.videoHeight || 960;
-  const scale = Math.min(1, maxW / vw);
-  const w = Math.round(vw * scale);
-  const h = Math.round(vh * scale);
+  // Digital zoom: draw a centered crop of the source, scaled to fill.
+  const sw = vw / zoom;
+  const sh = vh / zoom;
+  const sx = (vw - sw) / 2;
+  const sy = (vh - sh) / 2;
+  const scale = Math.min(1, maxW / sw);
+  const w = Math.round(sw * scale);
+  const h = Math.round(sh * scale);
 
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(video, 0, 0, w, h);
+  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
 
   // --- Tone curve: warm highlights, lifted-but-cooled shadows, more contrast ---
   const img = ctx.getImageData(0, 0, w, h);
