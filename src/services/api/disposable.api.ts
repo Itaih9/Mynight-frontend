@@ -11,6 +11,13 @@ export interface DisposableStatus {
   remaining: number;
 }
 
+export interface DisposableShot {
+  _id: string;
+  url: string;
+  thumbnailUrl: string;
+  type: 'photo' | 'video';
+}
+
 export const disposableApi = {
   status: async (code: string, deviceId: string): Promise<ApiResponse<DisposableStatus>> => {
     const res = await api.get('/api/photos/disposable/status', { params: { code, deviceId } });
@@ -37,8 +44,20 @@ export const disposableApi = {
     s3Key: string,
     guestName: string,
     metadata: { size: number; mimeType: string }
-  ): Promise<ApiResponse<{ remaining: number }>> => {
+  ): Promise<ApiResponse<{ remaining: number; photo: DisposableShot }>> => {
     const res = await api.post('/api/photos/disposable/complete', { eventCode, deviceId, s3Key, guestName, metadata });
+    return res.data;
+  },
+
+  // The guest's own shots — used for the review gallery when the roll runs out.
+  shots: async (code: string, deviceId: string): Promise<ApiResponse<DisposableShot[]>> => {
+    const res = await api.get('/api/photos/disposable/shots', { params: { code, deviceId } });
+    return res.data;
+  },
+
+  // Removes a shot (photo gone from the couple's gallery) — the shot stays spent.
+  remove: async (eventCode: string, deviceId: string, photoId: string): Promise<ApiResponse<{ deleted: boolean }>> => {
+    const res = await api.post('/api/photos/disposable/delete', { eventCode, deviceId, photoId });
     return res.data;
   },
 };
