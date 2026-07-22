@@ -195,7 +195,7 @@ export const DisposableCamera = () => {
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
       }
-      const blob = await renderFilmFrame(video, { maxWidth: 1280, zoom: nativeZoom ? 1 : zoom });
+      const blob = await renderFilmFrame(video, { maxWidth: 1280, dateStamp: false, zoom: nativeZoom ? 1 : zoom });
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
@@ -397,9 +397,12 @@ export const DisposableCamera = () => {
         {dateLabel && <div className="text-white/45 text-[11px] mt-0.5" dir="ltr">{dateLabel}</div>}
       </div>
 
-      {/* The viewfinder — a window inside the black body */}
-      <div className="flex-1 relative flex items-center justify-center px-3 min-h-0">
-        <div className="relative w-full max-w-md aspect-[3/4] rounded-[26px] overflow-hidden bg-neutral-900 ring-1 ring-white/15 shadow-[0_0_0_3px_rgba(0,0,0,0.6),0_20px_50px_rgba(0,0,0,0.6)]">
+      {/* The viewfinder — a window inside the black body. It FILLS the free space
+          (no fixed aspect) so the names on top and the controls below are never
+          pushed off-screen. transform-gpu forces the scaled (zoomed) video to clip
+          inside the rounded window; touch-none stops the browser page-zoom gesture. */}
+      <div className="flex-1 relative min-h-0">
+        <div className="absolute inset-x-3 top-1 bottom-1 rounded-[26px] overflow-hidden bg-neutral-900 ring-1 ring-white/15 shadow-[0_0_0_3px_rgba(0,0,0,0.6),0_20px_50px_rgba(0,0,0,0.6)] transform-gpu touch-none">
           <video
             ref={videoRef}
             playsInline
@@ -430,9 +433,9 @@ export const DisposableCamera = () => {
             <FilmCounter value={remaining} />
           </div>
 
-          {/* Video countdown — large, center */}
-          {mode === 'video' && recording && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white text-6xl font-black tabular-nums drop-shadow-lg pointer-events-none" dir="ltr">
+          {/* Video countdown — small, top center */}
+          {recording && (
+            <div className="absolute top-3.5 left-1/2 -translate-x-1/2 bg-black/55 text-white text-sm font-bold tabular-nums px-2.5 py-0.5 rounded-full pointer-events-none" dir="ltr">
               0:{String(secondsLeft).padStart(2, '0')}
             </div>
           )}
@@ -445,7 +448,23 @@ export const DisposableCamera = () => {
             </div>
           )}
 
-          {toast && <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/75 text-white text-sm px-4 py-2 rounded-full whitespace-nowrap">{toast}</div>}
+          {toast && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-black/75 text-white text-sm px-4 py-2 rounded-full whitespace-nowrap pointer-events-none">{toast}</div>}
+
+          {/* lens sizes — overlaid on the viewfinder, just above the shutter */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/35 rounded-full px-2 py-1.5 backdrop-blur-sm" dir="ltr">
+            {[1, 2].map((z) => {
+              const active = zoom === z;
+              return (
+                <button
+                  key={z}
+                  onClick={() => handleZoom(z)}
+                  className={`rounded-full font-bold transition-all flex items-center justify-center ${active ? 'bg-white/90 text-black w-9 h-9 text-[13px]' : 'bg-white/15 text-white/85 w-7 h-7 text-[11px]'}`}
+                >
+                  {z === 1 ? '1×' : `${z}×`}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -462,25 +481,8 @@ export const DisposableCamera = () => {
         </div>
       )}
 
-      {/* Control deck */}
+      {/* Control deck — flash | shutter (+mode) | flip */}
       <div className="shrink-0 pb-7 pt-3 px-6">
-        {/* zoom pills — 0.5 · 1 · 2 */}
-        <div className="flex justify-center items-center gap-2.5 mb-5" dir="ltr">
-          {[0.5, 1, 2].map((z) => {
-            const active = zoom === z;
-            return (
-              <button
-                key={z}
-                onClick={() => handleZoom(z)}
-                className={`rounded-full font-bold transition-all flex items-center justify-center ${active ? 'bg-white/90 text-black w-9 h-9 text-[13px]' : 'bg-white/15 text-white/80 w-7 h-7 text-[11px]'}`}
-              >
-                {z === 1 ? '1×' : z}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* main row: flash | shutter (+mode) | flip */}
         <div className="flex items-center justify-between">
           <button onClick={() => setFlashMode((v) => !v)} aria-label="פלאש" className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${flashMode ? 'bg-yellow-400 text-black' : 'bg-white/12 text-white'}`}>
             {flashMode ? <Zap size={22} className="fill-current" /> : <ZapOff size={22} />}
