@@ -62,7 +62,7 @@ export const AdminEvents = () => {
 
   const [dispModalEvent, setDispModalEvent] = useState<AdminEvent | null>(null);
   const [dispEnabled, setDispEnabled] = useState(false);
-  const [dispLimit, setDispLimit] = useState(15);
+  const [dispLimit, setDispLimit] = useState(16);
   const [dispSaving, setDispSaving] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
@@ -209,7 +209,7 @@ export const AdminEvents = () => {
   const openDispModal = (event: AdminEvent) => {
     setDispModalEvent(event);
     setDispEnabled(!!event.disposableEnabled);
-    setDispLimit(event.disposableShotLimit || 15);
+    setDispLimit(event.disposableShotLimit || 16);
   };
 
   const handleSaveDisposable = async () => {
@@ -747,7 +747,7 @@ export const AdminEvents = () => {
               min={1}
               max={200}
               value={dispLimit}
-              onChange={(e) => setDispLimit(parseInt(e.target.value) || 15)}
+              onChange={(e) => setDispLimit(parseInt(e.target.value) || 16)}
               className="w-full px-3 py-2 mb-3 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm"
             />
             <p className="text-xs text-slate-400 mb-4">Guests shoot at: <span className="font-mono">/camera/{dispModalEvent.eventCode}</span></p>
