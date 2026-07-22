@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Zap, ZapOff, SwitchCamera, Trash2, Play } from 'lucide-react';
+import { Zap, ZapOff, SwitchCamera, Trash2, Play, ArrowLeft, ArrowRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { disposableApi, type DisposableStatus, type DisposableShot } from '@/services/api/disposable.api';
@@ -50,7 +50,6 @@ export const DisposableCamera = () => {
   const [recording, setRecording] = useState(false);
   const [recPct, setRecPct] = useState(0);
   const [zoom, setZoom] = useState(1);
-  const [nativeZoom, setNativeZoom] = useState(false);
   const [toast, setToast] = useState('');
 
   const secondsLeft = Math.max(0, Math.ceil((MAX_VIDEO_MS / 1000) * (1 - recPct / 100)));
@@ -80,22 +79,22 @@ export const DisposableCamera = () => {
         setStatus(s);
         setRemaining(s.remaining);
         if (!s.enabled) setPhase('disabled');
-        else if (s.remaining <= 0) setPhase('review');
+        // Re-entry with no film left: straight to the thank-you — a returning guest
+        // must NOT see their old shots ("dont show recents"). The review gallery is
+        // only reached in-session, from the shots just taken.
+        else if (s.remaining <= 0) setPhase('done');
         else setPhase(localStorage.getItem('mynight_guest_name') ? 'ready' : 'name');
       })
       .catch(() => { if (!cancelled) setPhase('error'); });
     return () => { cancelled = true; };
   }, [code, deviceId]);
 
-  // Whenever we land in the review gallery, pull the authoritative shot list
-  // (covers a returning guest and reconciles any just-finished uploads).
+  // The review gallery shows only the shots taken THIS session (already in
+  // `shots`) so a returning guest never sees old recents. Just release the camera.
   useEffect(() => {
     if (phase !== 'review') return;
     stopStream();
-    disposableApi.shots(code, deviceId)
-      .then((r) => { if (r.data) setShots(r.data); })
-      .catch(() => {});
-  }, [phase, code, deviceId, stopStream]);
+  }, [phase, stopStream]);
 
   // (Re)start the camera stream for the current facing. VIDEO ONLY — requesting
   // the mic up front makes getUserMedia fail whenever the mic is busy/partial,
@@ -111,6 +110,14 @@ export const DisposableCamera = () => {
       stream = await navigator.mediaDevices.getUserMedia({ video: true });
     }
     streamRef.current = stream;
+    // Continuous autofocus where the device exposes it, so the scene stays sharp.
+    try {
+      const track = stream.getVideoTracks()[0] as any;
+      const caps = track?.getCapabilities?.();
+      if (caps?.focusMode?.includes?.('continuous')) {
+        await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+      }
+    } catch { /* focus not controllable — ignore */ }
     const v = videoRef.current;
     if (v) {
       v.srcObject = stream;
@@ -123,7 +130,6 @@ export const DisposableCamera = () => {
     if (phase !== 'ready') return;
     let cancelled = false;
     startStream(facing)
-      .then(() => { if (!cancelled) applyZoomToTrack(zoom); })
       .catch(() => { if (!cancelled) showToast('לא הצלחנו לפתוח את המצלמה'); });
     return () => {
       cancelled = true;
@@ -133,33 +139,12 @@ export const DisposableCamera = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, facing, startStream]);
 
-  // Zoom the real lens where the browser exposes it (getCapabilities().zoom);
-  // otherwise fall back to a digital crop applied at capture. On many Androids
-  // this drives the optical/native zoom; 0.5 works where the track reports a
-  // sub-1 min (ultra-wide).
-  const applyZoomToTrack = useCallback(async (value: number) => {
-    const track = streamRef.current?.getVideoTracks()[0] as any;
-    const caps = track?.getCapabilities?.();
-    if (track && caps?.zoom && typeof caps.zoom.min === 'number') {
-      const z = Math.min(caps.zoom.max, Math.max(caps.zoom.min, value));
-      try {
-        await track.applyConstraints({ advanced: [{ zoom: z }] });
-        // Only trust native zoom if the device actually applied it — many accept
-        // the constraint but don't move the lens. Verify via getSettings.
-        const s = track.getSettings?.();
-        if (s && typeof s.zoom === 'number' && Math.abs(s.zoom - z) < 0.2) {
-          setNativeZoom(true);
-          return;
-        }
-      } catch { /* fall through to digital */ }
-    }
-    // Digital crop: preview scales, and renderFilmFrame crops the actual frame.
-    setNativeZoom(false);
-  }, []);
-
+  // Digital zoom only. Native lens zoom (applyConstraints({zoom})) is exposed on
+  // some Androids but many accept the constraint without moving the lens — so it
+  // silently "does nothing". A center-crop is 100% reliable: the preview scales
+  // and renderFilmFrame crops the actual captured frame to match.
   const handleZoom = (value: number) => {
     setZoom(value);
-    applyZoomToTrack(value);
   };
 
   // Upload one captured shot in the background; refund the counter if it fails.
@@ -195,7 +180,7 @@ export const DisposableCamera = () => {
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
       }
-      const blob = await renderFilmFrame(video, { maxWidth: 1280, dateStamp: false, zoom: nativeZoom ? 1 : zoom });
+      const blob = await renderFilmFrame(video, { maxWidth: 1280, dateStamp: false, zoom });
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
@@ -206,7 +191,7 @@ export const DisposableCamera = () => {
       showToast('צילום נכשל, נסו שוב');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadShot, flashMode, zoom, nativeZoom]);
+  }, [uploadShot, flashMode, zoom]);
 
   const stopVideo = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
@@ -305,6 +290,10 @@ export const DisposableCamera = () => {
   // Enlarged shot with a (non-refunding) delete — shared by the strip and review.
   const previewOverlay = preview && (
     <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" dir="rtl">
+      {/* Back — returns to the screen you came from (camera or review) */}
+      <button onClick={() => setPreview(null)} aria-label="חזרה" className="absolute top-5 right-5 z-10 w-11 h-11 rounded-full bg-white/12 text-white flex items-center justify-center active:scale-90 transition-transform">
+        <ArrowRight size={22} />
+      </button>
       <div className="flex-1 flex items-center justify-center p-4 min-h-0">
         {preview.type === 'video' ? (
           <video src={preview.url} controls autoPlay playsInline className="max-w-full max-h-full rounded-2xl" />
@@ -314,12 +303,9 @@ export const DisposableCamera = () => {
       </div>
       <div className="px-6 pb-8 pt-2">
         <p className="text-center text-white/40 text-xs mb-3">מחיקה מסירה את הצילום — אבל לא מחזירה לך צילום</p>
-        <div className="flex gap-3">
-          <button onClick={() => setPreview(null)} className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-bold">חזרה</button>
-          <button onClick={() => deleteShot(preview)} disabled={deleting} className="flex-1 py-3.5 rounded-2xl bg-red-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50">
-            <Trash2 size={18} /> {deleting ? 'מוחק…' : 'מחיקה'}
-          </button>
-        </div>
+        <button onClick={() => deleteShot(preview)} disabled={deleting} className="w-full py-3.5 rounded-2xl bg-red-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+          <Trash2 size={18} /> {deleting ? 'מוחק…' : 'מחיקה'}
+        </button>
       </div>
     </div>
   );
@@ -345,13 +331,18 @@ export const DisposableCamera = () => {
 
   if (phase === 'done') {
     return (
-      <Screen>
-        <div className="text-center max-w-xs">
-          <div className="text-6xl mb-4">💛</div>
-          <h1 className="text-3xl font-black mb-3">תודה{name ? `, ${name}` : ''}!</h1>
-          <p className="text-white/60">הצילומים שלך נשלחו לפיתוח. תראו אותם באלבום של {status?.coupleName} — יום אחרי החתונה.</p>
+      <div className="fixed inset-0 bg-neutral-950 text-white flex flex-col items-center px-6" dir="rtl">
+        <div className="flex-1 flex flex-col items-center justify-center text-center max-w-xs">
+          <div className="text-6xl mb-5">💛</div>
+          <p className="text-white/85 text-lg leading-relaxed mb-8">תודה שצילמתם! 🎞️ כל רגע שתפסתם עכשיו שמור — חלק מהסיפור של הערב הזה.</p>
+          {/* CTA to the site — left-pointing arrow sits to the LEFT of the label */}
+          <a href="/" className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-white text-black font-bold text-lg active:scale-95 transition-transform">
+            <span>לאתר</span>
+            <ArrowLeft size={20} />
+          </a>
         </div>
-      </Screen>
+        <div className="pb-10 font-cursive text-gold-primary text-5xl" dir="ltr">mynight.co.il</div>
+      </div>
     );
   }
 
@@ -391,10 +382,10 @@ export const DisposableCamera = () => {
   // ---- Viewfinder ----
   return (
     <div className="fixed inset-0 bg-black overflow-hidden select-none flex flex-col" dir="rtl">
-      {/* Top bar: couple names + date (on the black frame) */}
+      {/* Top bar: date above the couple names (on the black frame) */}
       <div className="shrink-0 pt-3 pb-2 px-5 text-center">
+        {dateLabel && <div className="text-white/45 text-[11px] mb-0.5" dir="ltr">{dateLabel}</div>}
         <div className="text-white font-bold text-base leading-tight">{status?.coupleName}</div>
-        {dateLabel && <div className="text-white/45 text-[11px] mt-0.5" dir="ltr">{dateLabel}</div>}
       </div>
 
       {/* The viewfinder — a window inside the black body. It FILLS the free space
@@ -410,7 +401,7 @@ export const DisposableCamera = () => {
             autoPlay
             onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-200"
-            style={{ transform: `${facing === 'user' ? 'scaleX(-1) ' : ''}scale(${nativeZoom ? 1 : zoom})` }}
+            style={{ transform: `${facing === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})`, transformOrigin: 'center' }}
           />
           <div className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-200 ${flash ? 'opacity-90' : 'opacity-0'}`} />
 
@@ -428,8 +419,8 @@ export const DisposableCamera = () => {
             </div>
           )}
 
-          {/* Animated film counter — small mechanical window, top-right */}
-          <div className="absolute top-3.5 right-3.5">
+          {/* Animated film counter — bottom-left, just above & right of the corner mark */}
+          <div className="absolute bottom-8 left-8">
             <FilmCounter value={remaining} />
           </div>
 
