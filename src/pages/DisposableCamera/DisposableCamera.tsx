@@ -118,14 +118,20 @@ export const DisposableCamera = () => {
   const applyZoomToTrack = useCallback(async (value: number) => {
     const track = streamRef.current?.getVideoTracks()[0] as any;
     const caps = track?.getCapabilities?.();
-    if (caps?.zoom && typeof caps.zoom.min === 'number') {
+    if (track && caps?.zoom && typeof caps.zoom.min === 'number') {
       const z = Math.min(caps.zoom.max, Math.max(caps.zoom.min, value));
       try {
         await track.applyConstraints({ advanced: [{ zoom: z }] });
-        setNativeZoom(true);
-        return;
+        // Only trust native zoom if the device actually applied it — many accept
+        // the constraint but don't move the lens. Verify via getSettings.
+        const s = track.getSettings?.();
+        if (s && typeof s.zoom === 'number' && Math.abs(s.zoom - z) < 0.2) {
+          setNativeZoom(true);
+          return;
+        }
       } catch { /* fall through to digital */ }
     }
+    // Digital crop: preview scales, and renderFilmFrame crops the actual frame.
     setNativeZoom(false);
   }, []);
 
@@ -225,7 +231,10 @@ export const DisposableCamera = () => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
   }, []);
 
-  const flip = () => setFacing((f) => (f === 'environment' ? 'user' : 'environment'));
+  const flip = () => {
+    setZoom(1);
+    setFacing((f) => (f === 'environment' ? 'user' : 'environment'));
+  };
 
   // ---- Non-camera screens ----
   if (phase === 'loading') return <Screen><p className="text-white/70">רק רגע…</p></Screen>;
