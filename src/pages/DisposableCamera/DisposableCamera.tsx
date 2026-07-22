@@ -64,6 +64,24 @@ export const DisposableCamera = () => {
   const flashOnce = () => { setFlash(true); setTimeout(() => setFlash(false), 200); };
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2500); };
 
+  // Keep a copy on the guest's own phone as they shoot. Best-effort download of
+  // the same (film-look) blob we upload. On Android it lands in Downloads and
+  // shows in the gallery; iOS Safari saves to Files. Hint once so it isn't noisy.
+  const savedHintRef = useRef(false);
+  const saveToDevice = (blob: Blob, filename: string) => {
+    try {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 8000);
+      if (!savedHintRef.current) { savedHintRef.current = true; showToast('נשמר גם בטלפון שלך 📲'); }
+    } catch { /* best effort — never block the shot */ }
+  };
+
   const stopStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
@@ -184,6 +202,7 @@ export const DisposableCamera = () => {
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
+      saveToDevice(blob, `mynight-${Date.now()}.jpg`);
       void uploadShot(blob, 'jpg', 'image/jpeg');
     } catch {
       setRemaining((r) => r + 1);
@@ -235,6 +254,7 @@ export const DisposableCamera = () => {
       const ext = mime.includes('mp4') ? 'mp4' : 'webm';
       if (remainingRef.current <= 1) setFinishing(true);
       setRemaining((r) => Math.max(0, r - 1));
+      saveToDevice(blob, `mynight-${Date.now()}.${ext}`);
       void uploadShot(blob, ext, blob.type || mime);
     };
     rec.start();
