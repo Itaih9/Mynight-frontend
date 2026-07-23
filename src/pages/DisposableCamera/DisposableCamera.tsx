@@ -68,6 +68,7 @@ export const DisposableCamera = () => {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const historyBtnRef = useRef<HTMLButtonElement | null>(null);
+  const bulkSavedRef = useRef(false); // download-all-to-phone runs once, when the roll ends
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recTimerRef = useRef<number | undefined>(undefined);
@@ -175,11 +176,18 @@ export const DisposableCamera = () => {
   }, [code, deviceId]);
 
   // The review gallery shows only the shots taken THIS session (already in
-  // `shots`) so a returning guest never sees old recents. Just release the camera.
+  // `shots`) so a returning guest never sees old recents. Release the camera, and
+  // auto-save every shot to the phone now that the roll has run out (once).
   useEffect(() => {
     if (phase !== 'review') return;
     stopStream();
-  }, [phase, stopStream]);
+    if (!bulkSavedRef.current && shots.length) {
+      bulkSavedRef.current = true;
+      setSavedToPhone(true);
+      downloadAllShots();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, shots, stopStream]);
 
   // Arm (or re-arm) the no-frame watchdog: if the preview still has no pixels
   // after a few seconds — denied permission, hung getUserMedia, black stream —
@@ -461,68 +469,84 @@ export const DisposableCamera = () => {
       const a = await navigator.mediaDevices.getUserMedia({ audio: true });
       micTrack = a.getAudioTracks()[0];
     } catch { /* record silent if mic denied */ }
-    // Front camera: record from a mirrored canvas so the selfie clip matches the
-    // (mirrored) preview instead of coming out reversed. Back camera records the
-    // raw track directly. Falls back to raw if canvas capture isn't available.
-    const mirror = facing === 'user';
+    // Record from a canvas that continuously draws the live preview. This lets us
+    // mirror selfies AND switch cameras mid-clip: the recorder only ever sees the
+    // canvas track, so swapping the underlying camera never interrupts it, and the
+    // mirror follows the CURRENT facing (facingRef) so a flip updates live. Falls
+    // back to the raw track where captureStream isn't available.
     let videoTracks = stream.getVideoTracks();
-    let mirrorRaf = 0;
-    let mirrorCanvasTrack: MediaStreamTrack | undefined;
+    let raf = 0;
+    let canvasTrack: MediaStreamTrack | undefined;
+    let cw = 0, ch = 0;
     const src = videoRef.current;
-    if (mirror && src) {
+    if (src && typeof (document.createElement('canvas') as any).captureStream === 'function') {
       try {
-        const vw = src.videoWidth || 1280;
-        const vh = src.videoHeight || 720;
-        const cw = Math.min(1440, vw);
-        const ch = Math.round((cw * vh) / vw);
+        const vw = src.videoWidth || 1920;
+        const vh = src.videoHeight || 1080;
+        cw = Math.min(1920, vw);
+        ch = Math.round((cw * vh) / vw);
         const cvs = document.createElement('canvas');
         cvs.width = cw;
         cvs.height = ch;
         const cctx = cvs.getContext('2d')!;
-        const drawFrame = () => {
-          cctx.save();
-          cctx.translate(cw, 0);
-          cctx.scale(-1, 1);
-          cctx.drawImage(src, 0, 0, cw, ch);
-          cctx.restore();
-          mirrorRaf = requestAnimationFrame(drawFrame);
+        const draw = () => {
+          const v = videoRef.current;
+          if (v && v.videoWidth) {
+            if (facingRef.current === 'user') {
+              cctx.save();
+              cctx.translate(cw, 0);
+              cctx.scale(-1, 1);
+              cctx.drawImage(v, 0, 0, cw, ch);
+              cctx.restore();
+            } else {
+              cctx.drawImage(v, 0, 0, cw, ch);
+            }
+          }
+          raf = requestAnimationFrame(draw);
         };
-        drawFrame();
-        const cstream = (cvs as any).captureStream?.(30) as MediaStream | undefined;
+        draw();
+        const cstream = (cvs as any).captureStream(30) as MediaStream;
         if (cstream?.getVideoTracks().length) {
-          mirrorCanvasTrack = cstream.getVideoTracks()[0];
+          canvasTrack = cstream.getVideoTracks()[0];
           videoTracks = cstream.getVideoTracks();
-        } else if (mirrorRaf) {
-          cancelAnimationFrame(mirrorRaf);
-          mirrorRaf = 0;
+        } else if (raf) {
+          cancelAnimationFrame(raf);
+          raf = 0;
         }
       } catch {
-        if (mirrorRaf) { cancelAnimationFrame(mirrorRaf); mirrorRaf = 0; }
+        if (raf) { cancelAnimationFrame(raf); raf = 0; }
       }
     }
     const recStream = new MediaStream([...videoTracks, ...(micTrack ? [micTrack] : [])]);
 
+    // A high, resolution-scaled bitrate — the browser default (~2.5 Mbps) looks
+    // heavily compressed. ~4 bits/px/s ≈ 8 Mbps at 1080p.
+    const bitrate = Math.min(12_000_000, Math.max(5_000_000, Math.round((cw && ch ? cw * ch : 1920 * 1080) * 4)));
     let rec: MediaRecorder;
     try {
-      rec = new MediaRecorder(recStream, { mimeType: mime });
+      rec = new MediaRecorder(recStream, { mimeType: mime, videoBitsPerSecond: bitrate });
     } catch {
-      micTrack?.stop();
-      if (mirrorRaf) cancelAnimationFrame(mirrorRaf);
-      mirrorCanvasTrack?.stop();
-      showToast('הקלטת וידאו לא נתמכת במכשיר');
-      return;
+      try {
+        rec = new MediaRecorder(recStream, { mimeType: mime });
+      } catch {
+        micTrack?.stop();
+        if (raf) cancelAnimationFrame(raf);
+        canvasTrack?.stop();
+        showToast('הקלטת וידאו לא נתמכת במכשיר');
+        return;
+      }
     }
     recorderRef.current = rec;
-    const track = stream.getVideoTracks()[0] as any;
+    const torchTrack = stream.getVideoTracks()[0] as any;
     // Flash on video = torch held on for the whole clip.
-    if (flashMode && track) { track.applyConstraints({ advanced: [{ torch: true }] }).catch(() => {}); }
+    if (flashMode && torchTrack) { torchTrack.applyConstraints({ advanced: [{ torch: true }] }).catch(() => {}); }
     rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     rec.onstop = () => {
       window.clearInterval(recTimerRef.current);
-      if (mirrorRaf) cancelAnimationFrame(mirrorRaf);
-      mirrorCanvasTrack?.stop();
+      if (raf) cancelAnimationFrame(raf);
+      canvasTrack?.stop();
       micTrack?.stop();
-      if (flashMode && track) { track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {}); }
+      if (flashMode && torchTrack) { torchTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {}); }
       setRecording(false);
       setRecPct(0);
       const blob = new Blob(chunks, { type: mime });
@@ -531,7 +555,7 @@ export const DisposableCamera = () => {
       setRemaining((r) => Math.max(0, r - 1));
       const tempId = `tmp-${Date.now()}`;
       const localUrl = URL.createObjectURL(blob);
-      const poster = videoRef.current ? posterFromVideo(videoRef.current, { mirror }) : null;
+      const poster = videoRef.current ? posterFromVideo(videoRef.current, { mirror: facingRef.current === 'user' }) : null;
       setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: poster || localUrl, type: 'video' }]);
       // Only fly a video if we have an instant poster — never a black square.
       if (poster) flyToHistory(poster);
@@ -561,7 +585,7 @@ export const DisposableCamera = () => {
   const onViewfinderTouchEnd = (e: React.TouchEvent) => {
     const s = swipeRef.current;
     swipeRef.current = null;
-    if (!s || recording) return; // don't switch mid-recording
+    if (!s) return; // flipping mid-recording is fine now — the clip records from a canvas
     const t = e.changedTouches[0];
     const dy = t.clientY - s.y;
     const dx = t.clientX - s.x;
@@ -627,7 +651,6 @@ export const DisposableCamera = () => {
   };
 
   const finishRoll = () => {
-    if (shots.length) { setSavedToPhone(true); downloadAllShots(); }
     stopStream();
     setPhase('done');
     setTimeout(fireConfetti, 120);
@@ -809,6 +832,7 @@ export const DisposableCamera = () => {
             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
               <div className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
               <p className="text-white/80 text-sm">מפתח את הצילומים</p>
+              {status?.coupleName && <p className="text-white font-bold text-3xl mt-1 px-6 text-center leading-tight">{status.coupleName}</p>}
             </div>
           )}
 
