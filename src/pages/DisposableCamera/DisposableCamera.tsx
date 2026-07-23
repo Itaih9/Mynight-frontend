@@ -20,6 +20,12 @@ function getDeviceId(): string {
   return id;
 }
 
+// In-app browsers (Instagram/Facebook/TikTok webviews) often cripple or fully
+// block getUserMedia. Used to tailor the recovery help text.
+const IN_APP_BROWSER = /instagram|fbav|fban|fbios|fb_iab|line\/|micromessenger|tiktok|snapchat/i.test(
+  typeof navigator !== 'undefined' ? navigator.userAgent : ''
+);
+
 function pickVideoMime(): string {
   const types = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
   for (const t of types) {
@@ -52,7 +58,8 @@ export const DisposableCamera = () => {
   const [recPct, setRecPct] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [toast, setToast] = useState('');
-  const [camStuck, setCamStuck] = useState(false); // camera didn't produce a frame → offer tap-to-start
+  const [camStuck, setCamStuck] = useState(false); // camera didn't produce a frame → offer recovery UI
+  const [camError, setCamError] = useState<'denied' | 'busy' | 'notfound' | 'unsupported' | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   const secondsLeft = Math.max(0, Math.ceil((MAX_VIDEO_MS / 1000) * (1 - recPct / 100)));
@@ -63,6 +70,22 @@ export const DisposableCamera = () => {
   const recTimerRef = useRef<number | undefined>(undefined);
   const remainingRef = useRef(0);
   remainingRef.current = remaining;
+  // Live mirrors for event listeners that outlive a render.
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const facingRef = useRef(facing);
+  facingRef.current = facing;
+  const recordingRef = useRef(recording);
+  recordingRef.current = recording;
+  // Camera-acquisition bookkeeping: the generation counter invalidates stale
+  // getUserMedia requests (the classic "two requests race, the loser holds the
+  // camera forever" bug), busyRetries drives quiet retries when another app
+  // briefly holds the camera, and startStreamRef breaks the callback cycle for
+  // the restart paths.
+  const streamGenRef = useRef(0);
+  const busyRetriesRef = useRef(0);
+  const watchdogRef = useRef<number | undefined>(undefined);
+  const startStreamRef = useRef<(which: 'environment' | 'user') => void>(() => {});
 
   const flashOnce = () => { setFlash(true); setTimeout(() => setFlash(false), 200); };
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2500); };
@@ -81,6 +104,7 @@ export const DisposableCamera = () => {
   };
 
   const stopStream = useCallback(() => {
+    streamGenRef.current += 1; // invalidate any in-flight getUserMedia
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }, []);
@@ -112,67 +136,176 @@ export const DisposableCamera = () => {
     stopStream();
   }, [phase, stopStream]);
 
+  // Arm (or re-arm) the no-frame watchdog: if the preview still has no pixels
+  // after a few seconds — denied permission, hung getUserMedia, black stream —
+  // surface the recovery UI. Harmless when the camera is fine (videoWidth > 0),
+  // and onPlaying clears the flag the moment a real frame arrives.
+  const armWatchdog = useCallback(() => {
+    window.clearTimeout(watchdogRef.current);
+    watchdogRef.current = window.setTimeout(() => {
+      if (phaseRef.current === 'ready' && (videoRef.current?.videoWidth ?? 0) === 0) setCamStuck(true);
+    }, 4000);
+  }, []);
+
   // (Re)start the camera stream for the current facing. VIDEO ONLY — requesting
-  // the mic up front makes getUserMedia fail whenever the mic is busy/partial,
-  // which is why the camera "often didn't start". Audio is grabbed on-demand
-  // only when recording a video (below).
+  // the mic up front makes getUserMedia fail whenever the mic is busy/partial.
+  // Audio is grabbed on-demand only when recording a video (below).
+  //
+  // Hardened against every "camera won't start" mode we've hit:
+  //  • two requests racing (fast flip / re-entry): the loser used to resolve
+  //    late and HOLD the camera, so nothing worked until a reload. A generation
+  //    counter now stops stale streams the moment they arrive.
+  //  • permission denied / camera held by another app / no camera / webview
+  //    without mediaDevices: classified into camError for a targeted fix hint.
+  //  • camera reclaimed by the OS (lock screen, call): track.onended restarts.
   const startStream = useCallback(async (which: 'environment' | 'user') => {
+    const gen = ++streamGenRef.current;
     streamRef.current?.getTracks().forEach((t) => t.stop());
-    let stream: MediaStream;
-    // Ask for a high-resolution stream — without this the browser hands back a
-    // low default (often 640×480), which is why captured shots were tiny (~60KB)
-    // and looked soft. `ideal` lets the device fall back if it can't hit it.
-    const hi = { width: { ideal: 2560 }, height: { ideal: 1440 } };
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: which, ...hi } });
-    } catch {
-      // Some devices reject an unmet facingMode — retry with any camera.
+    streamRef.current = null;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      // In-app browsers / insecure contexts have no mediaDevices at all —
+      // retrying can't help, guide the guest out to a real browser instead.
+      setCamError('unsupported');
+      setCamStuck(true);
+      return;
+    }
+
+    // High resolution first (a bare request gives 640×480 on many phones).
+    // `ideal` shouldn't hard-fail, but keep a fallback chain for odd devices.
+    const attempts: MediaStreamConstraints[] = [
+      { video: { facingMode: { ideal: which }, width: { ideal: 2560 }, height: { ideal: 1440 } } },
+      { video: { facingMode: { ideal: which } } },
+      { video: true },
+    ];
+    let lastErr: any = null;
+    let stream: MediaStream | null = null;
+    for (const constraints of attempts) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: hi });
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        break;
+      } catch (e: any) {
+        lastErr = e;
+        if (gen !== streamGenRef.current) return; // superseded meanwhile
+        const n = e?.name || '';
+        // Denied is denied — other constraints won't change the answer.
+        if (n === 'NotAllowedError' || n === 'PermissionDeniedError' || n === 'SecurityError') break;
       }
     }
+
+    if (!stream) {
+      const n = lastErr?.name || '';
+      const busy = n === 'NotReadableError' || n === 'TrackStartError' || n === 'AbortError';
+      if (busy && busyRetriesRef.current < 2) {
+        // Another app/tab is releasing the camera — retry quietly first.
+        busyRetriesRef.current += 1;
+        window.setTimeout(() => { if (gen === streamGenRef.current) startStreamRef.current(which); }, 900);
+        return;
+      }
+      setCamError(
+        n === 'NotAllowedError' || n === 'PermissionDeniedError' || n === 'SecurityError' ? 'denied'
+          : busy ? 'busy'
+          : n === 'NotFoundError' || n === 'DevicesNotFoundError' || n === 'OverconstrainedError' ? 'notfound'
+          : null
+      );
+      setCamStuck(true);
+      return;
+    }
+
+    if (gen !== streamGenRef.current) {
+      // A newer request won while this one was pending (or we left the camera).
+      // Release immediately — a leaked stream is what used to block the camera.
+      stream.getTracks().forEach((t) => t.stop());
+      return;
+    }
+
     streamRef.current = stream;
+    busyRetriesRef.current = 0;
     // Continuous autofocus — best effort. Some devices don't report focusMode in
     // getCapabilities yet still honour the constraint, so just try and ignore.
     try {
-      const track = stream.getVideoTracks()[0] as any;
-      await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+      await (stream.getVideoTracks()[0] as any).applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
     } catch { /* focus not controllable — ignore */ }
+    // If the OS reclaims the camera (lock screen, phone call, another app),
+    // restart as soon as we're visible in the viewfinder again.
+    const track = stream.getVideoTracks()[0];
+    if (track) {
+      track.onended = () => {
+        if (streamRef.current !== stream || recordingRef.current) return;
+        if (document.visibilityState === 'visible' && phaseRef.current === 'ready') {
+          armWatchdog();
+          startStreamRef.current(facingRef.current);
+        }
+      };
+    }
     const v = videoRef.current;
     if (v) {
       v.srcObject = stream;
       // autoPlay handles most cases; retry play() for the rest.
       v.play().catch(() => setTimeout(() => v.play().catch(() => {}), 150));
     }
-  }, []);
+  }, [armWatchdog]);
+  startStreamRef.current = startStream;
 
   useEffect(() => {
     if (phase !== 'ready') return;
-    let cancelled = false;
     setCamStuck(false);
-    // One watchdog covers every failure mode — a rejected permission, a hung
-    // getUserMedia, or a stream that comes up black: if there's still no frame
-    // after a few seconds, show a tap-to-start button (cleared by onPlaying).
-    const watchdog = window.setTimeout(() => {
-      if (!cancelled && (videoRef.current?.videoWidth ?? 0) === 0) setCamStuck(true);
-    }, 3500);
-    startStream(facing).catch(() => { if (!cancelled) setCamStuck(true); });
+    setCamError(null);
+    busyRetriesRef.current = 0;
+    armWatchdog();
+    startStream(facing);
     return () => {
-      cancelled = true;
-      window.clearTimeout(watchdog);
+      window.clearTimeout(watchdogRef.current);
+      streamGenRef.current += 1; // invalidate any in-flight request
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, facing, startStream]);
 
-  // Manual recovery when the camera won't start on its own (permission timing,
-  // a browser that needs a fresh gesture, or a transient device error).
-  const retryCamera = async () => {
+  // Coming back from the lock screen / app switcher: iOS and some Androids
+  // freeze or kill the stream — revive it the moment we're visible again.
+  useEffect(() => {
+    const revive = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (phaseRef.current !== 'ready' || recordingRef.current) return;
+      const track = streamRef.current?.getVideoTracks()[0];
+      const v = videoRef.current;
+      if (!track || track.readyState === 'ended' || !v || v.videoWidth === 0) {
+        armWatchdog();
+        startStreamRef.current(facingRef.current);
+      } else if (v.paused) {
+        v.play().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', revive);
+    window.addEventListener('pageshow', revive);
+    window.addEventListener('focus', revive);
+    return () => {
+      document.removeEventListener('visibilitychange', revive);
+      window.removeEventListener('pageshow', revive);
+      window.removeEventListener('focus', revive);
+    };
+  }, [armWatchdog]);
+
+  // Manual recovery — runs inside a user gesture, which also satisfies browsers
+  // that refuse to open the camera without one (the classic silent re-entry bug).
+  const retryCamera = () => {
+    busyRetriesRef.current = 0;
     setCamStuck(false);
-    try { await startStream(facing); } catch { setCamStuck(true); }
+    setCamError(null);
+    armWatchdog();
+    startStream(facing);
+  };
+
+  // For the "wrong browser" case — let the guest carry the link to Chrome/Safari.
+  const copyPageLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      showToast('הקישור הועתק — הדביקו בדפדפן');
+    } catch {
+      showToast(window.location.href);
+    }
   };
 
   // Digital zoom only. Native lens zoom (applyConstraints({zoom})) is exposed on
@@ -498,7 +631,7 @@ export const DisposableCamera = () => {
             muted
             autoPlay
             onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
-            onPlaying={() => setCamStuck(false)}
+            onPlaying={() => { setCamStuck(false); setCamError(null); }}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-200"
             style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}
           />
@@ -538,11 +671,31 @@ export const DisposableCamera = () => {
             </div>
           )}
 
-          {/* Camera didn't start — always give a way back in */}
+          {/* Camera didn't start — say why, and always give a way back in */}
           {camStuck && (
-            <div className="absolute inset-0 z-20 bg-black/85 flex flex-col items-center justify-center gap-4 backdrop-blur-sm px-8 text-center">
-              <p className="text-white/80 text-sm">לא הצלחנו להפעיל את המצלמה</p>
-              <button onClick={retryCamera} className="px-6 py-3 rounded-full bg-white text-black font-bold active:scale-95 transition-transform">הפעלת המצלמה</button>
+            <div className="absolute inset-0 z-20 bg-black/85 flex flex-col items-center justify-center gap-3 backdrop-blur-sm px-8 text-center">
+              <p className="text-white font-bold">
+                {camError === 'denied' ? 'צריך הרשאה למצלמה'
+                  : camError === 'busy' ? 'המצלמה תפוסה'
+                  : camError === 'notfound' ? 'לא נמצאה מצלמה'
+                  : camError === 'unsupported' ? 'הדפדפן חוסם את המצלמה'
+                  : 'לא הצלחנו להפעיל את המצלמה'}
+              </p>
+              <p className="text-white/60 text-sm leading-relaxed">
+                {camError === 'denied' ? 'אפשרו גישה למצלמה בהגדרות האתר בדפדפן (סמל המנעול ליד הכתובת) ונסו שוב.'
+                  : camError === 'busy' ? 'נראה שאפליקציה אחרת משתמשת במצלמה. סגרו אותה ונסו שוב.'
+                  : camError === 'unsupported' ? 'פתחו את הקישור ב-Chrome או Safari כדי לצלם.'
+                  : IN_APP_BROWSER ? 'נפתח דרך אפליקציה? עדיף לפתוח את הקישור בדפדפן (Chrome / Safari).'
+                  : 'לחצו להפעלה מחדש של המצלמה.'}
+              </p>
+              {camError === 'unsupported' ? (
+                <button onClick={copyPageLink} className="px-6 py-3 rounded-full bg-white text-black font-bold active:scale-95 transition-transform">העתקת הקישור</button>
+              ) : (
+                <button onClick={retryCamera} className="px-6 py-3 rounded-full bg-white text-black font-bold active:scale-95 transition-transform">הפעלת המצלמה</button>
+              )}
+              {IN_APP_BROWSER && camError !== 'unsupported' && (
+                <button onClick={copyPageLink} className="text-white/60 text-xs underline">העתקת הקישור לפתיחה בדפדפן</button>
+              )}
             </div>
           )}
 
