@@ -498,8 +498,12 @@ export const DisposableCamera = () => {
     const st = videoTracks[0]?.getSettings?.() || {};
     let recW = (st.width as number) || 1920;
     let recH = (st.height as number) || 1080;
+    // Mirror ONLY the real front lens: trust the track's actual facingMode over the
+    // `facing` state, so the back lens is never mirrored even if a getUserMedia
+    // fallback handed us a different camera than requested.
+    const frontLens = st.facingMode ? st.facingMode === 'user' : facing === 'user';
     const src = videoRef.current;
-    if (facing === 'user' && src && typeof (document.createElement('canvas') as any).captureStream === 'function') {
+    if (frontLens && src && typeof (document.createElement('canvas') as any).captureStream === 'function') {
       try {
         const vw = src.videoWidth || 1280;
         const vh = src.videoHeight || 720;
@@ -572,7 +576,7 @@ export const DisposableCamera = () => {
       setRem(remainingRef.current - 1);
       const tempId = `tmp-${Date.now()}`;
       const localUrl = URL.createObjectURL(blob);
-      const poster = videoRef.current ? posterFromVideo(videoRef.current, { mirror: facingRef.current === 'user' }) : null;
+      const poster = videoRef.current ? posterFromVideo(videoRef.current, { mirror: frontLens }) : null;
       setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: poster || localUrl, type: 'video' }]);
       // Only fly a video if we have an instant poster — never a black square.
       if (poster) flyToHistory(poster);
