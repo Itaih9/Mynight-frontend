@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Zap, ZapOff, SwitchCamera, Trash2, Play, ArrowLeft } from 'lucide-react';
+import { Zap, ZapOff, SwitchCamera, Trash2, Play, Download, ArrowLeft } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { disposableApi, type DisposableStatus, type DisposableShot } from '@/services/api/disposable.api';
+import { API_BASE_URL } from '@/config/api';
 import { renderFilmFrame } from './filmFilter';
 
 const MAX_VIDEO_MS = 8000;
@@ -64,22 +65,17 @@ export const DisposableCamera = () => {
   const flashOnce = () => { setFlash(true); setTimeout(() => setFlash(false), 200); };
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2500); };
 
-  // Keep a copy on the guest's own phone as they shoot. Best-effort download of
-  // the same (film-look) blob we upload. On Android it lands in Downloads and
-  // shows in the gallery; iOS Safari saves to Files. Hint once so it isn't noisy.
-  const savedHintRef = useRef(false);
-  const saveToDevice = (blob: Blob, filename: string) => {
-    try {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 8000);
-      if (!savedHintRef.current) { savedHintRef.current = true; showToast('נשמר גם בטלפון שלך 📲'); }
-    } catch { /* best effort — never block the shot */ }
+  // Manual download of one shot to the phone (no auto-save). Uses the backend
+  // download endpoint, which streams the file with Content-Disposition: attachment
+  // so the browser saves it instead of navigating.
+  const downloadShot = (shot: DisposableShot) => {
+    const a = document.createElement('a');
+    a.href = `${API_BASE_URL}/api/photos/download/${shot._id}`;
+    a.download = '';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   const stopStream = useCallback(() => {
@@ -208,7 +204,6 @@ export const DisposableCamera = () => {
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
-      saveToDevice(blob, `mynight-${Date.now()}.jpg`);
       void uploadShot(blob, 'jpg', 'image/jpeg');
     } catch {
       setRemaining((r) => r + 1);
@@ -302,7 +297,6 @@ export const DisposableCamera = () => {
       const ext = mime.includes('mp4') ? 'mp4' : 'webm';
       if (remainingRef.current <= 1) setFinishing(true);
       setRemaining((r) => Math.max(0, r - 1));
-      saveToDevice(blob, `mynight-${Date.now()}.${ext}`);
       void uploadShot(blob, ext, blob.type || mime);
     };
     rec.start();
@@ -376,6 +370,9 @@ export const DisposableCamera = () => {
         )}
       </div>
       <div className="px-6 pb-8 pt-2">
+        <button onClick={() => downloadShot(preview)} className="w-full py-3.5 rounded-2xl bg-white text-black font-bold flex items-center justify-center gap-2 mb-3 active:scale-[0.99] transition-transform">
+          <Download size={18} /> הורדה לטלפון
+        </button>
         <p className="text-center text-white/40 text-xs mb-3">מחיקה מסירה את הצילום — אבל לא מחזירה לך צילום</p>
         <div className="flex gap-3">
           <button onClick={() => setPreview(null)} className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-bold">חזרה</button>
