@@ -92,6 +92,27 @@ export const DisposableCamera = () => {
   const flashOnce = () => { setFlash(true); setTimeout(() => setFlash(false), 200); };
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2500); };
 
+  // Grab an instant poster (first/last frame) from the live preview so a video's
+  // history thumbnail shows a real frame right away instead of a black <video>.
+  // The preview draws the raw, un-zoomed frame — matching the recorded clip.
+  const posterFromVideo = (v: HTMLVideoElement): string | null => {
+    try {
+      const vw = v.videoWidth, vh = v.videoHeight;
+      if (!vw || !vh) return null;
+      const cw = 480;
+      const ch = Math.max(1, Math.round((cw * vh) / vw));
+      const c = document.createElement('canvas');
+      c.width = cw;
+      c.height = ch;
+      const cx = c.getContext('2d');
+      if (!cx) return null;
+      cx.drawImage(v, 0, 0, cw, ch);
+      return c.toDataURL('image/jpeg', 0.72);
+    } catch {
+      return null;
+    }
+  };
+
   // Animate the just-captured photo shrinking from the viewfinder into the
   // history thumbnail (bottom-left), so the guest sees where their shot "went".
   const flyToHistory = (url: string) => {
@@ -345,7 +366,13 @@ export const DisposableCamera = () => {
       await disposableApi.uploadToS3(presign.data!.uploadUrl, blob);
       const res = await disposableApi.complete(code, deviceId, presign.data!.key, name || 'אורח', { size: blob.size, mimeType });
       const done = res.data!;
-      setShots((s) => s.map((x) => (x._id === tempId ? done.photo : x)));
+      // Keep the instant local poster for videos — the server's /thumbnails/ copy
+      // is generated async by Lambda and may 404 (black) for a while.
+      setShots((s) => s.map((x) => {
+        if (x._id !== tempId) return x;
+        const keepThumb = x.thumbnailUrl.startsWith('data:') ? x.thumbnailUrl : done.photo.thumbnailUrl;
+        return { ...done.photo, thumbnailUrl: keepThumb };
+      }));
       setTimeout(() => URL.revokeObjectURL(localUrl), 1000);
       setRemaining(done.remaining);
       if (done.remaining <= 0) setPhase('review');
@@ -442,7 +469,10 @@ export const DisposableCamera = () => {
       setRemaining((r) => Math.max(0, r - 1));
       const tempId = `tmp-${Date.now()}`;
       const localUrl = URL.createObjectURL(blob);
-      setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: localUrl, type: 'video' }]);
+      const poster = videoRef.current ? posterFromVideo(videoRef.current) : null;
+      setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: poster || localUrl, type: 'video' }]);
+      // Only fly a video if we have an instant poster — never a black square.
+      if (poster) flyToHistory(poster);
       void uploadShot(blob, ext, blob.type || mime, tempId, localUrl);
     };
     rec.start();
@@ -872,10 +902,18 @@ const FilmCounter = ({ value }: { value: number }) => (
 
 // Thumbnail that works for both photos (thumb → full fallback) and videos.
 const ShotMedia = ({ shot, className }: { shot: DisposableShot; className?: string }) => {
+  const [imgFailed, setImgFailed] = useState(false);
   if (shot.type === 'video') {
+    // Prefer a poster IMAGE (instant local frame, or the server thumbnail) so the
+    // tile never shows a black <video>; fall back to the <video> only if it fails.
+    const hasPoster = !!shot.thumbnailUrl && shot.thumbnailUrl !== shot.url && !imgFailed;
     return (
       <>
-        <video src={shot.url} muted playsInline preload="metadata" className={className} />
+        {hasPoster ? (
+          <img src={shot.thumbnailUrl} alt="" loading="lazy" className={className} onError={() => setImgFailed(true)} />
+        ) : (
+          <video src={shot.url} muted playsInline preload="metadata" className={className} />
+        )}
         <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <span className="w-6 h-6 rounded-full bg-black/50 flex items-center justify-center">
             <Play size={12} className="text-white fill-current" />
