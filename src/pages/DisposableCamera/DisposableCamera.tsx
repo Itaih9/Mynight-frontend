@@ -204,7 +204,7 @@ export const DisposableCamera = () => {
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
       }
-      const blob = await renderFilmFrame(video, { maxWidth: 1920, dateStamp: false, zoom });
+      const blob = await renderFilmFrame(video, { maxWidth: 1920, dateStamp: false, zoom, mirror: facing === 'user' });
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
@@ -216,7 +216,7 @@ export const DisposableCamera = () => {
       showToast('צילום נכשל, נסו שוב');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadShot, flashMode, zoom]);
+  }, [uploadShot, flashMode, zoom, facing]);
 
   const stopVideo = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
@@ -235,13 +235,53 @@ export const DisposableCamera = () => {
       const a = await navigator.mediaDevices.getUserMedia({ audio: true });
       micTrack = a.getAudioTracks()[0];
     } catch { /* record silent if mic denied */ }
-    const recStream = new MediaStream([...stream.getVideoTracks(), ...(micTrack ? [micTrack] : [])]);
+    // Video source: normally the raw camera track. For the FRONT camera we record
+    // from a mirrored canvas so the selfie clip isn't reversed (matches the
+    // preview). Falls back to the raw track if canvas capture isn't available.
+    let videoTracks = stream.getVideoTracks();
+    let mirrorRaf = 0;
+    let mirrorCanvasTrack: MediaStreamTrack | undefined;
+    const src = videoRef.current;
+    if (facing === 'user' && src) {
+      try {
+        const vw = src.videoWidth || 1280;
+        const vh = src.videoHeight || 720;
+        const cw = Math.min(1280, vw);
+        const ch = Math.round((cw * vh) / vw);
+        const cvs = document.createElement('canvas');
+        cvs.width = cw;
+        cvs.height = ch;
+        const cctx = cvs.getContext('2d')!;
+        const drawFrame = () => {
+          cctx.save();
+          cctx.translate(cw, 0);
+          cctx.scale(-1, 1);
+          cctx.drawImage(src, 0, 0, cw, ch);
+          cctx.restore();
+          mirrorRaf = requestAnimationFrame(drawFrame);
+        };
+        drawFrame();
+        const cstream = (cvs as any).captureStream?.(30) as MediaStream | undefined;
+        if (cstream?.getVideoTracks().length) {
+          mirrorCanvasTrack = cstream.getVideoTracks()[0];
+          videoTracks = cstream.getVideoTracks();
+        } else if (mirrorRaf) {
+          cancelAnimationFrame(mirrorRaf);
+          mirrorRaf = 0;
+        }
+      } catch {
+        if (mirrorRaf) { cancelAnimationFrame(mirrorRaf); mirrorRaf = 0; }
+      }
+    }
+    const recStream = new MediaStream([...videoTracks, ...(micTrack ? [micTrack] : [])]);
 
     let rec: MediaRecorder;
     try {
       rec = new MediaRecorder(recStream, { mimeType: mime });
     } catch {
       micTrack?.stop();
+      if (mirrorRaf) cancelAnimationFrame(mirrorRaf);
+      mirrorCanvasTrack?.stop();
       showToast('הקלטת וידאו לא נתמכת במכשיר');
       return;
     }
@@ -252,6 +292,8 @@ export const DisposableCamera = () => {
     rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     rec.onstop = () => {
       window.clearInterval(recTimerRef.current);
+      if (mirrorRaf) cancelAnimationFrame(mirrorRaf);
+      mirrorCanvasTrack?.stop();
       micTrack?.stop();
       if (flashMode && track) { track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {}); }
       setRecording(false);
@@ -271,11 +313,27 @@ export const DisposableCamera = () => {
       setRecPct(pct);
       if (pct >= 100) stopVideo();
     }, 60);
-  }, [recording, uploadShot, flashMode, stopVideo]);
+  }, [recording, uploadShot, flashMode, stopVideo, facing]);
 
   const flip = () => {
     setZoom(1);
     setFacing((f) => (f === 'environment' ? 'user' : 'environment'));
+  };
+
+  // Swipe up/down anywhere on the viewfinder to flip the camera.
+  const swipeRef = useRef<{ x: number; y: number } | null>(null);
+  const onViewfinderTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipeRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const onViewfinderTouchEnd = (e: React.TouchEvent) => {
+    const s = swipeRef.current;
+    swipeRef.current = null;
+    if (!s || recording) return; // don't switch mid-recording
+    const t = e.changedTouches[0];
+    const dy = t.clientY - s.y;
+    const dx = t.clientX - s.x;
+    if (Math.abs(dy) > 55 && Math.abs(dy) > Math.abs(dx) * 1.5) flip();
   };
 
   const deleteShot = async (shot: DisposableShot) => {
@@ -412,7 +470,11 @@ export const DisposableCamera = () => {
           pushed off-screen. transform-gpu forces the scaled (zoomed) video to clip
           inside the rounded window; touch-none stops the browser page-zoom gesture. */}
       <div className="flex-1 relative min-h-0">
-        <div className="absolute inset-x-3 top-1 bottom-1 rounded-[26px] overflow-hidden bg-neutral-900 ring-1 ring-white/15 shadow-[0_0_0_3px_rgba(0,0,0,0.6),0_20px_50px_rgba(0,0,0,0.6)] transform-gpu touch-none">
+        <div
+          onTouchStart={onViewfinderTouchStart}
+          onTouchEnd={onViewfinderTouchEnd}
+          className="absolute inset-x-3 top-1 bottom-1 rounded-[26px] overflow-hidden bg-neutral-900 ring-1 ring-white/15 shadow-[0_0_0_3px_rgba(0,0,0,0.6),0_20px_50px_rgba(0,0,0,0.6)] transform-gpu touch-none"
+        >
           <video
             ref={videoRef}
             playsInline
@@ -478,15 +540,17 @@ export const DisposableCamera = () => {
         </div>
       </div>
 
-      {/* Taken-shots strip */}
+      {/* Taken-shots history — a rounded tray with an inset (curved-in) edge */}
       {shots.length > 0 && (
         <div className="shrink-0 px-3 pt-2">
-          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {[...shots].reverse().map((shot) => (
-              <button key={shot._id} onClick={() => setPreview(shot)} className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0 ring-1 ring-white/20 active:opacity-70">
-                <ShotMedia shot={shot} className="w-full h-full object-cover" />
-              </button>
-            ))}
+          <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 shadow-[inset_0_1px_8px_rgba(0,0,0,0.55)] px-2 py-2">
+            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {[...shots].reverse().map((shot) => (
+                <button key={shot._id} onClick={() => setPreview(shot)} className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/20 active:opacity-70">
+                  <ShotMedia shot={shot} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -537,7 +601,7 @@ export const DisposableCamera = () => {
 // Small mechanical frame-counter window with animated digits (counts down).
 const FilmCounter = ({ value }: { value: number }) => (
   <div className="rounded-xl bg-black/70 ring-1 ring-white/15 px-2.5 pt-0.5 pb-1 backdrop-blur-sm shadow-[inset_0_1px_3px_rgba(0,0,0,0.7)]" dir="ltr">
-    <div className="text-[7px] font-bold uppercase tracking-[0.2em] text-amber-300/60 text-center leading-none mb-0.5">shots</div>
+    <div className="text-[7px] font-bold uppercase tracking-[0.2em] text-amber-300/60 text-center leading-none mb-0.5 translate-y-[2px]">shots</div>
     <div className="h-6 overflow-hidden flex items-center justify-center">
       <AnimatePresence mode="popLayout" initial={false}>
         <motion.span

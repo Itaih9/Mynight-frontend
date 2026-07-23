@@ -5,7 +5,7 @@
  */
 export async function renderFilmFrame(
   video: HTMLVideoElement,
-  opts: { maxWidth?: number; dateStamp?: boolean; zoom?: number } = {}
+  opts: { maxWidth?: number; dateStamp?: boolean; zoom?: number; mirror?: boolean } = {}
 ): Promise<Blob> {
   const maxW = opts.maxWidth ?? 1280;
   const zoom = Math.max(1, opts.zoom ?? 1);
@@ -24,7 +24,18 @@ export async function renderFilmFrame(
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
+  // Front camera: mirror horizontally so the saved photo matches the (mirrored)
+  // selfie preview instead of coming out reversed. Tone/grain below are applied
+  // to the already-drawn pixels, so they're unaffected by this transform.
+  if (opts.mirror) {
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
+    ctx.restore();
+  } else {
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
+  }
 
   // --- Tone curve: warm highlights, lifted-but-cooled shadows, more contrast ---
   const img = ctx.getImageData(0, 0, w, h);
