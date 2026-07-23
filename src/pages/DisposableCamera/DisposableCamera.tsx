@@ -183,19 +183,24 @@ export const DisposableCamera = () => {
     setZoom(value);
   };
 
-  // Upload one captured shot in the background; refund the counter if it fails.
-  const uploadShot = useCallback(async (blob: Blob, ext: string, mimeType: string) => {
+  // Upload one captured shot in the background. The shot is already shown
+  // optimistically (local blob URL, id `tempId`); here we swap it for the real
+  // server photo on success, or drop it on failure.
+  const uploadShot = useCallback(async (blob: Blob, ext: string, mimeType: string, tempId: string, localUrl: string) => {
     try {
       const fileName = `shot-${Date.now()}.${ext}`;
       const presign = await disposableApi.presignedUrl(code, deviceId, fileName, mimeType);
       await disposableApi.uploadToS3(presign.data!.uploadUrl, blob);
       const res = await disposableApi.complete(code, deviceId, presign.data!.key, name || 'אורח', { size: blob.size, mimeType });
       const done = res.data!;
-      setShots((s) => [...s, done.photo]);
+      setShots((s) => s.map((x) => (x._id === tempId ? done.photo : x)));
+      setTimeout(() => URL.revokeObjectURL(localUrl), 1000);
       setRemaining(done.remaining);
       if (done.remaining <= 0) setPhase('review');
     } catch (e: any) {
       const msg = e?.response?.data?.error || e?.response?.data?.message || '';
+      setShots((s) => s.filter((x) => x._id !== tempId)); // drop the failed optimistic shot
+      URL.revokeObjectURL(localUrl);
       if (msg.includes('פילם')) { setRemaining(0); setPhase('review'); return; }
       setRemaining((r) => r + 1); // refund
       setFinishing(false);
@@ -216,11 +221,14 @@ export const DisposableCamera = () => {
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
       }
-      const blob = await renderFilmFrame(video, { maxWidth: 1920, dateStamp: false, zoom, mirror: facing === 'user' });
+      const blob = await renderFilmFrame(video, { maxWidth: 1920, dateStamp: false, zoom });
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
-      void uploadShot(blob, 'jpg', 'image/jpeg');
+      const tempId = `tmp-${Date.now()}`;
+      const localUrl = URL.createObjectURL(blob);
+      setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: localUrl, type: 'photo' }]);
+      void uploadShot(blob, 'jpg', 'image/jpeg', tempId, localUrl);
     } catch {
       setRemaining((r) => r + 1);
       setFinishing(false);
@@ -246,53 +254,14 @@ export const DisposableCamera = () => {
       const a = await navigator.mediaDevices.getUserMedia({ audio: true });
       micTrack = a.getAudioTracks()[0];
     } catch { /* record silent if mic denied */ }
-    // Video source: normally the raw camera track. For the FRONT camera we record
-    // from a mirrored canvas so the selfie clip isn't reversed (matches the
-    // preview). Falls back to the raw track if canvas capture isn't available.
-    let videoTracks = stream.getVideoTracks();
-    let mirrorRaf = 0;
-    let mirrorCanvasTrack: MediaStreamTrack | undefined;
-    const src = videoRef.current;
-    if (facing === 'user' && src) {
-      try {
-        const vw = src.videoWidth || 1280;
-        const vh = src.videoHeight || 720;
-        const cw = Math.min(1280, vw);
-        const ch = Math.round((cw * vh) / vw);
-        const cvs = document.createElement('canvas');
-        cvs.width = cw;
-        cvs.height = ch;
-        const cctx = cvs.getContext('2d')!;
-        const drawFrame = () => {
-          cctx.save();
-          cctx.translate(cw, 0);
-          cctx.scale(-1, 1);
-          cctx.drawImage(src, 0, 0, cw, ch);
-          cctx.restore();
-          mirrorRaf = requestAnimationFrame(drawFrame);
-        };
-        drawFrame();
-        const cstream = (cvs as any).captureStream?.(30) as MediaStream | undefined;
-        if (cstream?.getVideoTracks().length) {
-          mirrorCanvasTrack = cstream.getVideoTracks()[0];
-          videoTracks = cstream.getVideoTracks();
-        } else if (mirrorRaf) {
-          cancelAnimationFrame(mirrorRaf);
-          mirrorRaf = 0;
-        }
-      } catch {
-        if (mirrorRaf) { cancelAnimationFrame(mirrorRaf); mirrorRaf = 0; }
-      }
-    }
-    const recStream = new MediaStream([...videoTracks, ...(micTrack ? [micTrack] : [])]);
+    // Record the raw camera track — never mirrored (front or back).
+    const recStream = new MediaStream([...stream.getVideoTracks(), ...(micTrack ? [micTrack] : [])]);
 
     let rec: MediaRecorder;
     try {
       rec = new MediaRecorder(recStream, { mimeType: mime });
     } catch {
       micTrack?.stop();
-      if (mirrorRaf) cancelAnimationFrame(mirrorRaf);
-      mirrorCanvasTrack?.stop();
       showToast('הקלטת וידאו לא נתמכת במכשיר');
       return;
     }
@@ -303,8 +272,6 @@ export const DisposableCamera = () => {
     rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     rec.onstop = () => {
       window.clearInterval(recTimerRef.current);
-      if (mirrorRaf) cancelAnimationFrame(mirrorRaf);
-      mirrorCanvasTrack?.stop();
       micTrack?.stop();
       if (flashMode && track) { track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {}); }
       setRecording(false);
@@ -313,7 +280,10 @@ export const DisposableCamera = () => {
       const ext = mime.includes('mp4') ? 'mp4' : 'webm';
       if (remainingRef.current <= 1) setFinishing(true);
       setRemaining((r) => Math.max(0, r - 1));
-      void uploadShot(blob, ext, blob.type || mime);
+      const tempId = `tmp-${Date.now()}`;
+      const localUrl = URL.createObjectURL(blob);
+      setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: localUrl, type: 'video' }]);
+      void uploadShot(blob, ext, blob.type || mime, tempId, localUrl);
     };
     rec.start();
     setRecording(true);
@@ -344,6 +314,26 @@ export const DisposableCamera = () => {
     const dy = t.clientY - s.y;
     const dx = t.clientX - s.x;
     if (Math.abs(dy) > 55 && Math.abs(dy) > Math.abs(dx) * 1.5) flip();
+  };
+
+  // Swipe left/right in the enlarged gallery to move between shots.
+  const gallerySwipeRef = useRef<{ x: number; y: number } | null>(null);
+  const onGalleryTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    gallerySwipeRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const onGalleryTouchEnd = (e: React.TouchEvent) => {
+    const s = gallerySwipeRef.current;
+    gallerySwipeRef.current = null;
+    if (!s || !preview) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+    const idx = shots.findIndex((x) => x._id === preview._id);
+    if (idx === -1) return;
+    const next = dx < 0 ? idx + 1 : idx - 1; // swipe left → newer, right → older
+    if (next >= 0 && next < shots.length) setPreview(shots[next]);
   };
 
   const deleteShot = async (shot: DisposableShot) => {
@@ -378,11 +368,20 @@ export const DisposableCamera = () => {
   // Enlarged shot with a (non-refunding) delete — shared by the strip and review.
   const previewOverlay = preview && (
     <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" dir="rtl">
-      <div className="flex-1 flex items-center justify-center p-4 min-h-0">
+      <div
+        onTouchStart={onGalleryTouchStart}
+        onTouchEnd={onGalleryTouchEnd}
+        className="flex-1 flex items-center justify-center p-4 min-h-0 relative"
+      >
         {preview.type === 'video' ? (
-          <video src={preview.url} controls autoPlay playsInline className="max-w-full max-h-full rounded-2xl" />
+          <video key={preview._id} src={preview.url} controls autoPlay playsInline className="max-w-full max-h-full rounded-2xl" />
         ) : (
-          <img src={preview.url} alt="" className="max-w-full max-h-full rounded-2xl object-contain" />
+          <img key={preview._id} src={preview.url} alt="" className="max-w-full max-h-full rounded-2xl object-contain" />
+        )}
+        {shots.length > 1 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/55 text-white/80 text-xs px-3 py-1 rounded-full tabular-nums" dir="ltr">
+            {shots.findIndex((x) => x._id === preview._id) + 1} / {shots.length}
+          </div>
         )}
       </div>
       <div className="px-6 pb-8 pt-2">
@@ -501,7 +500,7 @@ export const DisposableCamera = () => {
             onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
             onPlaying={() => setCamStuck(false)}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-200"
-            style={{ transform: `${facing === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})`, transformOrigin: 'center' }}
+            style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}
           />
           <div className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-200 ${flash ? 'opacity-90' : 'opacity-0'}`} />
 
