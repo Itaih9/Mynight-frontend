@@ -103,12 +103,16 @@ export async function renderFilmFrame(
   }
   ctx.putImageData(img, 0, 0);
 
-  // --- Grain: sparse light/dark specks blended over the frame ---
+  // --- Grain: sparse light/dark specks blended over the frame. Generated at a
+  // capped size and scaled up, so per-pixel cost stays bounded on full-res
+  // (12MP) frames — and slightly larger grain actually reads more filmic. ---
+  const gW = Math.min(w, 1600);
+  const gH = Math.max(1, Math.round((gW * h) / w));
   const grain = document.createElement('canvas');
-  grain.width = w;
-  grain.height = h;
+  grain.width = gW;
+  grain.height = gH;
   const gctx = grain.getContext('2d')!;
-  const gimg = gctx.createImageData(w, h);
+  const gimg = gctx.createImageData(gW, gH);
   const gd = gimg.data;
   for (let i = 0; i < gd.length; i += 4) {
     const n = (Math.random() * 255) | 0;
@@ -118,7 +122,7 @@ export async function renderFilmFrame(
   gctx.putImageData(gimg, 0, 0);
   ctx.globalCompositeOperation = 'overlay';
   ctx.globalAlpha = 0.5;
-  ctx.drawImage(grain, 0, 0);
+  ctx.drawImage(grain, 0, 0, w, h);
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
 

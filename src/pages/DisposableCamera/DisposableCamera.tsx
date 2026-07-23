@@ -58,6 +58,7 @@ export const DisposableCamera = () => {
   const [recPct, setRecPct] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [toast, setToast] = useState('');
+  const [fly, setFly] = useState<{ url: string; fromX: number; fromY: number; fromSize: number; toX: number; toY: number; toSize: number } | null>(null);
   const [camStuck, setCamStuck] = useState(false); // camera didn't produce a frame → offer recovery UI
   const [camError, setCamError] = useState<'denied' | 'busy' | 'notfound' | 'unsupported' | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -65,6 +66,7 @@ export const DisposableCamera = () => {
   const secondsLeft = Math.max(0, Math.ceil((MAX_VIDEO_MS / 1000) * (1 - recPct / 100)));
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const historyBtnRef = useRef<HTMLButtonElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recTimerRef = useRef<number | undefined>(undefined);
@@ -89,6 +91,23 @@ export const DisposableCamera = () => {
 
   const flashOnce = () => { setFlash(true); setTimeout(() => setFlash(false), 200); };
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2500); };
+
+  // Animate the just-captured photo shrinking from the viewfinder into the
+  // history thumbnail (bottom-left), so the guest sees where their shot "went".
+  const flyToHistory = (url: string) => {
+    const vf = videoRef.current?.getBoundingClientRect();
+    const target = historyBtnRef.current?.getBoundingClientRect();
+    if (!vf || !target) return;
+    setFly({
+      url,
+      fromX: vf.left + vf.width / 2,
+      fromY: vf.top + vf.height / 2,
+      fromSize: Math.min(vf.width, vf.height) * 0.55,
+      toX: target.left + target.width / 2,
+      toY: target.top + target.height / 2,
+      toSize: target.width || 48,
+    });
+  };
 
   // Manual download of one shot to the phone (no auto-save). Uses the backend
   // download endpoint, which streams the file with Content-Disposition: attachment
@@ -358,7 +377,9 @@ export const DisposableCamera = () => {
       // (Android → sensor photo res), else the video frame (iOS/Safari). Output
       // is downscaled with high-quality resampling to keep files sane.
       const still = track ? await captureStill(track) : null;
-      const blob = await renderFilmFrame(still ?? video, { maxWidth: 2560, dateStamp: false, zoom });
+      // Full resolution. 4096 is the universally-safe canvas ceiling; a 12MP
+      // sensor still (4000px) passes through untouched, only 48MP monsters clamp.
+      const blob = await renderFilmFrame(still ?? video, { maxWidth: 4096, dateStamp: false, zoom });
       still?.close();
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
@@ -366,6 +387,7 @@ export const DisposableCamera = () => {
       const tempId = `tmp-${Date.now()}`;
       const localUrl = URL.createObjectURL(blob);
       setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: localUrl, type: 'photo' }]);
+      flyToHistory(localUrl);
       void uploadShot(blob, 'jpg', 'image/jpeg', tempId, localUrl);
     } catch {
       setRemaining((r) => r + 1);
@@ -728,7 +750,7 @@ export const DisposableCamera = () => {
       <div className="shrink-0 pb-7 pt-3 px-6">
         <div className="flex items-center justify-between">
           {/* Latest shot, stacked — tap to open the photo history */}
-          <button onClick={() => shots.length && setHistoryOpen(true)} aria-label="היסטוריית צילומים" className="relative w-12 h-12">
+          <button ref={historyBtnRef} onClick={() => shots.length && setHistoryOpen(true)} aria-label="היסטוריית צילומים" className="relative w-12 h-12">
             {shots.length ? (
               <>
                 <span className="absolute inset-0 rounded-xl bg-white/15 rotate-6" />
@@ -795,6 +817,30 @@ export const DisposableCamera = () => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Capture animation: the shot shrinks from the viewfinder into the history */}
+      {fly && (
+        <motion.img
+          key={fly.url}
+          src={fly.url}
+          initial={{ x: fly.fromX - fly.toX, y: fly.fromY - fly.toY, scale: fly.fromSize / fly.toSize, opacity: 1 }}
+          animate={{ x: 0, y: 0, scale: 1, opacity: [1, 1, 0] }}
+          transition={{ duration: 0.6, ease: [0.35, 0, 0.25, 1], opacity: { times: [0, 0.82, 1], duration: 0.6 } }}
+          onAnimationComplete={() => setFly(null)}
+          style={{
+            position: 'fixed',
+            left: fly.toX - fly.toSize / 2,
+            top: fly.toY - fly.toSize / 2,
+            width: fly.toSize,
+            height: fly.toSize,
+            borderRadius: 12,
+            objectFit: 'cover',
+            zIndex: 60,
+            pointerEvents: 'none',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+          }}
+        />
       )}
 
       {previewOverlay}
