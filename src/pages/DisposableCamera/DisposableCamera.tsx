@@ -72,8 +72,17 @@ export const DisposableCamera = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recTimerRef = useRef<number | undefined>(undefined);
+  // `remainingRef` is the AUTHORITATIVE, synchronous shot counter — the source of
+  // truth for the guard. We do NOT reconcile it from the server's `remaining` on
+  // render (the server value lags while uploads are in flight, which would
+  // re-inflate the count mid-mash and let people exceed the limit). It's driven
+  // only by explicit +/- here. `remaining` state just mirrors it for display.
   const remainingRef = useRef(0);
-  remainingRef.current = remaining;
+  const pendingUploadsRef = useRef(0);
+  const setRem = (v: number) => {
+    remainingRef.current = Math.max(0, v);
+    setRemaining(remainingRef.current);
+  };
   // Live mirrors for event listeners that outlive a render.
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
@@ -163,7 +172,7 @@ export const DisposableCamera = () => {
         if (cancelled) return;
         const s = res.data!;
         setStatus(s);
-        setRemaining(s.remaining);
+        setRem(s.remaining);
         if (!s.enabled) setPhase('disabled');
         // Re-entry with no film left: straight to the thank-you — a returning guest
         // must NOT see their old shots ("dont show recents"). The review gallery is
@@ -373,6 +382,7 @@ export const DisposableCamera = () => {
   // optimistically (local blob URL, id `tempId`); here we swap it for the real
   // server photo on success, or drop it on failure.
   const uploadShot = useCallback(async (blob: Blob, ext: string, mimeType: string, tempId: string, localUrl: string) => {
+    pendingUploadsRef.current += 1;
     try {
       const fileName = `shot-${Date.now()}.${ext}`;
       const presign = await disposableApi.presignedUrl(code, deviceId, fileName, mimeType);
@@ -387,16 +397,23 @@ export const DisposableCamera = () => {
         return { ...done.photo, thumbnailUrl: keepThumb };
       }));
       setTimeout(() => URL.revokeObjectURL(localUrl), 1000);
-      setRemaining(done.remaining);
-      if (done.remaining <= 0) setPhase('review');
+      // NB: we intentionally do NOT set remaining from done.remaining — the count
+      // is optimistic and authoritative on the client (see remainingRef).
     } catch (e: any) {
       const msg = e?.response?.data?.error || e?.response?.data?.message || '';
       setShots((s) => s.filter((x) => x._id !== tempId)); // drop the failed optimistic shot
       URL.revokeObjectURL(localUrl);
-      if (msg.includes('פילם')) { setRemaining(0); setPhase('review'); return; }
-      setRemaining((r) => r + 1); // refund
-      setFinishing(false);
-      showToast('צילום לא נשלח, נסו שוב');
+      if (msg.includes('פילם')) {
+        setRem(0); // server says the roll is out — trust it
+      } else {
+        setRem(remainingRef.current + 1); // refund
+        setFinishing(false);
+        showToast('צילום לא נשלח, נסו שוב');
+      }
+    } finally {
+      pendingUploadsRef.current -= 1;
+      // Roll's empty and every upload has settled → review (so shots have real ids).
+      if (remainingRef.current <= 0 && pendingUploadsRef.current === 0) setPhase('review');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, deviceId, name]);
@@ -406,7 +423,9 @@ export const DisposableCamera = () => {
     if (!video || remainingRef.current <= 0) return;
     flashOnce();
     if (remainingRef.current <= 1) setFinishing(true); // last frame — "developing…"
-    setRemaining((r) => Math.max(0, r - 1)); // instant counter — capture never waits on network
+    // Consume the shot SYNCHRONOUSLY (not just via setState) so rapid taps can't
+    // slip past the guard before a re-render — that's what let people exceed the limit.
+    setRem(remainingRef.current - 1);
     const mirror = facing === 'user'; // mirror selfies (matches the preview)
     const tempId = `tmp-${Date.now()}`;
 
@@ -445,7 +464,7 @@ export const DisposableCamera = () => {
       void uploadShot(blob, 'jpg', 'image/jpeg', tempId, localUrl);
     } catch {
       setShots((s) => s.filter((x) => x._id !== tempId)); // drop the placeholder
-      setRemaining((r) => r + 1);
+      setRem(remainingRef.current + 1); // give the shot back
       setFinishing(false);
       showToast('צילום נכשל, נסו שוב');
     }
@@ -478,28 +497,61 @@ export const DisposableCamera = () => {
     let raf = 0;
     let canvasTrack: MediaStreamTrack | undefined;
     let cw = 0, ch = 0;
+    let stopStab: (() => void) | undefined;
     const src = videoRef.current;
     if (src && typeof (document.createElement('canvas') as any).captureStream === 'function') {
       try {
-        const vw = src.videoWidth || 1920;
-        const vh = src.videoHeight || 1080;
-        cw = Math.min(1920, vw);
+        const vw = src.videoWidth || 1280;
+        const vh = src.videoHeight || 720;
+        cw = Math.min(1280, vw); // 720p — a steadier, smoother frame rate on phones than 1080p
         ch = Math.round((cw * vh) / vw);
         const cvs = document.createElement('canvas');
         cvs.width = cw;
         cvs.height = ch;
         const cctx = cvs.getContext('2d')!;
+
+        // Gentle gyro digital stabilization: draw the frame slightly enlarged and
+        // shift it opposite to quick phone rotation (high-pass via decay, so slow
+        // pans pass through). Best-effort — a clean no-op with no crop if the
+        // motion sensor or its permission isn't available.
+        const stab = { x: 0, y: 0, on: false, last: 0 };
+        const MARGIN = 0.06;
+        const onMotion = (e: DeviceMotionEvent) => {
+          const rr = e.rotationRate;
+          if (!rr) return;
+          const now = performance.now();
+          const dt = stab.last ? Math.min(0.05, (now - stab.last) / 1000) : 0.016;
+          stab.last = now;
+          const maxShift = MARGIN * cw;
+          const gain = cw / 70;
+          stab.x = Math.max(-maxShift, Math.min(maxShift, (stab.x - (rr.gamma || 0) * dt * gain) * 0.9));
+          stab.y = Math.max(-maxShift, Math.min(maxShift, (stab.y + (rr.beta || 0) * dt * gain) * 0.9));
+          stab.on = true;
+        };
+        const attachStab = () => { window.addEventListener('devicemotion', onMotion); stopStab = () => window.removeEventListener('devicemotion', onMotion); };
+        const DME: any = (window as any).DeviceMotionEvent;
+        if (DME && typeof DME.requestPermission === 'function') {
+          DME.requestPermission().then((r: string) => { if (r === 'granted') attachStab(); }).catch(() => {});
+        } else if (DME) {
+          attachStab();
+        }
+
         const draw = () => {
           const v = videoRef.current;
           if (v && v.videoWidth) {
+            const m = stab.on ? MARGIN : 0;
+            const dw = cw * (1 + 2 * m);
+            const dh = ch * (1 + 2 * m);
+            const bx = -m * cw + stab.x;
+            const by = -m * ch + stab.y;
             if (facingRef.current === 'user') {
               cctx.save();
               cctx.translate(cw, 0);
               cctx.scale(-1, 1);
-              cctx.drawImage(v, 0, 0, cw, ch);
+              cctx.drawImage(v, bx, by, dw, dh);
               cctx.restore();
             } else {
-              cctx.drawImage(v, 0, 0, cw, ch);
+              cctx.drawImage(v, bx, by, dw, dh);
             }
           }
           raf = requestAnimationFrame(draw);
@@ -532,6 +584,7 @@ export const DisposableCamera = () => {
         micTrack?.stop();
         if (raf) cancelAnimationFrame(raf);
         canvasTrack?.stop();
+        stopStab?.();
         showToast('הקלטת וידאו לא נתמכת במכשיר');
         return;
       }
@@ -545,6 +598,7 @@ export const DisposableCamera = () => {
       window.clearInterval(recTimerRef.current);
       if (raf) cancelAnimationFrame(raf);
       canvasTrack?.stop();
+      stopStab?.();
       micTrack?.stop();
       if (flashMode && torchTrack) { torchTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {}); }
       setRecording(false);
@@ -552,7 +606,7 @@ export const DisposableCamera = () => {
       const blob = new Blob(chunks, { type: mime });
       const ext = mime.includes('mp4') ? 'mp4' : 'webm';
       if (remainingRef.current <= 1) setFinishing(true);
-      setRemaining((r) => Math.max(0, r - 1));
+      setRem(remainingRef.current - 1);
       const tempId = `tmp-${Date.now()}`;
       const localUrl = URL.createObjectURL(blob);
       const poster = videoRef.current ? posterFromVideo(videoRef.current, { mirror: facingRef.current === 'user' }) : null;
