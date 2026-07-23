@@ -52,6 +52,8 @@ export const DisposableCamera = () => {
   const [recPct, setRecPct] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [toast, setToast] = useState('');
+  const [camStuck, setCamStuck] = useState(false); // camera didn't produce a frame → offer tap-to-start
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const secondsLeft = Math.max(0, Math.ceil((MAX_VIDEO_MS / 1000) * (1 - recPct / 100)));
 
@@ -149,15 +151,29 @@ export const DisposableCamera = () => {
   useEffect(() => {
     if (phase !== 'ready') return;
     let cancelled = false;
-    startStream(facing)
-      .catch(() => { if (!cancelled) showToast('לא הצלחנו לפתוח את המצלמה'); });
+    setCamStuck(false);
+    // One watchdog covers every failure mode — a rejected permission, a hung
+    // getUserMedia, or a stream that comes up black: if there's still no frame
+    // after a few seconds, show a tap-to-start button (cleared by onPlaying).
+    const watchdog = window.setTimeout(() => {
+      if (!cancelled && (videoRef.current?.videoWidth ?? 0) === 0) setCamStuck(true);
+    }, 3500);
+    startStream(facing).catch(() => { if (!cancelled) setCamStuck(true); });
     return () => {
       cancelled = true;
+      window.clearTimeout(watchdog);
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, facing, startStream]);
+
+  // Manual recovery when the camera won't start on its own (permission timing,
+  // a browser that needs a fresh gesture, or a transient device error).
+  const retryCamera = async () => {
+    setCamStuck(false);
+    try { await startStream(facing); } catch { setCamStuck(true); }
+  };
 
   // Digital zoom only. Native lens zoom (applyConstraints({zoom})) is exposed on
   // some Androids but many accept the constraint without moving the lens — so it
@@ -456,6 +472,11 @@ export const DisposableCamera = () => {
   // ---- Viewfinder ----
   return (
     <div className="fixed inset-0 bg-black overflow-hidden select-none flex flex-col" dir="rtl">
+      {/* Flash — icon only, top-left of the screen */}
+      <button onClick={() => setFlashMode((v) => !v)} aria-label="פלאש" className="absolute top-3 left-4 z-30 p-1 active:scale-90 transition-transform">
+        {flashMode ? <Zap size={24} className="fill-yellow-400 text-yellow-400" /> : <ZapOff size={24} className="text-white/80" />}
+      </button>
+
       {/* Top bar: date above the couple names (on the black frame) */}
       <div className="shrink-0 pt-3 pb-2 px-5 text-center">
         {dateLabel && <div className="text-white/45 text-[11px] mb-0.5" dir="ltr">{dateLabel}</div>}
@@ -478,6 +499,7 @@ export const DisposableCamera = () => {
             muted
             autoPlay
             onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
+            onPlaying={() => setCamStuck(false)}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-200"
             style={{ transform: `${facing === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})`, transformOrigin: 'center' }}
           />
@@ -517,6 +539,14 @@ export const DisposableCamera = () => {
             </div>
           )}
 
+          {/* Camera didn't start — always give a way back in */}
+          {camStuck && (
+            <div className="absolute inset-0 z-20 bg-black/85 flex flex-col items-center justify-center gap-4 backdrop-blur-sm px-8 text-center">
+              <p className="text-white/80 text-sm">לא הצלחנו להפעיל את המצלמה</p>
+              <button onClick={retryCamera} className="px-6 py-3 rounded-full bg-white text-black font-bold active:scale-95 transition-transform">הפעלת המצלמה</button>
+            </div>
+          )}
+
           {toast && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-black/75 text-white text-sm px-4 py-2 rounded-full whitespace-nowrap pointer-events-none">{toast}</div>}
 
           {/* lens sizes — overlaid on the viewfinder, just above the shutter */}
@@ -537,26 +567,23 @@ export const DisposableCamera = () => {
         </div>
       </div>
 
-      {/* Taken-shots history — a rounded tray with an inset (curved-in) edge */}
-      {shots.length > 0 && (
-        <div className="shrink-0 px-3 pt-2">
-          <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 shadow-[inset_0_1px_8px_rgba(0,0,0,0.55)] px-2 py-2">
-            <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {[...shots].reverse().map((shot) => (
-                <button key={shot._id} onClick={() => setPreview(shot)} className="relative w-12 h-12 rounded-xl overflow-hidden shrink-0 ring-1 ring-white/20 active:opacity-70">
-                  <ShotMedia shot={shot} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Control deck — flash | shutter (+mode) | flip */}
+      {/* Control deck — photo history | shutter (+mode) | flip */}
       <div className="shrink-0 pb-7 pt-3 px-6">
         <div className="flex items-center justify-between">
-          <button onClick={() => setFlashMode((v) => !v)} aria-label="פלאש" className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${flashMode ? 'bg-yellow-400 text-black' : 'bg-white/12 text-white'}`}>
-            {flashMode ? <Zap size={22} className="fill-current" /> : <ZapOff size={22} />}
+          {/* Latest shot, stacked — tap to open the photo history */}
+          <button onClick={() => shots.length && setHistoryOpen(true)} aria-label="היסטוריית צילומים" className="relative w-12 h-12">
+            {shots.length ? (
+              <>
+                <span className="absolute inset-0 rounded-xl bg-white/15 rotate-6" />
+                <span className="absolute inset-0 rounded-xl bg-white/25 -rotate-3" />
+                <span className="relative block w-full h-full rounded-xl overflow-hidden ring-1 ring-white/40">
+                  <ShotMedia shot={shots[shots.length - 1]} className="w-full h-full object-cover" />
+                </span>
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-black text-[10px] font-bold flex items-center justify-center">{shots.length}</span>
+              </>
+            ) : (
+              <span className="block w-full h-full rounded-xl ring-1 ring-white/15 bg-white/5" />
+            )}
           </button>
 
           <div className="flex flex-col items-center gap-3">
@@ -589,6 +616,29 @@ export const DisposableCamera = () => {
           </button>
         </div>
       </div>
+
+      {/* Photo history — all shots this session; tap one to view / download / delete */}
+      {historyOpen && (
+        <div className="fixed inset-0 z-40 bg-neutral-950/95 backdrop-blur-sm flex flex-col" dir="rtl">
+          <header className="flex items-center justify-between px-5 pt-6 pb-3 shrink-0">
+            <h2 className="text-white font-bold text-lg">הצילומים שלך</h2>
+            <button onClick={() => setHistoryOpen(false)} className="text-white/70 text-sm px-3 py-1">סגירה</button>
+          </header>
+          <div className="flex-1 overflow-y-auto px-3 pb-6 min-h-0">
+            {shots.length === 0 ? (
+              <p className="text-center text-white/40 mt-16">עוד לא צילמת.</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-1.5">
+                {[...shots].reverse().map((shot) => (
+                  <button key={shot._id} onClick={() => setPreview(shot)} className="relative aspect-square rounded-xl overflow-hidden bg-white/5 active:opacity-70">
+                    <ShotMedia shot={shot} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {previewOverlay}
     </div>
