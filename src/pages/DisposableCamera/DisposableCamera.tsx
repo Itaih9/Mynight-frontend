@@ -236,8 +236,8 @@ export const DisposableCamera = () => {
     // High resolution first (a bare request gives 640×480 on many phones).
     // `ideal` shouldn't hard-fail, but keep a fallback chain for odd devices.
     const attempts: MediaStreamConstraints[] = [
-      { video: { facingMode: { ideal: which }, width: { ideal: 2560 }, height: { ideal: 1440 } } },
-      { video: { facingMode: { ideal: which } } },
+      { video: { facingMode: { ideal: which }, width: { ideal: 2560 }, height: { ideal: 1440 }, frameRate: { ideal: 30 } } },
+      { video: { facingMode: { ideal: which }, frameRate: { ideal: 30 } } },
       { video: true },
     ];
     let lastErr: any = null;
@@ -488,71 +488,35 @@ export const DisposableCamera = () => {
       const a = await navigator.mediaDevices.getUserMedia({ audio: true });
       micTrack = a.getAudioTracks()[0];
     } catch { /* record silent if mic denied */ }
-    // Record from a canvas that continuously draws the live preview. This lets us
-    // mirror selfies AND switch cameras mid-clip: the recorder only ever sees the
-    // canvas track, so swapping the underlying camera never interrupts it, and the
-    // mirror follows the CURRENT facing (facingRef) so a flip updates live. Falls
-    // back to the raw track where captureStream isn't available.
+    // Highest quality + smooth 30fps comes from recording the RAW camera track —
+    // it's hardware-encoded at the sensor's native resolution/rate. We only detour
+    // through a canvas for the FRONT camera, to mirror the selfie clip (720p is a
+    // fine trade there). The back camera — the one quality matters for — stays raw.
     let videoTracks = stream.getVideoTracks();
     let raf = 0;
     let canvasTrack: MediaStreamTrack | undefined;
-    let cw = 0, ch = 0;
-    let stopStab: (() => void) | undefined;
+    const st = videoTracks[0]?.getSettings?.() || {};
+    let recW = (st.width as number) || 1920;
+    let recH = (st.height as number) || 1080;
     const src = videoRef.current;
-    if (src && typeof (document.createElement('canvas') as any).captureStream === 'function') {
+    if (facing === 'user' && src && typeof (document.createElement('canvas') as any).captureStream === 'function') {
       try {
         const vw = src.videoWidth || 1280;
         const vh = src.videoHeight || 720;
-        cw = Math.min(1280, vw); // 720p — a steadier, smoother frame rate on phones than 1080p
-        ch = Math.round((cw * vh) / vw);
+        const cw = Math.min(1280, vw);
+        const ch = Math.round((cw * vh) / vw);
         const cvs = document.createElement('canvas');
         cvs.width = cw;
         cvs.height = ch;
         const cctx = cvs.getContext('2d')!;
-
-        // Gentle gyro digital stabilization: draw the frame slightly enlarged and
-        // shift it opposite to quick phone rotation (high-pass via decay, so slow
-        // pans pass through). Best-effort — a clean no-op with no crop if the
-        // motion sensor or its permission isn't available.
-        const stab = { x: 0, y: 0, on: false, last: 0 };
-        const MARGIN = 0.06;
-        const onMotion = (e: DeviceMotionEvent) => {
-          const rr = e.rotationRate;
-          if (!rr) return;
-          const now = performance.now();
-          const dt = stab.last ? Math.min(0.05, (now - stab.last) / 1000) : 0.016;
-          stab.last = now;
-          const maxShift = MARGIN * cw;
-          const gain = cw / 70;
-          stab.x = Math.max(-maxShift, Math.min(maxShift, (stab.x - (rr.gamma || 0) * dt * gain) * 0.9));
-          stab.y = Math.max(-maxShift, Math.min(maxShift, (stab.y + (rr.beta || 0) * dt * gain) * 0.9));
-          stab.on = true;
-        };
-        const attachStab = () => { window.addEventListener('devicemotion', onMotion); stopStab = () => window.removeEventListener('devicemotion', onMotion); };
-        const DME: any = (window as any).DeviceMotionEvent;
-        if (DME && typeof DME.requestPermission === 'function') {
-          DME.requestPermission().then((r: string) => { if (r === 'granted') attachStab(); }).catch(() => {});
-        } else if (DME) {
-          attachStab();
-        }
-
         const draw = () => {
           const v = videoRef.current;
           if (v && v.videoWidth) {
-            const m = stab.on ? MARGIN : 0;
-            const dw = cw * (1 + 2 * m);
-            const dh = ch * (1 + 2 * m);
-            const bx = -m * cw + stab.x;
-            const by = -m * ch + stab.y;
-            if (facingRef.current === 'user') {
-              cctx.save();
-              cctx.translate(cw, 0);
-              cctx.scale(-1, 1);
-              cctx.drawImage(v, bx, by, dw, dh);
-              cctx.restore();
-            } else {
-              cctx.drawImage(v, bx, by, dw, dh);
-            }
+            cctx.save();
+            cctx.translate(cw, 0);
+            cctx.scale(-1, 1);
+            cctx.drawImage(v, 0, 0, cw, ch);
+            cctx.restore();
           }
           raf = requestAnimationFrame(draw);
         };
@@ -561,6 +525,7 @@ export const DisposableCamera = () => {
         if (cstream?.getVideoTracks().length) {
           canvasTrack = cstream.getVideoTracks()[0];
           videoTracks = cstream.getVideoTracks();
+          recW = cw; recH = ch;
         } else if (raf) {
           cancelAnimationFrame(raf);
           raf = 0;
@@ -571,9 +536,9 @@ export const DisposableCamera = () => {
     }
     const recStream = new MediaStream([...videoTracks, ...(micTrack ? [micTrack] : [])]);
 
-    // A high, resolution-scaled bitrate — the browser default (~2.5 Mbps) looks
-    // heavily compressed. ~4 bits/px/s ≈ 8 Mbps at 1080p.
-    const bitrate = Math.min(12_000_000, Math.max(5_000_000, Math.round((cw && ch ? cw * ch : 1920 * 1080) * 4)));
+    // High, resolution-scaled bitrate — the browser default (~2.5 Mbps) looks
+    // heavily compressed. ~5 bits/px/s, capped, keeps full-res clips crisp.
+    const bitrate = Math.min(16_000_000, Math.max(5_000_000, Math.round(recW * recH * 5)));
     let rec: MediaRecorder;
     try {
       rec = new MediaRecorder(recStream, { mimeType: mime, videoBitsPerSecond: bitrate });
@@ -584,7 +549,6 @@ export const DisposableCamera = () => {
         micTrack?.stop();
         if (raf) cancelAnimationFrame(raf);
         canvasTrack?.stop();
-        stopStab?.();
         showToast('הקלטת וידאו לא נתמכת במכשיר');
         return;
       }
@@ -598,7 +562,6 @@ export const DisposableCamera = () => {
       window.clearInterval(recTimerRef.current);
       if (raf) cancelAnimationFrame(raf);
       canvasTrack?.stop();
-      stopStab?.();
       micTrack?.stop();
       if (flashMode && torchTrack) { torchTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {}); }
       setRecording(false);
@@ -639,7 +602,7 @@ export const DisposableCamera = () => {
   const onViewfinderTouchEnd = (e: React.TouchEvent) => {
     const s = swipeRef.current;
     swipeRef.current = null;
-    if (!s) return; // flipping mid-recording is fine now — the clip records from a canvas
+    if (!s || recording) return; // no mid-recording flip: raw-track recording can't hot-swap the camera
     const t = e.changedTouches[0];
     const dy = t.clientY - s.y;
     const dx = t.clientX - s.x;
