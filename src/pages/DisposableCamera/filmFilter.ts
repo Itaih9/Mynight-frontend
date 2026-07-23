@@ -1,16 +1,59 @@
+export type FrameSource = HTMLVideoElement | ImageBitmap | HTMLCanvasElement;
+
 /**
- * Renders a video frame to a canvas with a disposable-camera look and returns a
- * JPEG blob. All original processing: a warm tone curve, subtle grain, vignette,
- * and the classic corner date stamp. Runs once per shot, so per-pixel work is fine.
+ * Grab the highest-quality still a live video track can give. Where the browser
+ * exposes the ImageCapture API (Android Chrome), `takePhoto()` returns a full
+ * *photo*-resolution frame straight off the sensor — commonly 12MP, versus the
+ * ~2MP a getUserMedia video frame carries. Returns null on iOS/Safari or any
+ * failure, so the caller falls back to grabbing a frame from the <video>.
+ */
+export async function captureStill(track: MediaStreamTrack): Promise<ImageBitmap | null> {
+  try {
+    const IC = (window as any).ImageCapture;
+    if (!IC || typeof createImageBitmap !== 'function') return null;
+    const ic = new IC(track);
+    // Ask for the largest photo the sensor offers; some devices ignore settings,
+    // and some reject them outright, so fall back to a plain takePhoto().
+    let settings: any;
+    try {
+      const caps = await ic.getPhotoCapabilities();
+      const mw = caps?.imageWidth?.max;
+      const mh = caps?.imageHeight?.max;
+      if (mw && mh) settings = { imageWidth: mw, imageHeight: mh };
+    } catch { /* use device defaults */ }
+    let blob: Blob;
+    try {
+      blob = await ic.takePhoto(settings);
+    } catch {
+      blob = await ic.takePhoto();
+    }
+    if (!blob || !blob.size) return null;
+    return await createImageBitmap(blob);
+  } catch {
+    return null;
+  }
+}
+
+function sourceSize(source: FrameSource): { w: number; h: number } {
+  const v = source as HTMLVideoElement;
+  if (v.videoWidth) return { w: v.videoWidth, h: v.videoHeight };
+  const b = source as ImageBitmap | HTMLCanvasElement;
+  return { w: b.width || 1280, h: b.height || 960 };
+}
+
+/**
+ * Renders a still (a full-res ImageCapture bitmap where available, else a video
+ * frame) to a canvas with a disposable-camera look and returns a JPEG blob. All
+ * original processing: a warm tone curve, subtle grain, vignette, and the classic
+ * corner date stamp. Runs once per shot, so per-pixel work is fine.
  */
 export async function renderFilmFrame(
-  video: HTMLVideoElement,
+  source: FrameSource,
   opts: { maxWidth?: number; dateStamp?: boolean; zoom?: number; mirror?: boolean } = {}
 ): Promise<Blob> {
   const maxW = opts.maxWidth ?? 1280;
   const zoom = Math.max(1, opts.zoom ?? 1);
-  const vw = video.videoWidth || 1280;
-  const vh = video.videoHeight || 960;
+  const { w: vw, h: vh } = sourceSize(source);
   // Digital zoom: draw a centered crop of the source, scaled to fill.
   const sw = vw / zoom;
   const sh = vh / zoom;
@@ -24,6 +67,9 @@ export async function renderFilmFrame(
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d')!;
+  // High-quality resampling when downscaling a large sensor still.
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   // Front camera: mirror horizontally so the saved photo matches the (mirrored)
   // selfie preview instead of coming out reversed. Tone/grain below are applied
   // to the already-drawn pixels, so they're unaffected by this transform.
@@ -31,10 +77,10 @@ export async function renderFilmFrame(
     ctx.save();
     ctx.translate(w, 0);
     ctx.scale(-1, 1);
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
+    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, w, h);
     ctx.restore();
   } else {
-    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
+    ctx.drawImage(source, sx, sy, sw, sh, 0, 0, w, h);
   }
 
   // --- Tone curve: warm highlights, lifted-but-cooled shadows, more contrast ---
@@ -99,6 +145,6 @@ export async function renderFilmFrame(
   }
 
   return await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob failed'))), 'image/jpeg', 0.92);
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('toBlob failed'))), 'image/jpeg', 0.95);
   });
 }

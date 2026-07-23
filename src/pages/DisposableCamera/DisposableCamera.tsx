@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { disposableApi, type DisposableStatus, type DisposableShot } from '@/services/api/disposable.api';
 import { API_BASE_URL } from '@/config/api';
-import { renderFilmFrame } from './filmFilter';
+import { renderFilmFrame, captureStill } from './filmFilter';
 
 const MAX_VIDEO_MS = 8000;
 
@@ -354,7 +354,12 @@ export const DisposableCamera = () => {
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
       }
-      const blob = await renderFilmFrame(video, { maxWidth: 1920, dateStamp: false, zoom });
+      // Highest quality: a full-resolution ImageCapture still where supported
+      // (Android → sensor photo res), else the video frame (iOS/Safari). Output
+      // is downscaled with high-quality resampling to keep files sane.
+      const still = track ? await captureStill(track) : null;
+      const blob = await renderFilmFrame(still ?? video, { maxWidth: 2560, dateStamp: false, zoom });
+      still?.close();
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
