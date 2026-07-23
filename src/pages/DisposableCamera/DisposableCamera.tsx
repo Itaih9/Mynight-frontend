@@ -27,7 +27,17 @@ const IN_APP_BROWSER = /instagram|fbav|fban|fbios|fb_iab|line\/|micromessenger|t
 );
 
 function pickVideoMime(): string {
-  const types = ['video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  // Name an AUDIO codec (opus) in every WebM option — a bare "codecs=vp9" tells
+  // MediaRecorder to encode video only, so the mic track is silently dropped and
+  // clips come out with no sound. mp4 (iOS/newer Chrome) carries AAC audio itself.
+  const types = [
+    'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm;codecs=h264,opus',
+    'video/webm;codecs=opus',
+    'video/webm',
+  ];
   for (const t of types) {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) return t;
   }
@@ -545,7 +555,7 @@ export const DisposableCamera = () => {
     const bitrate = Math.min(16_000_000, Math.max(5_000_000, Math.round(recW * recH * 5)));
     let rec: MediaRecorder;
     try {
-      rec = new MediaRecorder(recStream, { mimeType: mime, videoBitsPerSecond: bitrate });
+      rec = new MediaRecorder(recStream, { mimeType: mime, videoBitsPerSecond: bitrate, audioBitsPerSecond: 128_000 });
     } catch {
       try {
         rec = new MediaRecorder(recStream, { mimeType: mime });
