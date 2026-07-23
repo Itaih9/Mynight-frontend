@@ -62,6 +62,7 @@ export const DisposableCamera = () => {
   const [camStuck, setCamStuck] = useState(false); // camera didn't produce a frame → offer recovery UI
   const [camError, setCamError] = useState<'denied' | 'busy' | 'notfound' | 'unsupported' | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [savedToPhone, setSavedToPhone] = useState(false);
 
   const secondsLeft = Math.max(0, Math.ceil((MAX_VIDEO_MS / 1000) * (1 - recPct / 100)));
 
@@ -95,18 +96,22 @@ export const DisposableCamera = () => {
   // Grab an instant poster (first/last frame) from the live preview so a video's
   // history thumbnail shows a real frame right away instead of a black <video>.
   // The preview draws the raw, un-zoomed frame — matching the recorded clip.
-  const posterFromVideo = (v: HTMLVideoElement): string | null => {
+  const posterFromVideo = (v: HTMLVideoElement, opts: { mirror?: boolean; zoom?: number } = {}): string | null => {
     try {
       const vw = v.videoWidth, vh = v.videoHeight;
       if (!vw || !vh) return null;
+      const zoom = Math.max(1, opts.zoom ?? 1);
+      const sw = vw / zoom, sh = vh / zoom;
+      const sx = (vw - sw) / 2, sy = (vh - sh) / 2;
       const cw = 480;
-      const ch = Math.max(1, Math.round((cw * vh) / vw));
+      const ch = Math.max(1, Math.round((cw * sh) / sw));
       const c = document.createElement('canvas');
       c.width = cw;
       c.height = ch;
       const cx = c.getContext('2d');
       if (!cx) return null;
-      cx.drawImage(v, 0, 0, cw, ch);
+      if (opts.mirror) { cx.translate(cw, 0); cx.scale(-1, 1); }
+      cx.drawImage(v, sx, sy, sw, sh, 0, 0, cw, ch);
       return c.toDataURL('image/jpeg', 0.72);
     } catch {
       return null;
@@ -394,6 +399,18 @@ export const DisposableCamera = () => {
     flashOnce();
     if (remainingRef.current <= 1) setFinishing(true); // last frame — "developing…"
     setRemaining((r) => Math.max(0, r - 1)); // instant counter — capture never waits on network
+    const mirror = facing === 'user'; // mirror selfies (matches the preview)
+    const tempId = `tmp-${Date.now()}`;
+
+    // Fire the shot INSTANTLY: a quick low-res poster off the live preview drives
+    // the history thumbnail and the fly animation right now — the full-res render
+    // below can take ~1s and we don't want the animation waiting on it.
+    const quick = posterFromVideo(video, { mirror, zoom });
+    if (quick) {
+      setShots((s) => [...s, { _id: tempId, url: quick, thumbnailUrl: quick, type: 'photo' }]);
+      flyToHistory(quick);
+    }
+
     const track = streamRef.current?.getVideoTracks()[0];
     try {
       // Real flash: pulse the torch on just for the exposure, then off.
@@ -401,22 +418,25 @@ export const DisposableCamera = () => {
         try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
       }
       // Highest quality: a full-resolution ImageCapture still where supported
-      // (Android → sensor photo res), else the video frame (iOS/Safari). Output
-      // is downscaled with high-quality resampling to keep files sane.
+      // (Android → sensor photo res), else the video frame (iOS/Safari). Full res,
+      // downscaled with high-quality resampling only past the 4096 canvas ceiling.
       const still = track ? await captureStill(track) : null;
-      // Full resolution. 4096 is the universally-safe canvas ceiling; a 12MP
-      // sensor still (4000px) passes through untouched, only 48MP monsters clamp.
-      const blob = await renderFilmFrame(still ?? video, { maxWidth: 4096, dateStamp: false, zoom });
+      const blob = await renderFilmFrame(still ?? video, { maxWidth: 4096, dateStamp: false, zoom, mirror });
       still?.close();
       if (flashMode && track) {
         try { await track.applyConstraints({ advanced: [{ torch: false } as any] }); } catch { /* ignore */ }
       }
-      const tempId = `tmp-${Date.now()}`;
       const localUrl = URL.createObjectURL(blob);
-      setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: localUrl, type: 'photo' }]);
-      flyToHistory(localUrl);
+      if (quick) {
+        // Upgrade the placeholder's full-quality source; keep the data: thumbnail.
+        setShots((s) => s.map((x) => (x._id === tempId ? { ...x, url: localUrl } : x)));
+      } else {
+        setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: localUrl, type: 'photo' }]);
+        flyToHistory(localUrl);
+      }
       void uploadShot(blob, 'jpg', 'image/jpeg', tempId, localUrl);
     } catch {
+      setShots((s) => s.filter((x) => x._id !== tempId)); // drop the placeholder
       setRemaining((r) => r + 1);
       setFinishing(false);
       showToast('צילום נכשל, נסו שוב');
@@ -441,14 +461,54 @@ export const DisposableCamera = () => {
       const a = await navigator.mediaDevices.getUserMedia({ audio: true });
       micTrack = a.getAudioTracks()[0];
     } catch { /* record silent if mic denied */ }
-    // Record the raw camera track — never mirrored (front or back).
-    const recStream = new MediaStream([...stream.getVideoTracks(), ...(micTrack ? [micTrack] : [])]);
+    // Front camera: record from a mirrored canvas so the selfie clip matches the
+    // (mirrored) preview instead of coming out reversed. Back camera records the
+    // raw track directly. Falls back to raw if canvas capture isn't available.
+    const mirror = facing === 'user';
+    let videoTracks = stream.getVideoTracks();
+    let mirrorRaf = 0;
+    let mirrorCanvasTrack: MediaStreamTrack | undefined;
+    const src = videoRef.current;
+    if (mirror && src) {
+      try {
+        const vw = src.videoWidth || 1280;
+        const vh = src.videoHeight || 720;
+        const cw = Math.min(1440, vw);
+        const ch = Math.round((cw * vh) / vw);
+        const cvs = document.createElement('canvas');
+        cvs.width = cw;
+        cvs.height = ch;
+        const cctx = cvs.getContext('2d')!;
+        const drawFrame = () => {
+          cctx.save();
+          cctx.translate(cw, 0);
+          cctx.scale(-1, 1);
+          cctx.drawImage(src, 0, 0, cw, ch);
+          cctx.restore();
+          mirrorRaf = requestAnimationFrame(drawFrame);
+        };
+        drawFrame();
+        const cstream = (cvs as any).captureStream?.(30) as MediaStream | undefined;
+        if (cstream?.getVideoTracks().length) {
+          mirrorCanvasTrack = cstream.getVideoTracks()[0];
+          videoTracks = cstream.getVideoTracks();
+        } else if (mirrorRaf) {
+          cancelAnimationFrame(mirrorRaf);
+          mirrorRaf = 0;
+        }
+      } catch {
+        if (mirrorRaf) { cancelAnimationFrame(mirrorRaf); mirrorRaf = 0; }
+      }
+    }
+    const recStream = new MediaStream([...videoTracks, ...(micTrack ? [micTrack] : [])]);
 
     let rec: MediaRecorder;
     try {
       rec = new MediaRecorder(recStream, { mimeType: mime });
     } catch {
       micTrack?.stop();
+      if (mirrorRaf) cancelAnimationFrame(mirrorRaf);
+      mirrorCanvasTrack?.stop();
       showToast('הקלטת וידאו לא נתמכת במכשיר');
       return;
     }
@@ -459,6 +519,8 @@ export const DisposableCamera = () => {
     rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     rec.onstop = () => {
       window.clearInterval(recTimerRef.current);
+      if (mirrorRaf) cancelAnimationFrame(mirrorRaf);
+      mirrorCanvasTrack?.stop();
       micTrack?.stop();
       if (flashMode && track) { track.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {}); }
       setRecording(false);
@@ -469,7 +531,7 @@ export const DisposableCamera = () => {
       setRemaining((r) => Math.max(0, r - 1));
       const tempId = `tmp-${Date.now()}`;
       const localUrl = URL.createObjectURL(blob);
-      const poster = videoRef.current ? posterFromVideo(videoRef.current) : null;
+      const poster = videoRef.current ? posterFromVideo(videoRef.current, { mirror }) : null;
       setShots((s) => [...s, { _id: tempId, url: localUrl, thumbnailUrl: poster || localUrl, type: 'video' }]);
       // Only fly a video if we have an instant poster — never a black square.
       if (poster) flyToHistory(poster);
@@ -544,7 +606,28 @@ export const DisposableCamera = () => {
     confetti({ particleCount: 50, spread: 70, startVelocity: 38, origin: { y: 0.65 }, colors });
   };
 
+  // Save every shot to the phone once the guest finishes — one staggered pass so
+  // the browser's "allow multiple downloads" gate fires once, not per file.
+  // Uploaded shots download the full-res file from the server; any still-uploading
+  // one falls back to its local blob so nothing is missed.
+  const downloadAllShots = () => {
+    shots.forEach((shot, i) => {
+      window.setTimeout(() => {
+        try {
+          const a = document.createElement('a');
+          a.href = shot._id.startsWith('tmp-') ? shot.url : `${API_BASE_URL}/api/photos/download/${shot._id}`;
+          a.download = `mynight-${i + 1}.${shot.type === 'video' ? 'mp4' : 'jpg'}`;
+          a.rel = 'noopener';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } catch { /* skip this one */ }
+      }, i * 400);
+    });
+  };
+
   const finishRoll = () => {
+    if (shots.length) { setSavedToPhone(true); downloadAllShots(); }
     stopStream();
     setPhase('done');
     setTimeout(fireConfetti, 120);
@@ -613,7 +696,8 @@ export const DisposableCamera = () => {
       <div className="fixed inset-0 bg-neutral-950 text-white flex flex-col items-center px-6" dir="rtl">
         <div className="flex-1 flex flex-col items-center justify-center text-center max-w-xs">
           <div className="text-6xl mb-5">💛</div>
-          <p className="text-white/85 text-lg leading-relaxed mb-8">תודה שצילמתם! 🎞️ כל רגע שתפסתם עכשיו שמור — חלק מהסיפור של הערב הזה.</p>
+          <p className="text-white/85 text-lg leading-relaxed mb-4">תודה שצילמתם! 🎞️ כל רגע שתפסתם עכשיו שמור — חלק מהסיפור של הערב הזה.</p>
+          {savedToPhone && <p className="text-white/50 text-sm mb-6">📲 הצילומים נשמרים גם בטלפון שלך</p>}
           {/* CTA to the site — left-pointing arrow sits to the LEFT of the label */}
           <a href="/" className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-white text-black font-bold text-lg active:scale-95 transition-transform">
             <span>לאתר</span>
@@ -690,7 +774,7 @@ export const DisposableCamera = () => {
             onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
             onPlaying={() => { setCamStuck(false); setCamError(null); }}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-200"
-            style={{ transform: `scale(${zoom})`, transformOrigin: 'center' }}
+            style={{ transform: `${facing === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})`, transformOrigin: 'center' }}
           />
           <div className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-200 ${flash ? 'opacity-90' : 'opacity-0'}`} />
 
