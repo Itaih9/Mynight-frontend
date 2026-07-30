@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Camera, Check, Copy, Sparkles } from 'lucide-react';
 import { eventsApi, type FlashRegisterResult } from '@/services/api/events.api';
+import { HereIAmUpsellModal } from '@/components/upsell/HereIAmUpsellModal';
+import { ROUTES } from '@/config/routes';
 
 /**
  * Free פלאש landing + signup — the top of the lead funnel.
@@ -89,13 +91,16 @@ export const Flash = () => {
               כל אורח מקבל אלבום אישי רק עם התמונות שהוא מופיע בהן, כולל התמונות מהצלם המקצועי.
             </p>
             <a
-              href="/packages"
+              href={ROUTES.HERE_I_AM}
               className="block w-full py-3.5 rounded-xl bg-gold-primary text-black font-bold text-center active:scale-[0.99] transition-transform"
             >
               לפרטים על Here I Am
             </a>
           </div>
         </motion.div>
+
+        {/* Post-registration upsell — recurs every visit until they buy. */}
+        <HereIAmUpsellModal />
       </div>
     );
   }

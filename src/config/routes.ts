@@ -5,6 +5,8 @@ export const ROUTES = {
   DISPOSABLE_CAMERA: '/camera/:code',
   // Free פלאש: its own landing + signup, deliberately not on the packages page.
   FLASH: '/flash',
+  // Single-product page for the Here I Am upsell — every upsell CTA lands here.
+  HERE_I_AM: '/here-i-am',
   GIFT: '/gift',
   GIFT_CALLBACK: '/gift-callback',
   GIFT_CLAIM: '/gift/:code',
