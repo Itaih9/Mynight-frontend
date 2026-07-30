@@ -3,6 +3,8 @@ export const ROUTES = {
   LOGIN: '/login',
   START: '/start',
   DISPOSABLE_CAMERA: '/camera/:code',
+  // Free פלאש: its own landing + signup, deliberately not on the packages page.
+  FLASH: '/flash',
   GIFT: '/gift',
   GIFT_CALLBACK: '/gift-callback',
   GIFT_CLAIM: '/gift/:code',

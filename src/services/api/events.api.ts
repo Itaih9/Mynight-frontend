@@ -6,6 +6,21 @@ export interface CreateEventRequest {
   name: string;
 }
 
+export interface FlashRegisterRequest {
+  coupleName: string;
+  weddingDate: string;
+  phoneNumber: string;
+  email?: string;
+}
+
+export interface FlashRegisterResult {
+  eventCode: string;
+  cameraUrl: string;
+  weddingDate: string;
+  shotLimit: number;
+  isNew: boolean;
+}
+
 export interface UpdateSharingPermissionsRequest {
   showProPhotos?: boolean;
   showGuestPhotos?: boolean;
@@ -23,6 +38,12 @@ export interface GuestListFile {
 export const eventsApi = {
   create: async (data: CreateEventRequest): Promise<ApiResponse<Event>> => {
     const response = await api.post(API_ENDPOINTS.EVENTS.CREATE, data);
+    return response.data;
+  },
+
+  // Free פלאש signup — public, no auth, no payment.
+  registerFlash: async (data: FlashRegisterRequest): Promise<ApiResponse<FlashRegisterResult>> => {
+    const response = await api.post('/api/events/flash/register', data);
     return response.data;
   },
 
