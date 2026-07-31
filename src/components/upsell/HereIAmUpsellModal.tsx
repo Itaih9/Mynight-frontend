@@ -2,32 +2,50 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, ScanFace } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
-
-const PURCHASED_KEY = 'mynight_here_i_am_purchased';
-
-/** Call once a couple has bought Here I Am so the popup stops appearing. */
-export const markHereIAmPurchased = () => {
-  try { localStorage.setItem(PURCHASED_KEY, '1'); } catch { /* storage blocked */ }
-};
+import { eventsApi } from '@/services/api/events.api';
 
 /**
- * Here I Am upsell popup, shown to free פלאש couples post-registration.
+ * Here I Am upsell popup for free פלאש couples.
  *
- * Reappears on every visit until they buy (per the product decision) — the only
- * suppression is a recorded purchase, so dismissing it is always temporary.
- * Deliberately dismissible and never blocking: the free tier is the goodwill
- * engine, and a trapped user would undo that.
+ * Suppression is decided by the SERVER, not local state: all three payment
+ * paths (Sumit tokenized charge, Sumit hosted redirect, and a 100% coupon) set
+ * `isPaid` on the event, so that flag is the single source of truth and works
+ * on any device. We fetch the event by code and stay hidden if it's paid.
+ *
+ * Otherwise it reappears every visit — dismissible and never blocking, since
+ * the free tier is the goodwill engine and a trapped user would undo that.
  */
-export const HereIAmUpsellModal = ({ delayMs = 900 }: { delayMs?: number }) => {
+export const HereIAmUpsellModal = ({
+  eventCode,
+  delayMs = 900,
+}: {
+  eventCode?: string;
+  delayMs?: number;
+}) => {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    let purchased = false;
-    try { purchased = localStorage.getItem(PURCHASED_KEY) === '1'; } catch { /* storage blocked */ }
-    if (purchased) return;
-    const t = setTimeout(() => setOpen(true), delayMs);
-    return () => clearTimeout(t);
-  }, [delayMs]);
+    let cancelled = false;
+    let timer: number;
+
+    const decide = async () => {
+      // No code to check means we can't confirm payment — err toward showing it,
+      // since a free couple seeing the offer is the expected case.
+      if (eventCode) {
+        try {
+          const res = await eventsApi.getByCode(eventCode);
+          if (res.data?.isPaid) return; // already bought — never nag
+        } catch { /* lookup failed; fall through and show */ }
+      }
+      if (!cancelled) timer = window.setTimeout(() => setOpen(true), delayMs);
+    };
+
+    void decide();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [eventCode, delayMs]);
 
   // Escape closes, and body scroll is locked while open.
   useEffect(() => {

@@ -99,8 +99,9 @@ export const Flash = () => {
           </div>
         </motion.div>
 
-        {/* Post-registration upsell — recurs every visit until they buy. */}
-        <HereIAmUpsellModal />
+        {/* Post-registration upsell. Recurs every visit; suppressed only once the
+            server reports the event as paid. */}
+        <HereIAmUpsellModal eventCode={result.eventCode} />
       </div>
     );
   }
