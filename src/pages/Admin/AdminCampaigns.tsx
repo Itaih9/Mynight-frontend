@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Mail, Plus, Play, Eye, Send, Trash2, Save, Users } from 'lucide-react';
-import { adminApi, type EmailCampaign, type CampaignRunResult } from '@/services/api/admin.api';
+import { adminApi, type EmailCampaign, type CampaignRunResult, type CampaignContact } from '@/services/api/admin.api';
 import { AdminLayout } from './AdminLayout';
 
 const AUDIENCES = [
   { value: 'flash_free_unpaid', label: 'פלאש חינם — טרם שילמו' },
   { value: 'paid', label: 'זוגות משלמים' },
   { value: 'all_couples', label: 'כל הזוגות' },
+  { value: 'manual', label: 'בחירה ידנית' },
 ] as const;
 
 const TRIGGERS = [
@@ -19,6 +20,8 @@ const blank: Partial<EmailCampaign> = {
   name: '',
   audience: 'flash_free_unpaid',
   filters: { requireEmail: true },
+  recipientEventIds: [],
+  excludeEventIds: [],
   trigger: { type: 'before_wedding', days: 30 },
   subject: '',
   blocks: { title: '', paragraphs: [''], bullets: [], ctaText: '', ctaUrl: '', footnote: '' },
@@ -29,6 +32,7 @@ export const AdminCampaigns = () => {
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
   const [editing, setEditing] = useState<Partial<EmailCampaign> | null>(null);
   const [preview, setPreview] = useState<CampaignRunResult | null>(null);
+  const [picker, setPicker] = useState<'include' | 'exclude' | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -202,6 +206,34 @@ export const AdminCampaigns = () => {
                 )}
               </div>
 
+              {/* Recipient selection — include list for manual, exclusions otherwise */}
+              <div className="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+                {editing.audience === 'manual' ? (
+                  <>
+                    <span className="text-sm">
+                      <strong>{editing.recipientEventIds?.length || 0}</strong> נמענים נבחרו
+                      {!editing.recipientEventIds?.length && (
+                        <span className="text-amber-600"> — חובה לבחור לפחות אחד</span>
+                      )}
+                    </span>
+                    <button onClick={() => setPicker('include')}
+                      className="px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-medium flex items-center gap-1.5">
+                      <Users className="w-4 h-4" /> בחירת נמענים
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-slate-600">
+                      החרגות: <strong>{editing.excludeEventIds?.length || 0}</strong> זוגות לא יקבלו
+                    </span>
+                    <button onClick={() => setPicker('exclude')}
+                      className="px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-medium flex items-center gap-1.5">
+                      <Users className="w-4 h-4" /> החרגת נמענים
+                    </button>
+                  </>
+                )}
+              </div>
+
               <Text label="נושא המייל" value={editing.subject || ''} onChange={(v) => setEditing({ ...editing, subject: v })} />
               <p className="text-xs text-slate-400 mt-1 mb-4">
                 אפשר להשתמש ב: {'{{coupleName}}'} · {'{{daysToWedding}}'} · {'{{eventCode}}'} · {'{{cameraUrl}}'}
@@ -234,8 +266,114 @@ export const AdminCampaigns = () => {
             </div>
           </div>
         )}
+
+        {picker && editing && (
+          <ContactPicker
+            mode={picker}
+            selected={(picker === 'include' ? editing.recipientEventIds : editing.excludeEventIds) || []}
+            onChange={(ids) =>
+              setEditing(picker === 'include'
+                ? { ...editing, recipientEventIds: ids }
+                : { ...editing, excludeEventIds: ids })
+            }
+            onClose={() => setPicker(null)}
+          />
+        )}
       </div>
     </AdminLayout>
+  );
+};
+
+/**
+ * Recipient picker. Doubles as the include list for a manual audience and the
+ * exclude list for a preset one — same UI, different target field.
+ */
+const ContactPicker = ({
+  selected, onChange, onClose, mode,
+}: {
+  selected: string[];
+  onChange: (ids: string[]) => void;
+  onClose: () => void;
+  mode: 'include' | 'exclude';
+}) => {
+  const [rows, setRows] = useState<CampaignContact[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let stale = false;
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await adminApi.campaignContacts(search);
+        if (!stale) setRows(r);
+      } finally { if (!stale) setLoading(false); }
+    }, 250); // debounce typing
+    return () => { stale = true; clearTimeout(t); };
+  }, [search]);
+
+  const toggle = (id: string) =>
+    onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="p-5 border-b border-slate-200">
+          <h3 className="font-bold mb-1">
+            {mode === 'include' ? 'בחירת נמענים' : 'החרגת נמענים'}
+          </h3>
+          <p className="text-xs text-slate-500 mb-3">
+            {mode === 'include'
+              ? 'רק הזוגות שתסמנו יקבלו את הקמפיין.'
+              : 'הזוגות שתסמנו לא יקבלו את הקמפיין, גם אם הם מתאימים לקהל.'}
+          </p>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="חיפוש לפי שם, מייל, טלפון או קוד אירוע…"
+            className="w-full px-3 py-2 rounded-lg border border-slate-300 outline-none focus:border-slate-900"
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-3">
+          {loading && <p className="text-sm text-slate-400 p-3">טוען…</p>}
+          {!loading && rows.length === 0 && <p className="text-sm text-slate-400 p-3">לא נמצאו תוצאות.</p>}
+          {rows.map((c) => {
+            const on = selected.includes(c.eventId);
+            return (
+              <button
+                key={c.eventId}
+                onClick={() => toggle(c.eventId)}
+                className={`w-full text-right px-3 py-2.5 rounded-lg mb-1 flex items-center gap-3 transition-colors ${on ? 'bg-slate-900 text-white' : 'hover:bg-slate-50'}`}
+              >
+                <input type="checkbox" readOnly checked={on} className="pointer-events-none" />
+                <span className="flex-1 min-w-0">
+                  <span className="block font-medium truncate">{c.coupleName}</span>
+                  <span className={`block text-xs truncate ${on ? 'text-white/60' : 'text-slate-500'}`}>
+                    {c.email || 'ללא מייל'} · {c.eventCode}
+                    {c.weddingDate && ` · ${c.weddingDate.slice(0, 10)}`}
+                  </span>
+                </span>
+                {!c.email && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 shrink-0">אין מייל</span>
+                )}
+                {c.isPaid && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 shrink-0">שילם</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="p-4 border-t border-slate-200 flex items-center justify-between">
+          <span className="text-sm text-slate-500">{selected.length} נבחרו</span>
+          <div className="flex gap-2">
+            <button onClick={() => onChange([])} className="px-4 py-2 text-sm text-slate-500">ניקוי</button>
+            <button onClick={onClose} className="px-5 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium">סיום</button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

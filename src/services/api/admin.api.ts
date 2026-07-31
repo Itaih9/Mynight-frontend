@@ -267,10 +267,23 @@ export interface CampaignBlocks {
   footnote?: string;
 }
 
+export interface CampaignContact {
+  eventId: string;
+  eventCode: string;
+  coupleName: string;
+  email: string;
+  phone: string;
+  weddingDate: string | null;
+  isPaid: boolean;
+  source: string;
+}
+
 export interface EmailCampaign {
   _id: string;
   name: string;
-  audience: 'flash_free_unpaid' | 'paid' | 'all_couples';
+  audience: 'flash_free_unpaid' | 'paid' | 'all_couples' | 'manual';
+  recipientEventIds?: string[];
+  excludeEventIds?: string[];
   filters: { minDaysToWedding?: number; maxDaysToWedding?: number; requireEmail: boolean };
   trigger: { type: 'before_wedding' | 'after_signup' | 'fixed_date'; days?: number; date?: string };
   subject: string;
@@ -405,6 +418,14 @@ export const adminApi = {
   },
 
   // ---- Email campaigns ----------------------------------------------------
+  /** Searchable couples list backing the recipient picker. */
+  campaignContacts: async (search = ''): Promise<CampaignContact[]> => {
+    const r = await adminAxios.get<ApiResponse<CampaignContact[]>>(
+      `/api/admin/campaigns/contacts?search=${encodeURIComponent(search)}`
+    );
+    return r.data.data!;
+  },
+
   listCampaigns: async (): Promise<EmailCampaign[]> => {
     const r = await adminAxios.get<ApiResponse<EmailCampaign[]>>('/api/admin/campaigns');
     return r.data.data!;
