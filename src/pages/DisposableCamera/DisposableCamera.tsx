@@ -216,7 +216,9 @@ export const DisposableCamera = () => {
     window.clearTimeout(watchdogRef.current);
     watchdogRef.current = window.setTimeout(() => {
       if (phaseRef.current === 'ready' && (videoRef.current?.videoWidth ?? 0) === 0) setCamStuck(true);
-    }, 4000);
+      // Long enough for the whole constraint fallback chain (each candidate gets
+      // ~2.5s to prove it paints), so this only fires once everything has failed.
+    }, 12000);
   }, []);
 
   // (Re)start the camera stream for the current facing. VIDEO ONLY — requesting
@@ -243,19 +245,54 @@ export const DisposableCamera = () => {
       return;
     }
 
-    // High resolution first (a bare request gives 640×480 on many phones).
-    // `ideal` shouldn't hard-fail, but keep a fallback chain for odd devices.
+    // High resolution first (a bare request gives 640×480 on many phones), then
+    // progressively simpler.
     const attempts: MediaStreamConstraints[] = [
       { video: { facingMode: { ideal: which }, width: { ideal: 2560 }, height: { ideal: 1440 }, frameRate: { ideal: 30 } } },
       { video: { facingMode: { ideal: which }, frameRate: { ideal: 30 } } },
+      { video: { facingMode: which } },
       { video: true },
     ];
+
+    /**
+     * A resolved getUserMedia is NOT proof the camera works. `ideal` constraints
+     * never fail, so on some phones (seen on a Galaxy S25) the hi-res request is
+     * satisfied by a secondary lens that opens but never delivers a frame — the
+     * preview stays black and, because nothing threw, the fallbacks below would
+     * never have run. So each candidate stream must actually paint a frame
+     * before we accept it.
+     */
+    const producesFrames = (s: MediaStream): Promise<boolean> =>
+      new Promise((resolve) => {
+        const v = videoRef.current;
+        const track = s.getVideoTracks()[0];
+        if (!v || !track) return resolve(false);
+        v.srcObject = s;
+        v.play().catch(() => {});
+        let done = false;
+        const finish = (ok: boolean) => {
+          if (done) return;
+          done = true;
+          window.clearTimeout(timer);
+          v.removeEventListener('loadeddata', onData);
+          resolve(ok);
+        };
+        const onData = () => { if ((v.videoWidth || 0) > 0) finish(true); };
+        v.addEventListener('loadeddata', onData);
+        const timer = window.setTimeout(() => finish((v.videoWidth || 0) > 0), 2500);
+        if ((v.videoWidth || 0) > 0) finish(true);
+      });
+
     let lastErr: any = null;
     let stream: MediaStream | null = null;
     for (const constraints of attempts) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        break;
+        const candidate = await navigator.mediaDevices.getUserMedia(constraints);
+        if (gen !== streamGenRef.current) { candidate.getTracks().forEach((t) => t.stop()); return; }
+        if (await producesFrames(candidate)) { stream = candidate; break; }
+        // Opened but dead — release this lens and try a simpler request.
+        candidate.getTracks().forEach((t) => t.stop());
+        if (gen !== streamGenRef.current) return;
       } catch (e: any) {
         lastErr = e;
         if (gen !== streamGenRef.current) return; // superseded meanwhile
@@ -310,12 +347,15 @@ export const DisposableCamera = () => {
         }
       };
     }
+    // srcObject was already attached while proving this stream paints frames;
+    // just make sure it's playing and clear the recovery UI.
     const v = videoRef.current;
     if (v) {
-      v.srcObject = stream;
-      // autoPlay handles most cases; retry play() for the rest.
+      if (v.srcObject !== stream) v.srcObject = stream;
       v.play().catch(() => setTimeout(() => v.play().catch(() => {}), 150));
     }
+    setCamStuck(false);
+    setCamError(null);
   }, [armWatchdog]);
   startStreamRef.current = startStream;
 
