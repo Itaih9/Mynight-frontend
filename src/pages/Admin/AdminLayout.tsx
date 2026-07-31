@@ -17,6 +17,7 @@ import {
   KeyRound,
   Package as PackageIcon,
   ShieldCheck,
+  Mail,
 } from 'lucide-react';
 
 const navItems = [
@@ -28,6 +29,7 @@ const navItems = [
   { path: '/admin/referrals', label: 'Referrals', icon: Link2 },
   { path: '/admin/affiliates', label: 'Affiliates', icon: DollarSign },
   { path: '/admin/withdrawals', label: 'Withdrawals', icon: Wallet },
+  { path: '/admin/campaigns', label: 'Campaigns', icon: Mail },
   { path: '/admin/contacts', label: 'Contacts', icon: MessageSquare },
   { path: '/admin/reviews', label: 'Reviews', icon: Star },
   { path: '/admin/admins', label: 'Admins', icon: ShieldCheck },

@@ -33,6 +33,7 @@ export const ROUTES = {
   ADMIN_USERS: '/admin/users',
   ADMIN_EVENTS: '/admin/events',
   ADMIN_COUPONS: '/admin/coupons',
+  ADMIN_CAMPAIGNS: '/admin/campaigns',
   ADMIN_REFERRALS: '/admin/referrals',
   ADMIN_AFFILIATES: '/admin/affiliates',
   ADMIN_CONTACTS: '/admin/contacts',

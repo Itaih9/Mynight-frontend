@@ -258,6 +258,46 @@ export interface ZipJobStatus {
   error?: string;
 }
 
+export interface CampaignBlocks {
+  title?: string;
+  paragraphs: string[];
+  bullets?: string[];
+  ctaText?: string;
+  ctaUrl?: string;
+  footnote?: string;
+}
+
+export interface EmailCampaign {
+  _id: string;
+  name: string;
+  audience: 'flash_free_unpaid' | 'paid' | 'all_couples';
+  filters: { minDaysToWedding?: number; maxDaysToWedding?: number; requireEmail: boolean };
+  trigger: { type: 'before_wedding' | 'after_signup' | 'fixed_date'; days?: number; date?: string };
+  subject: string;
+  blocks: CampaignBlocks;
+  isActive: boolean;
+  sentCount: number;
+}
+
+export interface CampaignRecipient {
+  eventId: string;
+  eventCode: string;
+  coupleName: string;
+  email: string;
+  daysToWedding: number | null;
+}
+
+export interface CampaignRunResult {
+  sent: number;
+  results: { campaign: string; campaignId: string; recipients: CampaignRecipient[]; skipped: number }[];
+}
+
+export interface CampaignSendLog {
+  _id: string;
+  email: string;
+  sentAt: string;
+}
+
 export const adminApi = {
   setToken: (token: string) => {
     localStorage.setItem(ADMIN_TOKEN_KEY, token);
@@ -362,6 +402,47 @@ export const adminApi = {
       `/api/admin/events?page=${page}&limit=${limit}`
     );
     return response.data.data!;
+  },
+
+  // ---- Email campaigns ----------------------------------------------------
+  listCampaigns: async (): Promise<EmailCampaign[]> => {
+    const r = await adminAxios.get<ApiResponse<EmailCampaign[]>>('/api/admin/campaigns');
+    return r.data.data!;
+  },
+
+  createCampaign: async (data: Partial<EmailCampaign>): Promise<EmailCampaign> => {
+    const r = await adminAxios.post<ApiResponse<EmailCampaign>>('/api/admin/campaigns', data);
+    return r.data.data!;
+  },
+
+  updateCampaign: async (id: string, data: Partial<EmailCampaign>): Promise<EmailCampaign> => {
+    const r = await adminAxios.patch<ApiResponse<EmailCampaign>>(`/api/admin/campaigns/${id}`, data);
+    return r.data.data!;
+  },
+
+  deleteCampaign: async (id: string): Promise<void> => {
+    await adminAxios.delete(`/api/admin/campaigns/${id}`);
+  },
+
+  /** Dry run — who would receive what right now. Sends nothing. */
+  previewCampaigns: async (campaignId?: string): Promise<CampaignRunResult> => {
+    const q = campaignId ? `?campaignId=${campaignId}` : '';
+    const r = await adminAxios.get<ApiResponse<CampaignRunResult>>(`/api/admin/campaigns/preview${q}`);
+    return r.data.data!;
+  },
+
+  runCampaigns: async (campaignId?: string): Promise<CampaignRunResult> => {
+    const r = await adminAxios.post<ApiResponse<CampaignRunResult>>('/api/admin/campaigns/run', { campaignId });
+    return r.data.data!;
+  },
+
+  testCampaign: async (id: string, to: string): Promise<void> => {
+    await adminAxios.post(`/api/admin/campaigns/${id}/test`, { to });
+  },
+
+  campaignHistory: async (id: string): Promise<CampaignSendLog[]> => {
+    const r = await adminAxios.get<ApiResponse<CampaignSendLog[]>>(`/api/admin/campaigns/${id}/history`);
+    return r.data.data!;
   },
 
   getCoupons: async (
