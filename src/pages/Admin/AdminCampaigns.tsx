@@ -10,6 +10,12 @@ const AUDIENCES = [
   { value: 'manual', label: 'בחירה ידנית' },
 ] as const;
 
+const CHANNELS = [
+  { value: 'email', label: 'מייל' },
+  { value: 'whatsapp', label: 'וואטסאפ' },
+  { value: 'both', label: 'מייל + וואטסאפ' },
+] as const;
+
 const TRIGGERS = [
   { value: 'before_wedding', label: 'ימים לפני החתונה' },
   { value: 'after_signup', label: 'ימים אחרי ההרשמה' },
@@ -33,6 +39,7 @@ export const AdminCampaigns = () => {
   const [editing, setEditing] = useState<Partial<EmailCampaign> | null>(null);
   const [preview, setPreview] = useState<CampaignRunResult | null>(null);
   const [picker, setPicker] = useState<'include' | 'exclude' | null>(null);
+  const [waTemplates, setWaTemplates] = useState<{ name: string; status?: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -40,7 +47,11 @@ export const AdminCampaigns = () => {
     try { setCampaigns(await adminApi.listCampaigns()); }
     catch { setMsg('טעינת הקמפיינים נכשלה'); }
   };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+    // Best-effort: if Wati isn't configured we fall back to a free-text template name.
+    adminApi.waTemplates().then((r) => setWaTemplates(r.templates)).catch(() => {});
+  }, []);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 4000); };
 
@@ -76,10 +87,11 @@ export const AdminCampaigns = () => {
   };
 
   const doTest = async (c: EmailCampaign) => {
-    const to = prompt('לאיזו כתובת לשלוח בדיקה?');
+    const wa = c.channel === 'whatsapp' || (c.channel === 'both' && confirm('לשלוח בדיקה בוואטסאפ? (ביטול = מייל)'));
+    const to = prompt(wa ? 'לאיזה מספר לשלוח בדיקה? (למשל 972501234567)' : 'לאיזו כתובת לשלוח בדיקה?');
     if (!to) return;
     setBusy(true);
-    try { await adminApi.testCampaign(c._id, to); flash(`נשלחה בדיקה ל-${to}`); }
+    try { await adminApi.testCampaign(c._id, to, wa ? 'whatsapp' : 'email'); flash(`נשלחה בדיקה ל-${to}`); }
     catch { flash('שליחת הבדיקה נכשלה'); } finally { setBusy(false); }
   };
 
@@ -164,6 +176,11 @@ export const AdminCampaigns = () => {
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                     {AUDIENCES.find((a) => a.value === c.audience)?.label}
                   </span>
+                  {c.channel && c.channel !== 'email' && (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                      {CHANNELS.find((x) => x.value === c.channel)?.label}
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-slate-500 mt-1 truncate">{c.subject}</p>
                 <p className="text-xs text-slate-400 mt-1">
@@ -195,6 +212,8 @@ export const AdminCampaigns = () => {
                 <Text label="שם פנימי" value={editing.name || ''} onChange={(v) => setEditing({ ...editing, name: v })} />
                 <Select label="קהל" value={editing.audience!} options={AUDIENCES as any}
                   onChange={(v) => setEditing({ ...editing, audience: v as any })} />
+                <Select label="ערוץ" value={editing.channel || 'email'} options={CHANNELS as any}
+                  onChange={(v) => setEditing({ ...editing, channel: v as any })} />
                 <Select label="תזמון" value={editing.trigger!.type} options={TRIGGERS as any}
                   onChange={(v) => setEditing({ ...editing, trigger: { ...editing.trigger!, type: v as any } })} />
                 {editing.trigger!.type === 'fixed_date' ? (
@@ -233,6 +252,42 @@ export const AdminCampaigns = () => {
                   </>
                 )}
               </div>
+
+              {/* WhatsApp: copy lives in Meta-approved templates, not here */}
+              {(editing.channel === 'whatsapp' || editing.channel === 'both') && (
+                <div className="mb-4 p-4 rounded-lg border border-emerald-200 bg-emerald-50/50">
+                  <p className="text-sm font-semibold mb-1">תבנית וואטסאפ</p>
+                  <p className="text-xs text-slate-600 mb-3">
+                    את נוסח ההודעה בוואטסאפ אי אפשר לערוך כאן — מטא מאשרת תבניות מראש.
+                    בוחרים תבנית מ-Wati וממפים את המשתנים שלה.
+                    {waTemplates.length === 0 && ' (לא נמצאו תבניות — בדקו את חיבור Wati)'}
+                  </p>
+                  {waTemplates.length > 0 ? (
+                    <Select label="תבנית" value={editing.whatsapp?.templateName || ''}
+                      options={[{ value: '', label: '— בחרו תבנית —' }, ...waTemplates.map((t) => ({ value: t.name, label: t.name }))] as any}
+                      onChange={(v) => setEditing({ ...editing, whatsapp: { ...editing.whatsapp, templateName: v } })} />
+                  ) : (
+                    <Text label="שם התבנית" value={editing.whatsapp?.templateName || ''}
+                      onChange={(v) => setEditing({ ...editing, whatsapp: { ...editing.whatsapp, templateName: v } })} />
+                  )}
+                  <Area label="משתני התבנית (שורה לכל אחד, בפורמט name=value)"
+                    value={(editing.whatsapp?.parameters || []).map((p) => `${p.name}=${p.value}`).join('\n')}
+                    onChange={(v) => setEditing({
+                      ...editing,
+                      whatsapp: {
+                        ...editing.whatsapp,
+                        parameters: v.split('\n').filter(Boolean).map((line) => {
+                          const i = line.indexOf('=');
+                          return { name: line.slice(0, i).trim(), value: line.slice(i + 1).trim() };
+                        }),
+                      },
+                    })}
+                    rows={3} />
+                  <p className="text-xs text-slate-400">
+                    לדוגמה: <code>name={'{{coupleName}}'}</code> — שמות המשתנים חייבים להתאים בדיוק לתבנית ב-Wati.
+                  </p>
+                </div>
+              )}
 
               <Text label="נושא המייל" value={editing.subject || ''} onChange={(v) => setEditing({ ...editing, subject: v })} />
               <p className="text-xs text-slate-400 mt-1 mb-4">

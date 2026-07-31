@@ -282,6 +282,8 @@ export interface EmailCampaign {
   _id: string;
   name: string;
   audience: 'flash_free_unpaid' | 'paid' | 'all_couples' | 'manual';
+  channel?: 'email' | 'whatsapp' | 'both';
+  whatsapp?: { templateName?: string; parameters?: { name: string; value: string }[] };
   recipientEventIds?: string[];
   excludeEventIds?: string[];
   filters: { minDaysToWedding?: number; maxDaysToWedding?: number; requireEmail: boolean };
@@ -457,8 +459,16 @@ export const adminApi = {
     return r.data.data!;
   },
 
-  testCampaign: async (id: string, to: string): Promise<void> => {
-    await adminAxios.post(`/api/admin/campaigns/${id}/test`, { to });
+  /** WhatsApp templates approved in the Wati account. */
+  waTemplates: async (): Promise<{ configured: boolean; templates: { name: string; status?: string }[] }> => {
+    const r = await adminAxios.get<ApiResponse<{ configured: boolean; templates: { name: string; status?: string }[] }>>(
+      '/api/admin/campaigns/wa-templates'
+    );
+    return r.data.data!;
+  },
+
+  testCampaign: async (id: string, to: string, channel: 'email' | 'whatsapp' = 'email'): Promise<void> => {
+    await adminAxios.post(`/api/admin/campaigns/${id}/test`, { to, channel });
   },
 
   campaignHistory: async (id: string): Promise<CampaignSendLog[]> => {
