@@ -31,7 +31,7 @@ export const Flash = () => {
         coupleName: coupleName.trim(),
         weddingDate,
         phoneNumber: phoneNumber.trim(),
-        email: email.trim() || undefined,
+        email: email.trim(),
       });
       setResult(res.data!);
     } catch (err: any) {
@@ -140,13 +140,13 @@ export const Flash = () => {
             <Field label="שמות בני הזוג" value={coupleName} onChange={setCoupleName} placeholder="דנה & יואב" required />
             <Field label="תאריך החתונה" value={weddingDate} onChange={setWeddingDate} type="date" required />
             <Field label="טלפון" value={phoneNumber} onChange={setPhoneNumber} type="tel" placeholder="050-0000000" required />
-            <Field label="אימייל (לשליחת הקישור)" value={email} onChange={setEmail} type="email" placeholder="you@example.com" />
+            <Field label="אימייל (לשליחת הקישור)" value={email} onChange={setEmail} type="email" placeholder="you@example.com" required />
 
             {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
             <button
               type="submit"
-              disabled={submitting || !coupleName.trim() || !weddingDate || !phoneNumber.trim()}
+              disabled={submitting || !coupleName.trim() || !weddingDate || !phoneNumber.trim() || !email.trim()}
               className="w-full py-4 rounded-2xl bg-white text-black font-black text-lg disabled:opacity-40 active:scale-[0.99] transition-transform"
             >
               {submitting ? 'רגע…' : 'קבלו פלאש בחינם'}

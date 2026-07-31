@@ -997,6 +997,12 @@ export const AdminEvents = () => {
                             <Check className="w-3 h-3" />
                             Paid
                           </span>
+                        ) : (event as any).source === 'flash_free' ? (
+                          /* A free פלאש lead, not a failed payment — very different follow-up */
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-700 bg-indigo-100 px-2 py-1 rounded-full">
+                            <Camera className="w-3 h-3" />
+                            פלאש חינם
+                          </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded-full">
                             <X className="w-3 h-3" />

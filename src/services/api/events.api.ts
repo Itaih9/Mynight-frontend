@@ -10,7 +10,8 @@ export interface FlashRegisterRequest {
   coupleName: string;
   weddingDate: string;
   phoneNumber: string;
-  email?: string;
+  // Required: the pre-wedding upsell sequence is delivered by email.
+  email: string;
 }
 
 export interface FlashRegisterResult {
