@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Check, Copy, Sparkles } from 'lucide-react';
+import { Camera, Check, Copy, Sparkles, Download } from 'lucide-react';
 import { eventsApi, type FlashRegisterResult } from '@/services/api/events.api';
 import { HereIAmUpsellModal } from '@/components/upsell/HereIAmUpsellModal';
+import { API_BASE_URL } from '@/config/api';
 import { ROUTES } from '@/config/routes';
 
 /**
@@ -74,6 +75,25 @@ export const Flash = () => {
             >
               {copied ? <><Check size={18} /> הועתק</> : <><Copy size={18} /> העתקת הקישור</>}
             </button>
+          </div>
+
+          {/* QR of the camera link — the couple prints/displays it, guests scan it. */}
+          <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-5 mb-4 text-center">
+            <p className="text-white/40 text-xs mb-3">קוד QR לאורחים — הדפיסו והציבו על השולחנות</p>
+            <img
+              src={`${API_BASE_URL}/api/events/code/${result.eventCode}/qr.png`}
+              alt="QR code"
+              width={200}
+              height={200}
+              className="mx-auto rounded-xl bg-white p-2"
+            />
+            <a
+              href={`${API_BASE_URL}/api/events/code/${result.eventCode}/qr.png?download=1`}
+              download={`mynight-flash-${result.eventCode}.png`}
+              className="mt-4 w-full py-3 rounded-xl bg-white text-black font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
+            >
+              <Download size={18} /> הורדת קוד ה-QR
+            </a>
           </div>
 
           <p className="text-white/40 text-xs mb-10">
