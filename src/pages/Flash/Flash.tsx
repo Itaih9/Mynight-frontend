@@ -79,10 +79,11 @@ export const Flash = () => {
 
           {/* QR of the camera link — the couple prints/displays it, guests scan it. */}
           <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-5 mb-4 text-center">
-            <p className="text-white/40 text-xs mb-3">קוד QR לאורחים — הדפיסו והציבו על השולחנות</p>
+            <p className="text-white font-bold mb-1">קוד ה-QR לאורחים</p>
+            <p className="text-white/40 text-xs mb-4">הדפיסו והציבו — האורחים סורקים ומצלמים, בלי אפליקציה.</p>
             <img
               src={`${API_BASE_URL}/api/events/code/${result.eventCode}/qr.png`}
-              alt="QR code"
+              alt="קוד QR"
               width={200}
               height={200}
               className="mx-auto rounded-xl bg-white p-2"
@@ -94,6 +95,15 @@ export const Flash = () => {
             >
               <Download size={18} /> הורדת קוד ה-QR
             </a>
+            <div className="mt-4 text-right bg-white/5 rounded-xl p-4">
+              <p className="text-white/80 text-xs font-bold mb-2">איפה להדפיס ולהציב</p>
+              <ul className="text-white/60 text-xs space-y-1.5 list-disc pr-4">
+                <li>הדפיסו בגודל A5–A4 על נייר מט</li>
+                <li>על שולחן קבלת הפנים וליד ספר הברכות</li>
+                <li>מסגרת קטנה על כל שולחן אורחים</li>
+                <li>ליד הבר ובאזור רחבת הריקודים</li>
+              </ul>
+            </div>
           </div>
 
           <p className="text-white/40 text-xs mb-10">
