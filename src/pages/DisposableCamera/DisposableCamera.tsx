@@ -828,7 +828,13 @@ export const DisposableCamera = () => {
         </div>
 
         <footer className="px-5 pt-3 pb-7 shrink-0 border-t border-white/10">
-          <button onClick={finishRoll} className="w-full py-4 rounded-2xl bg-white text-black font-black text-lg active:scale-[0.99] transition-transform">סיום ✓</button>
+          <button onClick={finishRoll} className="w-full py-4 rounded-2xl bg-white text-black font-black text-lg active:scale-[0.99] transition-transform inline-flex items-center justify-center gap-2">
+            <span>סיום</span>
+            {/* Same checkmark as the Punish app's Icon (name="check") — stroked, round caps, no fill. */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12.5 L10 17.5 L19 7" />
+            </svg>
+          </button>
         </footer>
 
         {previewOverlay}
