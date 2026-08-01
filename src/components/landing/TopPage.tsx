@@ -3,12 +3,12 @@ import LandingCelebrationButton from './CelebrationButton';
 import { ArrowDown } from 'lucide-react';
 
 const INTRO_FLOATING_IMAGES = [
-  'https://i.postimg.cc/5tprJQnK/Gemini-Generated-Image-1nobub1nobub1nob.png',
-  'https://i.postimg.cc/QMjzvJk9/Gemini-Generated-Image-2dz6l72dz6l72dz6.png',
-  'https://i.postimg.cc/xjRcq8Vz/Gemini-Generated-Image-47dqx247dqx247dq(1).png',
-  'https://i.postimg.cc/vmGKCtLq/Gemini-Generated-Image-ausrwcausrwcausr(1).png',
-  'https://i.postimg.cc/rpqH7NC3/Gemini_Generated_Image_s3rotys3rotys3ro.png',
-  'https://i.postimg.cc/7LqRjnM2/Gemini_Generated_Image_63emk763emk763em.png'
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/5tprJQnK.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/QMjzvJk9.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/xjRcq8Vz.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/vmGKCtLq.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/rpqH7NC3.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/7LqRjnM2.png'
 ];
 
 const PHOTO_CODES = ['AA', 'BB', 'MM', 'CC', 'DD', 'EE'];

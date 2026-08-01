@@ -5,12 +5,12 @@ import { SplitText } from './SplitText';
 import { HighlightEffect } from './utils/HighlightEffect';
 
 const INTRO_FLOATING_IMAGES = [
-  'https://i.postimg.cc/5tprJQnK/Gemini-Generated-Image-1nobub1nobub1nob.png',    // AA
-  'https://i.postimg.cc/QMjzvJk9/Gemini-Generated-Image-2dz6l72dz6l72dz6.png',    // BB
-  'https://i.postimg.cc/xjRcq8Vz/Gemini-Generated-Image-47dqx247dqx247dq(1).png', // MM
-  'https://i.postimg.cc/vmGKCtLq/Gemini-Generated-Image-ausrwcausrwcausr(1).png', // CC
-  'https://i.postimg.cc/rpqH7NC3/Gemini_Generated_Image_s3rotys3rotys3ro.png',    // DD
-  'https://i.postimg.cc/7LqRjnM2/Gemini_Generated_Image_63emk763emk763em.png'     // EE
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/5tprJQnK.png',    // AA
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/QMjzvJk9.png',    // BB
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/xjRcq8Vz.png', // MM
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/vmGKCtLq.png', // CC
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/rpqH7NC3.png',    // DD
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/7LqRjnM2.png'     // EE
 ];
 
 interface TopPageProps {
