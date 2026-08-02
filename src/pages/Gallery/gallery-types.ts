@@ -21,6 +21,10 @@ export interface MediaItem {
     boundingBox: { Width: number; Height: number; Left: number; Top: number };
   }[];
   uploaderName: string;
+  /** Stable per-guest grouping key from the backend (deviceId-based). Two guests
+   *  with the same typed name get different keys → separate stories. Falls back
+   *  to the name for photos with no deviceId. */
+  groupKey?: string;
   timestamp: Date;
   orientation?: 'landscape' | 'portrait';
   width?: number;
@@ -28,6 +32,9 @@ export interface MediaItem {
 }
 
 export interface StoryGroup {
+  /** Stable identity of this story — group/key on THIS, not uploaderName, so
+   *  same-named guests don't merge. */
+  groupKey: string;
   uploaderName: string;
   avatar: string;
   items: MediaItem[];

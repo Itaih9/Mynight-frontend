@@ -741,7 +741,7 @@ const StoriesRail = ({
 
           return (
             <button
-              key={group.uploaderName}
+              key={group.groupKey}
               onClick={(e) => {
                 if (isDragging.current || hasMoved.current) {
                   e.preventDefault();
@@ -1421,7 +1421,7 @@ const StoryViewerModal = ({
     (Math.max(activeIndex, 0) / Math.max(storyItemCount, 1)) * 100
   )}%`;
 
-  const currentGroupIndex = group ? storyGroups.findIndex((g) => g.uploaderName === group.uploaderName) : -1;
+  const currentGroupIndex = group ? storyGroups.findIndex((g) => g.groupKey === group.groupKey) : -1;
   const prevGroup = currentGroupIndex > 0 ? storyGroups[currentGroupIndex - 1] : null;
   const nextGroup = currentGroupIndex >= 0 && currentGroupIndex < storyGroups.length - 1 ? storyGroups[currentGroupIndex + 1] : null;
 
@@ -1518,7 +1518,7 @@ const StoryViewerModal = ({
           <div className="relative w-full h-full flex items-center justify-center z-20 pointer-events-none" style={{ perspective: '1000px' }}>
             <AnimatePresence initial={false} custom={direction} mode="popLayout">
               <motion.div
-                key={group.uploaderName}
+                key={group.groupKey}
                 custom={direction}
                 variants={cubeVariants}
                 initial="enter"
@@ -1912,6 +1912,9 @@ const Gallery: React.FC<GalleryPageProps> = ({
               indexedFaces: photo.indexedFaces,
               uploaderName:
                 photo.uploaderName || (photo.uploadedBy === 'guest' ? 'אורח' : 'צלם האירוע'),
+              groupKey:
+                photo.groupKey ||
+                `n:${photo.uploaderName || (photo.uploadedBy === 'guest' ? 'אורח' : 'צלם האירוע')}`,
               timestamp: new Date(photo.createdAt),
               orientation:
                 photo.metadata?.width && photo.metadata?.height
@@ -2050,12 +2053,15 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
     if (!filteredForStories.length) return [];
 
+    // Key on the stable groupKey (deviceId-based), NOT the typed name, so two
+    // guests who both typed the same name stay as separate stories.
     const groups = new Map<string, MediaItem[]>();
 
     for (const item of filteredForStories) {
-      const arr = groups.get(item.uploaderName);
+      const key = item.groupKey || `n:${item.uploaderName}`;
+      const arr = groups.get(key);
       if (arr) arr.push(item);
-      else groups.set(item.uploaderName, [item]);
+      else groups.set(key, [item]);
     }
 
     const getPreviewSrc = (item?: MediaItem): string => {
@@ -2064,13 +2070,14 @@ const Gallery: React.FC<GalleryPageProps> = ({
       return item.thumbnail || item.url || '';
     };
 
-    const list: StoryGroup[] = Array.from(groups.entries()).map(([uploaderName, items]) => {
+    const list: StoryGroup[] = Array.from(groups.entries()).map(([groupKey, items]) => {
       const sortedItems = [...items].sort((a, b) => getItemTime(b) - getItemTime(a));
       const firstPhoto = sortedItems.find((i) => i.type === 'photo');
       const firstVideoWithPoster = sortedItems.find((i) => i.type === 'video' && i.poster);
       const avatarSource = firstPhoto ?? firstVideoWithPoster ?? sortedItems[0];
       return {
-        uploaderName,
+        groupKey,
+        uploaderName: sortedItems[0]?.uploaderName || '',
         items: sortedItems,
         avatar: getSafeImageSrc(getPreviewSrc(avatarSource)),
       };
@@ -2248,7 +2255,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
   const jumpToNextGroup = useCallback(() => {
     if (!activeStoryGroup) return;
-    const currentGroupIndex = storyGroups.findIndex((g) => g.uploaderName === activeStoryGroup.uploaderName);
+    const currentGroupIndex = storyGroups.findIndex((g) => g.groupKey === activeStoryGroup.groupKey);
 
     if (currentGroupIndex !== -1 && currentGroupIndex < storyGroups.length - 1) {
       setDirection(1);
@@ -2269,7 +2276,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
 
   const jumpToPrevGroup = useCallback(() => {
     if (!activeStoryGroup) return;
-    const currentGroupIndex = storyGroups.findIndex((g) => g.uploaderName === activeStoryGroup.uploaderName);
+    const currentGroupIndex = storyGroups.findIndex((g) => g.groupKey === activeStoryGroup.groupKey);
 
     if (currentGroupIndex > 0) {
       setDirection(-1);
@@ -2305,7 +2312,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
       return;
     }
 
-    const currentGroupIndex = storyGroups.findIndex((g) => g.uploaderName === activeStoryGroup.uploaderName);
+    const currentGroupIndex = storyGroups.findIndex((g) => g.groupKey === activeStoryGroup.groupKey);
     if (currentGroupIndex > 0) {
       setDirection(-1);
       const prevGroup = storyGroups[currentGroupIndex - 1];
