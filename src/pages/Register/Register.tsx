@@ -22,10 +22,8 @@ import { BuildingGalleryLoader, InfinityRingsLoader, VerificationButton, Navbar 
 import { useUserStore } from '@/store/userStore';
 import { ROUTES } from '@/config/routes';
 import { authApi, couponApi, paymentApi } from '@/services/api';
-import { tokenizeCard } from '@/services/sumit';
 import { SumitHostedCheckout } from '@/components/payment/SumitHostedCheckout';
 
-const USE_SUMIT_IFRAME = true;
 
 const OTP_PHONE_HISTORY = 'mynight_otp_phone_v1';
 const OTP_IP_HISTORY = 'mynight_otp_ip_v1';
@@ -515,100 +513,6 @@ export const Register: React.FC = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const handlePaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAttemptedPaymentSubmit(true);
-
-    const eventId = (currentEvent as any)?._id || (currentEvent as any)?.id;
-    if (!eventId) {
-        setPaymentError('שגיאה: לא נמצא אירוע. אנא נסו שוב.');
-        return;
-    }
-
-    if (finalPrice <= 0 && isCouponApplied) {
-        setIsLoading(true);
-        setPaymentError('');
-        try {
-            const response = await paymentApi.payWithCoupon({
-                eventId,
-                couponCode: formData.coupon,
-                amount: basePrice
-            });
-            if (response.success || response.data) {
-                setPaymentConfirmed(true);
-            } else {
-                setPaymentError('שגיאה בתשלום עם הקופון');
-            }
-        } catch (err: any) {
-            console.error('Payment with coupon failed:', err);
-            setPaymentError(err.response?.data?.error || 'שגיאה בתשלום עם הקופון');
-        } finally {
-            setIsLoading(false);
-        }
-        return;
-    }
-
-    const cleanCard = paymentData.cardNumber.replace(/\D/g, '');
-    const cleanCVV = paymentData.cvv.replace(/\D/g, '');
-    const cleanID = paymentData.id.replace(/\D/g, '');
-    const cleanExpiry = paymentData.expiry.replace(/\D/g, '');
-
-    let errorMsg = '';
-    if (!cleanCard || cleanCard.length < 16) errorMsg = 'מספר כרטיס לא תקין, אנא בדקו שוב';
-    else if (!paymentData.expiry || cleanExpiry.length < 4 || expiryError) errorMsg = expiryError || 'תוקף כרטיס לא תקין';
-    else if (!cleanCVV || cleanCVV.length < 3) errorMsg = 'קוד CVV חייב להכיל לפחות 3 ספרות';
-    else if (!cleanID || cleanID.length < 9) errorMsg = 'מספר תעודת זהות חייב להכיל 9 ספרות';
-
-    if (errorMsg) {
-        setPaymentError(errorMsg);
-        return;
-    }
-
-    setPaymentError('');
-    setIsLoading(true);
-
-    try {
-        const createResponse = await paymentApi.create({
-            eventId,
-            amount: basePrice,
-            couponCode: isCouponApplied ? formData.coupon : undefined
-        });
-
-        const { paymentId, publicKey, companyId } = createResponse.data || {};
-
-        if (!paymentId || !publicKey || !companyId) {
-            setPaymentError('שגיאה ביצירת תשלום. נסו שוב.');
-            return;
-        }
-
-        const [expMonth, expYear] = paymentData.expiry.split('/');
-        const fullYear = 2000 + parseInt(expYear, 10);
-
-        const { token } = await tokenizeCard({
-            companyId,
-            publicKey,
-            cardNumber: cleanCard,
-            expirationMonth: parseInt(expMonth, 10),
-            expirationYear: fullYear,
-            cvv: cleanCVV,
-            citizenId: cleanID,
-        });
-
-        const chargeResponse = await paymentApi.charge({ paymentId, token });
-
-        if (chargeResponse.success || chargeResponse.data) {
-            setPaymentConfirmed(true);
-        } else {
-            setPaymentError('התשלום נכשל. בדקו את פרטי הכרטיס ונסו שוב.');
-        }
-    } catch (err: any) {
-        console.error('Sumit payment failed:', err);
-        setPaymentError(err.response?.data?.error || err.message || 'שגיאה בעיבוד התשלום');
-    } finally {
-        setIsLoading(false);
-    }
   };
 
   const handleStartSumitRedirect = async () => {
@@ -1175,7 +1079,7 @@ export const Register: React.FC = () => {
 
                 <BackgroundDecoration />
                 <div className="max-w-lg lg:max-w-2xl w-full bg-white rounded-[40px] shadow-xl px-10 pb-10 pt-6 lg:px-14 lg:pb-14 lg:pt-9 animate-fade-in relative z-10 mt-2">
-                    {USE_SUMIT_IFRAME ? (
+                    {(
                       <div className="space-y-8">
                         <div className="text-center mb-6">
                           <h2 className="text-4xl font-bold text-black mb-3">תשלום מאובטח</h2>
@@ -1255,72 +1159,6 @@ export const Register: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    ) : (
-                    <form onSubmit={handlePaymentSubmit} className="space-y-8" noValidate>
-                        <div className="text-center mb-10"><h2 className="text-4xl font-bold text-black mb-3">תשלום מאובטח</h2><p className="text-gray-500 lg:text-xl">פרטים אחרונים והאלבום החכם מוכן</p></div>
-                        <div className="space-y-6 text-right">
-                            <label className="block text-sm font-bold text-gray-400 mb-2 pr-1">מספר כרטיס אשראי</label>
-                            <div className="relative">
-                                <input required type="text" placeholder="4580-5566-7788-9900" className={`w-full px-6 py-5 pl-14 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white outline-none transition-all text-left text-xl ${attemptedPaymentSubmit && (paymentData.cardNumber.replace(/\D/g, '').length < 16) ? 'ring-2 ring-red-500 border-red-500' : 'border-gray-100 focus:border-black'}`} dir="ltr" maxLength={19} value={paymentData.cardNumber} onChange={handleCardNumberChange} />
-                                <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" size={24} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-400 mb-2 pr-1 text-right">תוקף</label>
-                                    <input required type="text" placeholder="MM/YY" className={`w-full px-6 py-5 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white outline-none transition-all text-center text-xl ${(expiryError || (attemptedPaymentSubmit && paymentData.expiry.length < 5)) ? 'ring-2 ring-red-500 border-red-500 text-red-500' : 'border-gray-100 focus:border-black'}`} dir="ltr" maxLength={5} value={paymentData.expiry} onChange={handleExpiryChange} />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-400 mb-2 pr-1 text-left">CVV</label>
-                                    <input required type="text" placeholder="123" className={`w-full px-6 py-5 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white outline-none transition-all text-center text-xl ${attemptedPaymentSubmit && (paymentData.cvv.replace(/\D/g, '').length < 3) ? 'ring-2 ring-red-500 border-red-500' : 'border-gray-100 focus:border-black'}`} dir="ltr" maxLength={4} value={paymentData.cvv} onChange={e => { setPaymentData({...paymentData, cvv: e.target.value.replace(/\D/g, '')}); if (paymentError) setPaymentError(''); }} />
-                                </div>
-                            </div>
-                            <label className="block text-sm font-bold text-gray-400 mb-2 pr-1">תעודת זהות</label>
-                            <input required type="text" placeholder="234567890" className={`w-full px-6 py-5 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white outline-none transition-all text-left text-xl ${attemptedPaymentSubmit && (paymentData.id.replace(/\D/g, '').length < 9) ? 'ring-2 ring-red-500 border-red-500' : 'border-gray-100 focus:border-black'}`} dir="ltr" maxLength={9} value={paymentData.id} onChange={e => { setPaymentData({...paymentData, id: e.target.value.replace(/\D/g, '')}); if (paymentError) setPaymentError(''); }} />
-                        </div>
-                        <div className="bg-gray-50 p-8 rounded-[32px] border border-gray-100 mb-6 mt-10 overflow-hidden text-right">
-                            <div className="flex justify-between items-start mb-6"><h3 className="font-black text-black text-2xl tracking-tight">החבילה {currentPackage.hebrewName}</h3><p className="text-4xl font-black text-black transition-all duration-300">₪{basePrice}</p></div>
-                            <div className="space-y-4">
-                                {currentPackage.features.map((feature, i) => (
-                                    <div key={i} className="flex items-center gap-3 justify-start text-gray-600 font-medium">
-                                        <Check size={18} className="text-black shrink-0" />
-                                        <span>{feature}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="space-y-6 text-right">
-                            <label className="block text-sm font-bold text-gray-400 mb-2 pr-1">קוד קופון (אם יש)</label>
-                            <div className="flex gap-4">
-                                <div className="relative flex-grow">
-                                    <input type="text" placeholder="הכנס קוד" className={`w-full px-6 py-4 rounded-2xl border bg-gray-50 focus:bg-white outline-none transition-all text-right text-lg ${couponError ? 'border-red-500' : 'border-gray-100 focus:border-black'}`} value={formData.coupon} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCouponApply(e as any))} onChange={e => { setFormData({...formData, coupon: e.target.value}); if (couponError) setCouponError(false); }} />
-                                </div>
-                                <button type="button" onClick={() => handleCouponApply()} disabled={isCouponLoading || !formData.coupon} className={`px-8 rounded-2xl font-bold text-lg shadow-lg relative overflow-hidden group min-w-[140px] flex items-center justify-center transition-all ${isCouponApplied ? 'bg-green-500 text-white' : (!formData.coupon ? 'bg-gray-200 text-gray-400' : 'bg-black text-white hover:bg-gray-800')} ${triggerAutoShine && formData.coupon && !isCouponApplied ? 'animate-sheen-mobile' : ''}`}><div className="sheen-effect"></div><span className="relative z-10 whitespace-nowrap flex items-center gap-2">{isCouponLoading ? <Loader2 className="animate-spin w-5 h-5" /> : (isCouponApplied ? <><Check size={18} /></> : 'הפעלת קופון')}</span></button>
-                            </div>
-                            {isCouponApplied && <p className="text-green-600 font-bold text-base animate-fade-in text-right px-1">חסכתם {savingsAmount} שקלים עם הקופון!</p>}
-                            {couponError && !isCouponApplied && <p className="text-red-500 font-bold text-base animate-fade-in text-right px-1">אופס! הקופון לא עבר. שננסה שוב עם קוד אחר?</p>}
-                            {couponError && <div className="mt-2 flex items-center gap-2 animate-fade-in flex-row-reverse justify-end"><span className="text-base text-red-500 font-medium">הקופון לא זוהה. שננסה שוב?</span><button type="button" onClick={() => setShowContactModal(true)} className="text-base text-gray-500 underline hover:text-black flex items-center gap-1"><span>צור קשר</span><HelpCircle size={16} /> </button></div>}
-                            <div className="mt-8 flex justify-between items-center bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                                <span className="font-bold text-gray-600 text-xl">סה"כ לתשלום:</span>
-                                <span className={`font-black text-4xl transition-colors duration-300 inline-block origin-center ${triggerPricePulse ? 'animate-price-wow' : 'text-black'}`}>
-                                  ₪{displayedPrice}
-                                </span>
-                            </div>
-                        </div>
-                        {paymentError && <div className="text-red-500 text-base font-medium bg-red-50 p-4 rounded-xl text-center animate-fade-in">{paymentError}</div>}
-                        <div className="pt-1 lg:pt-4 space-y-4">
-                            <button type="submit" disabled={isLoading} className={`w-full bg-gradient-to-r from-gold-primary to-gold-secondary hover:brightness-105 text-white font-bold text-2xl lg:text-3xl py-6 rounded-2xl shadow-lg transition-all relative flex items-center justify-center overflow-hidden -translate-y-3 ${triggerAutoShine ? 'animate-sheen-mobile' : ''}`}><div className="sheen-effect"></div><div className="relative z-10 flex items-center justify-center w-full px-6">{isLoading ? <Loader2 className="animate-spin" /> : <div className="flex items-center justify-center gap-3"><span className="relative">הפעלת האלבום של {formData.partner1} ו{formData.partner2}</span><Lock size={24} className="shrink-0" /></div>}</div></button>
-                            <div className="flex flex-col items-center gap-1">
-                                <div className="text-gray-400 text-xs font-bold transition-colors">
-                                    בלחיצה על הפעלת האלבום אתם מסכימים{' '}
-                                    <button type="button" onClick={() => setStep('terms')} className="border-b border-gray-300 hover:text-black hover:border-black transition-colors">לתנאי השימוש</button>
-                                </div>
-                                <div className="flex items-center gap-1.5 text-gray-400 font-bold text-[10px] uppercase tracking-widest pt-1">
-                                    <ShieldCheck size={12} className="text-green-500" />
-                                    <span>תשלום מאובטח | פתיחה מיידית</span>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
                     )}
                 </div>
                 <ProgressDots step={3} onStepClick={handleDotClick} className="absolute bottom-6 left-0 right-0 w-full" />
