@@ -16,9 +16,9 @@ import { ROUTES } from '@/config/routes';
  * event's flashTier='plus' (see payment.service.ts).
  */
 
-// ⚠️ Must match the backend price in src/shared/config/flashPlans.ts
-// (FLASH_PLUS_PRICE_ILS). PLACEHOLDER — set your real price in both places.
-const FLASH_PLUS_PRICE = 149;
+// Must match the backend price in src/shared/config/flashPlans.ts
+// (FLASH_PLUS_PRICE_ILS).
+const FLASH_PLUS_PRICE = 50;
 
 const BASIC_FEATURES = [
   { icon: Camera, label: '8 צילומים לכל אורח' },
