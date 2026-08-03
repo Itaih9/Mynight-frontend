@@ -148,7 +148,7 @@ export const Flash = () => {
             <h1 className="text-4xl font-black mb-3 leading-tight">פלאש</h1>
             <p className="text-white/70 text-lg leading-relaxed">
               מצלמה חד-פעמית לכל אורח בחתונה שלכם.
-              <br />16 צילומים, בלי לראות, בלי לחזור אחורה.
+              <br />8 צילומים, בלי לראות, בלי לחזור אחורה.
             </p>
           </div>
 
@@ -156,7 +156,7 @@ export const Flash = () => {
             <ul className="space-y-3 text-sm text-white/75">
               {[
                 'האורחים סורקים קישור — בלי להתקין שום אפליקציה',
-                'כל אורח מקבל 16 צילומים בלבד. כל צילום נחשב',
+                'כל אורח מקבל 8 צילומים בלבד. כל צילום נחשב',
                 'הכל מתפתח בבוקר שאחרי — וכל התמונות שלכם',
               ].map((t) => (
                 <li key={t} className="flex gap-2.5">

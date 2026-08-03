@@ -999,10 +999,14 @@ export const DisposableCamera = () => {
                 <span className={`absolute inset-1.5 rounded-full ${mode === 'video' ? 'bg-red-500' : 'bg-white'}`} />
               )}
             </button>
-            <div className="flex bg-white/10 rounded-full p-1 text-xs">
-              <button onClick={() => !recording && setMode('photo')} className={`px-4 py-1 rounded-full font-bold transition-colors ${mode === 'photo' ? 'bg-white text-black' : 'text-white/70'}`}>תמונה</button>
-              <button onClick={() => !recording && setMode('video')} className={`px-4 py-1 rounded-full font-bold transition-colors ${mode === 'video' ? 'bg-white text-black' : 'text-white/70'}`}>וידאו</button>
-            </div>
+            {/* Video is a פלאש+ feature — on the free tier there's no toggle,
+                guests just take photos. */}
+            {status?.videoEnabled && (
+              <div className="flex bg-white/10 rounded-full p-1 text-xs">
+                <button onClick={() => !recording && setMode('photo')} className={`px-4 py-1 rounded-full font-bold transition-colors ${mode === 'photo' ? 'bg-white text-black' : 'text-white/70'}`}>תמונה</button>
+                <button onClick={() => !recording && setMode('video')} className={`px-4 py-1 rounded-full font-bold transition-colors ${mode === 'video' ? 'bg-white text-black' : 'text-white/70'}`}>וידאו</button>
+              </div>
+            )}
           </div>
 
           <button onClick={flip} aria-label="החלפת מצלמה" className="w-12 h-12 rounded-full bg-white/12 text-white flex items-center justify-center">

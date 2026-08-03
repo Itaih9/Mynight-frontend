@@ -7,6 +7,8 @@ export const ROUTES = {
   FLASH: '/flash',
   // Single-product page for the Here I Am upsell — every upsell CTA lands here.
   HERE_I_AM: '/here-i-am',
+  // Flash Plus (פלאש+) plans + upgrade checkout.
+  FLASH_PLUS: '/flash-plus',
   GIFT: '/gift',
   GIFT_CALLBACK: '/gift-callback',
   GIFT_CLAIM: '/gift/:code',

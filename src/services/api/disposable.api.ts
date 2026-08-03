@@ -9,6 +9,9 @@ export interface DisposableStatus {
   shotLimit: number;
   taken: number;
   remaining: number;
+  tier?: 'basic' | 'plus';
+  /** פלאש+ only — the free tier is photos, no video toggle. */
+  videoEnabled?: boolean;
 }
 
 export interface DisposableShot {

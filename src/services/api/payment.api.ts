@@ -4,8 +4,10 @@ import type { Payment, ApiResponse } from '@/types/api.types';
 
 export interface CreatePaymentRequest {
   eventId: string;
-  amount: number;
+  /** Optional for the Flash Plus (פלאש+) product — the server sets that price. */
+  amount?: number;
   couponCode?: string;
+  product?: string;
 }
 
 export interface ChargePaymentRequest {

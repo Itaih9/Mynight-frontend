@@ -12,6 +12,7 @@ import GiftCallback from '../pages/Gift/GiftCallback';
 import DisposableCamera from '../pages/DisposableCamera/DisposableCamera';
 import Flash from '../pages/Flash/Flash';
 import HereIAm from '../pages/HereIAm/HereIAm';
+import FlashPlus from '../pages/FlashPlus/FlashPlus';
 import Upload from '../pages/Upload/Upload';
 import Gallery from '../pages/Gallery/Gallery';
 import GalleryShowcase from '../pages/GalleryShowcase/GalleryShowcase';
@@ -54,6 +55,7 @@ export const AppRoutes = () => {
       <Route path={ROUTES.DISPOSABLE_CAMERA} element={<DisposableCamera />} />
       <Route path={ROUTES.FLASH} element={<Flash />} />
       <Route path={ROUTES.HERE_I_AM} element={<HereIAm />} />
+      <Route path={ROUTES.FLASH_PLUS} element={<FlashPlus />} />
       <Route path={ROUTES.GIFT_CALLBACK} element={<GiftCallback />} />
       <Route path={ROUTES.GIFT_CLAIM} element={<GiftClaim />} />
       <Route path={ROUTES.GIFT} element={<Gift />} />
