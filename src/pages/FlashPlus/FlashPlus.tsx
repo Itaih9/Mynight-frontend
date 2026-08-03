@@ -206,7 +206,7 @@ export const FlashPlus = () => {
                 disabled={submitting}
                 className="w-full py-4 rounded-2xl bg-gold-primary text-black font-black text-lg disabled:opacity-50 active:scale-[0.99] transition-transform"
               >
-                {submitting ? 'רגע…' : `שדרגו לפלאש+ ₪${FLASH_PLUS_PRICE}`}
+                {submitting ? 'רגע…' : `שדרוג לפלאש+ ₪${FLASH_PLUS_PRICE}`}
               </button>
             )
           ) : (
