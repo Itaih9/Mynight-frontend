@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, Sparkles, Video, ScanFace, Camera } from 'lucide-react';
 import { eventsApi } from '@/services/api/events.api';
 import { paymentApi } from '@/services/api';
@@ -8,12 +8,10 @@ import { SumitHostedCheckout } from '@/components/payment/SumitHostedCheckout';
 import { ROUTES } from '@/config/routes';
 
 /**
- * פלאש+ plans + upgrade checkout.
- *
- * Reached with ?code=<eventCode> (from the couple's dashboard / upsell). Shows
- * the free Basic vs paid פלאש+ comparison and, for the logged-in couple, starts
- * the Sumit hosted checkout for the upgrade. On success the backend sets the
- * event's flashTier='plus' (see payment.service.ts).
+ * פלאש / פלאש+ plans on one page: a pill toggle switches between the two tiers,
+ * and the selected tier's details (and, for פלאש+, the upgrade checkout) appear
+ * below. Reached with ?code=<eventCode>; on a successful פלאש+ payment the
+ * backend sets flashTier='plus'.
  */
 
 // Must match the backend price in src/shared/config/flashPlans.ts
@@ -33,9 +31,12 @@ const PLUS_FEATURES = [
   { icon: Check, label: 'כולל התמונות מהצלם המקצועי' },
 ];
 
+type Tier = 'basic' | 'plus';
+
 export const FlashPlus = () => {
   const [params] = useSearchParams();
   const code = params.get('code') || '';
+  const [tier, setTier] = useState<Tier>('plus');
   const [eventId, setEventId] = useState('');
   const [alreadyPlus, setAlreadyPlus] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -98,79 +99,105 @@ export const FlashPlus = () => {
     );
   }
 
+  const isPlus = tier === 'plus';
+  const features = isPlus ? PLUS_FEATURES : BASIC_FEATURES;
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white" dir="rtl">
       <div className="max-w-md mx-auto px-6 py-14">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold-primary/15 text-gold-primary text-xs font-bold mb-5">
-              <Sparkles size={13} /> שדרוג
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold mb-5">
+              <Sparkles size={13} /> המצלמה של החתונה שלכם
             </div>
-            <h1 className="text-4xl font-black mb-3 leading-tight">פלאש+</h1>
-            <p className="text-white/70 text-lg leading-relaxed">
-              יותר צילומים, וידאו, וזיהוי פנים —<br />כל אורח מקבל את התמונות שלו.
-            </p>
+            <p className="text-white/70 text-lg leading-relaxed">בחרו את החבילה שלכם.</p>
           </div>
 
-          {/* Basic (free) */}
-          <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-5 mb-4">
-            <div className="flex items-baseline justify-between mb-4">
-              <span className="font-bold text-lg">פלאש</span>
-              <span className="text-white/50 text-sm font-bold">חינם</span>
-            </div>
-            <ul className="space-y-2.5 text-sm">
-              {BASIC_FEATURES.map((f) => (
-                <li key={f.label} className="flex gap-2.5 text-white/70">
-                  <Check size={17} className="text-white/40 shrink-0 mt-0.5" />
-                  <span>{f.label}</span>
-                </li>
-              ))}
-              <li className="flex gap-2.5 text-white/35">
-                <X size={17} className="shrink-0 mt-0.5" />
-                <span>ללא וידאו וללא זיהוי פנים</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* פלאש+ (paid) */}
-          <div className="rounded-2xl bg-gradient-to-b from-gold-primary/15 to-white/[0.03] ring-1 ring-gold-primary/30 p-6 mb-6">
-            <div className="flex items-baseline justify-between mb-4">
-              <span className="font-black text-xl">פלאש+</span>
-              <span className="text-gold-primary font-black text-2xl">₪{FLASH_PLUS_PRICE}</span>
-            </div>
-            <ul className="space-y-2.5 text-sm">
-              {PLUS_FEATURES.map((f) => (
-                <li key={f.label} className="flex gap-2.5 text-white">
-                  <f.icon size={17} className="text-gold-primary shrink-0 mt-0.5" />
-                  <span>{f.label}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {alreadyPlus ? (
-            <div className="w-full py-4 rounded-2xl bg-white/10 text-white/80 font-bold text-center">
-              האירוע שלכם כבר משודרג לפלאש+ ✓
-            </div>
-          ) : needLogin ? (
-            <Link
-              to={`${ROUTES.LOGIN}?redirect=${encodeURIComponent(`/flash-plus?code=${code}`)}`}
-              className="block w-full py-4 rounded-2xl bg-white text-black font-black text-lg text-center active:scale-[0.99] transition-transform"
-            >
-              התחברו כדי לשדרג
-            </Link>
-          ) : (
+          {/* Pill toggle */}
+          <div className="flex bg-white/10 rounded-full p-1 mb-7">
             <button
-              onClick={upgrade}
-              disabled={submitting}
-              className="w-full py-4 rounded-2xl bg-gold-primary text-black font-black text-lg disabled:opacity-50 active:scale-[0.99] transition-transform"
+              onClick={() => setTier('basic')}
+              className={`flex-1 py-3 rounded-full font-black text-lg transition-all ${
+                tier === 'basic' ? 'bg-white text-black shadow' : 'text-white/60'
+              }`}
             >
-              {submitting ? 'רגע…' : `שדרגו לפלאש+ · ₪${FLASH_PLUS_PRICE}`}
+              פלאש
             </button>
+            <button
+              onClick={() => setTier('plus')}
+              className={`flex-1 py-3 rounded-full font-black text-lg transition-all ${
+                tier === 'plus' ? 'bg-gold-primary text-black shadow' : 'text-white/60'
+              }`}
+            >
+              פלאש+
+            </button>
+          </div>
+
+          {/* Details for the selected tier */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={tier}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18 }}
+              className={`rounded-2xl p-6 mb-6 ring-1 ${
+                isPlus
+                  ? 'bg-gradient-to-b from-gold-primary/15 to-white/[0.03] ring-gold-primary/30'
+                  : 'bg-white/5 ring-white/10'
+              }`}
+            >
+              <div className="flex items-baseline justify-between mb-5">
+                <span className="font-black text-xl">{isPlus ? 'פלאש+' : 'פלאש'}</span>
+                <span className={isPlus ? 'text-gold-primary font-black text-2xl' : 'text-white/60 font-bold text-lg'}>
+                  {isPlus ? `₪${FLASH_PLUS_PRICE}` : 'חינם'}
+                </span>
+              </div>
+              <ul className="space-y-3 text-sm">
+                {features.map((f) => (
+                  <li key={f.label} className={`flex gap-2.5 ${isPlus ? 'text-white' : 'text-white/75'}`}>
+                    <f.icon size={17} className={`shrink-0 mt-0.5 ${isPlus ? 'text-gold-primary' : 'text-white/40'}`} />
+                    <span>{f.label}</span>
+                  </li>
+                ))}
+                {!isPlus && (
+                  <li className="flex gap-2.5 text-white/35">
+                    <X size={17} className="shrink-0 mt-0.5" />
+                    <span>ללא וידאו וללא זיהוי פנים</span>
+                  </li>
+                )}
+              </ul>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Action — only פלאש+ has a CTA */}
+          {isPlus ? (
+            alreadyPlus ? (
+              <div className="w-full py-4 rounded-2xl bg-white/10 text-white/80 font-bold text-center">
+                האירוע שלכם כבר משודרג לפלאש+ ✓
+              </div>
+            ) : needLogin ? (
+              <Link
+                to={`${ROUTES.LOGIN}?redirect=${encodeURIComponent(`/flash-plus?code=${code}`)}`}
+                className="block w-full py-4 rounded-2xl bg-white text-black font-black text-lg text-center active:scale-[0.99] transition-transform"
+              >
+                התחברו כדי לשדרג
+              </Link>
+            ) : (
+              <button
+                onClick={upgrade}
+                disabled={submitting}
+                className="w-full py-4 rounded-2xl bg-gold-primary text-black font-black text-lg disabled:opacity-50 active:scale-[0.99] transition-transform"
+              >
+                {submitting ? 'רגע…' : `שדרגו לפלאש+ · ₪${FLASH_PLUS_PRICE}`}
+              </button>
+            )
+          ) : (
+            <p className="text-center text-white/40 text-sm py-4">זו החבילה החינמית — מוכנה לשימוש מיד.</p>
           )}
 
           {error && <p className="text-red-400 text-sm text-center mt-4">{error}</p>}
-          <p className="text-center text-white/35 text-xs mt-4">תשלום מאובטח דרך Sumit. חד-פעמי.</p>
+          {isPlus && <p className="text-center text-white/35 text-xs mt-4">תשלום מאובטח דרך Sumit. חד-פעמי.</p>}
         </motion.div>
       </div>
     </div>
