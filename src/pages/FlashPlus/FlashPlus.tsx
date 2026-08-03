@@ -45,17 +45,34 @@ export const FlashPlus = () => {
   const [needLogin, setNeedLogin] = useState(false);
 
   useEffect(() => {
-    if (!code) return;
     let cancelled = false;
-    eventsApi
-      .getByCode(code)
-      .then((res) => {
-        if (cancelled) return;
-        const ev = res.data as any;
-        setEventId(ev?._id || '');
-        setAlreadyPlus(ev?.flashTier === 'plus');
-      })
-      .catch(() => {});
+    (async () => {
+      // Reached with ?code=<eventCode>: resolve that event.
+      if (code) {
+        try {
+          const res = await eventsApi.getByCode(code);
+          const ev = res.data as any;
+          if (!cancelled) {
+            setEventId(ev?._id || '');
+            setAlreadyPlus(ev?.flashTier === 'plus');
+          }
+        } catch { /* invalid/expired code — upgrade will guide them */ }
+        return;
+      }
+      // No code: resolve the logged-in couple's own event. If they're not
+      // logged in, surface the login prompt instead of "event not found".
+      try {
+        const res = await eventsApi.getMyEvents();
+        const evs = (res.data as any) || [];
+        const ev = Array.isArray(evs) ? evs[0] : evs;
+        if (!cancelled && ev) {
+          setEventId(ev._id || '');
+          setAlreadyPlus(ev.flashTier === 'plus');
+        }
+      } catch (e: any) {
+        if (!cancelled && e?.response?.status === 401) setNeedLogin(true);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -189,7 +206,7 @@ export const FlashPlus = () => {
                 disabled={submitting}
                 className="w-full py-4 rounded-2xl bg-gold-primary text-black font-black text-lg disabled:opacity-50 active:scale-[0.99] transition-transform"
               >
-                {submitting ? 'רגע…' : `שדרגו לפלאש+ · ₪${FLASH_PLUS_PRICE}`}
+                {submitting ? 'רגע…' : `שדרגו לפלאש+ ₪${FLASH_PLUS_PRICE}`}
               </button>
             )
           ) : (
