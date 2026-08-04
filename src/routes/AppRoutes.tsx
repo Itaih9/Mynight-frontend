@@ -60,6 +60,7 @@ export const AppRoutes = () => {
           The old combined Flash page stays reachable at /flash/legacy as a fallback. */}
       <Route path={ROUTES.FLASH} element={<FlashLanding />} />
       <Route path={ROUTES.FLASH_REGISTER} element={<FlashRegister />} />
+      <Route path={ROUTES.FLASH_EVENT} element={<FlashRegister />} />
       <Route path="/flash/legacy" element={<Flash />} />
       <Route path={ROUTES.HERE_I_AM} element={<HereIAm />} />
       <Route path={ROUTES.FLASH_PLUS} element={<FlashPlus />} />

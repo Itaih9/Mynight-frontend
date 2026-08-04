@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Copy, Sparkles, Download, Calendar as CalendarIcon } from 'lucide-react';
@@ -49,6 +49,31 @@ export const FlashRegister = () => {
   const showPlanPill = !planParam;
   const [plan, setPlan] = useState<'free' | 'plus'>(planParam === 'plus' ? 'plus' : 'free');
   const wantsPlus = plan === 'plus';
+
+  /* Reached as /flash/event?code=XXXX (e.g. straight after paying): load that
+     event and show the same post-registration screen, instead of the plan page. */
+  const existingCode = params.get('code') || '';
+  useEffect(() => {
+    if (!existingCode || result) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await eventsApi.getByCode(existingCode);
+        const ev: any = res.data;
+        if (cancelled || !ev) return;
+        if (ev.weddingDate) setWeddingDate(String(ev.weddingDate).slice(0, 10));
+        if (ev.coupleName) setCoupleName(ev.coupleName);
+        setResult({
+          eventCode: ev.eventCode || existingCode,
+          cameraUrl: `${window.location.origin}/camera/${ev.eventCode || existingCode}`,
+          weddingDate: ev.weddingDate,
+          shotLimit: ev.flashTier === 'plus' ? 24 : 8,
+          isNew: false,
+        } as FlashRegisterResult);
+      } catch { /* bad code — fall through to the normal signup form */ }
+    })();
+    return () => { cancelled = true; };
+  }, [existingCode, result]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -298,9 +323,13 @@ export const FlashRegister = () => {
 
         {/* REGISTRATION */}
         <section className="reg">
-          <div className="eyebrow"><i></i>הרשמה · חינם<i></i></div>
+          <div className="eyebrow"><i></i>{wantsPlus ? 'חבילה משודרגת' : 'הרשמה · חינם'}<i></i></div>
           <h1 className="h-sec">צרו את הפלאש שלכם</h1>
-          <p className="sub">דקה אחת וזה מוכן — בלי אפליקציה, בלי כרטיס אשראי.</p>
+          <p className="sub">
+            {wantsPlus
+              ? 'דקה אחת וזה מוכן — ואז מעבר לתשלום מאובטח.'
+              : 'דקה אחת וזה מוכן — בלי אפליקציה, בלי כרטיס אשראי.'}
+          </p>
 
           <div className="rule">
             <span className="rl"></span>
@@ -432,7 +461,11 @@ export const FlashRegister = () => {
                 </svg>
               </button>
               {error && <p className="err">{error}</p>}
-              <p className="trust">חינם להתחיל · תשדרגו לפלאש+ מתי שתרצו.</p>
+              <p className="trust">
+                {wantsPlus
+                  ? 'תשלום מאובטח דרך Sumit · חד-פעמי.'
+                  : 'חינם להתחיל · תשדרגו לפלאש+ מתי שתרצו.'}
+              </p>
             </div>
           </form>
 

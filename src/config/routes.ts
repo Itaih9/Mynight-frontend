@@ -7,6 +7,8 @@ export const ROUTES = {
   // /flash = the ad landing page; /flash/register = the signup form.
   FLASH: '/flash',
   FLASH_REGISTER: '/flash/register',
+  // Existing event's post-registration page (QR, link, tips) — e.g. after paying.
+  FLASH_EVENT: '/flash/event',
   // Single-product page for the Here I Am upsell — every upsell CTA lands here.
   HERE_I_AM: '/here-i-am',
   // Flash Plus (פלאש+) plans + upgrade checkout.

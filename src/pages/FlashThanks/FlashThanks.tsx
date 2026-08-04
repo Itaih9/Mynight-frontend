@@ -51,7 +51,10 @@ export const FlashThanks = () => {
     };
   }, [paymentId]);
 
-  const backHref = eventCode ? `${ROUTES.FLASH_PLUS}?code=${eventCode}` : ROUTES.FLASH_PLUS;
+  /* After paying, send them to their own event page (QR, link, print tips) —
+     not back to the plan-picker, which they've just bought out of. */
+  const backHref = eventCode ? `${ROUTES.FLASH_EVENT}?code=${eventCode}` : ROUTES.FLASH;
+  const retryHref = eventCode ? `${ROUTES.FLASH_PLUS}?code=${eventCode}` : ROUTES.FLASH_PLUS;
 
   return (
     <div className="frg" dir="rtl">
@@ -87,7 +90,7 @@ export const FlashThanks = () => {
           <h1 className="thanks-h">התשלום לא הושלם</h1>
           <p className="thanks-sub">{message || 'אפשר לנסות שוב.'}</p>
           <Link
-            to={backHref}
+            to={retryHref}
             className="btn thanks-btn"
           >
             חזרה לשדרוג
