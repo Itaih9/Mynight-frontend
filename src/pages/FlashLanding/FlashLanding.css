@@ -432,6 +432,7 @@
 .flp .o4-foot{text-align:center}
 
 /* --- פלאש / פלאש+ pill toggle --- */
+.flp .final .toggle{margin:20px auto 4px}
 .flp .toggle{
   position:relative;display:flex;width:224px;margin:0 auto 14px;padding:4px;
   border-radius:100px;background:rgba(28,25,23,.055);

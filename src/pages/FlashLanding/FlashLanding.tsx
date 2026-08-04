@@ -103,29 +103,7 @@ export default function FlashLanding() {
           </div>
 
           <div className="o4-foot">
-            {/* פלאש / פלאש+ pill — picking פלאש+ carries the upgrade intent
-                through signup, then lands straight on the payment page. */}
-            <div className={`toggle${plan === 'plus' ? ' is-plus' : ''}`}>
-              <span className="thumb" />
-              <button
-                className={`seg${plan === 'free' ? ' is-on' : ''}`}
-                type="button"
-                aria-pressed={plan === 'free'}
-                onClick={() => setPlan('free')}
-              >
-                פלאש
-              </button>
-              <button
-                className={`seg${plan === 'plus' ? ' is-on' : ''}`}
-                type="button"
-                aria-pressed={plan === 'plus'}
-                onClick={() => setPlan('plus')}
-              >
-                פלאש+
-              </button>
-            </div>
-
-            <button className="btn hero-cta" type="button" onClick={goRegister}>
+            <button className="btn hero-cta" type="button" onClick={() => navigate('/flash/register')}>
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M12 3.4c.7 4 1.6 4.9 5.6 5.6-4 .7-4.9 1.6-5.6 5.6-.7-4-1.6-4.9-5.6-5.6 4-.7 4.9-1.6 5.6-5.6Z"
@@ -133,7 +111,7 @@ export default function FlashLanding() {
                 />
                 <circle cx="19" cy="17" r="1.4" fill="#1C1917" />
               </svg>
-              {plan === 'plus' ? `שדרוג לפלאש+ ₪${FLASH_PLUS_PRICE}` : 'להתחיל בחינם'}
+              להתחיל בחינם
             </button>
 
             <div className="trust">בלי אפליקציה · מוכן תוך דקה</div>
@@ -425,6 +403,29 @@ export default function FlashLanding() {
               <path d="M24 15v6M21 18h6" stroke="url(#foil)" strokeWidth="1.1" strokeLinecap="round" />
             </svg>
             <h2 className="final-h">הפלאש של החתונה שלכם מתחיל כאן</h2>
+
+            {/* פלאש / פלאש+ pill — choosing פלאש+ carries the upgrade intent
+                through signup and hands straight off to payment. */}
+            <div className={`toggle${plan === 'plus' ? ' is-plus' : ''}`}>
+              <span className="thumb" />
+              <button
+                className={`seg${plan === 'free' ? ' is-on' : ''}`}
+                type="button"
+                aria-pressed={plan === 'free'}
+                onClick={() => setPlan('free')}
+              >
+                פלאש
+              </button>
+              <button
+                className={`seg${plan === 'plus' ? ' is-on' : ''}`}
+                type="button"
+                aria-pressed={plan === 'plus'}
+                onClick={() => setPlan('plus')}
+              >
+                פלאש+
+              </button>
+            </div>
+
             <button className="btn" type="button" onClick={goRegister}>
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -433,9 +434,13 @@ export default function FlashLanding() {
                 />
                 <circle cx="19" cy="17" r="1.4" fill="#1C1917" />
               </svg>
-              צרו פלאש — חינם
+              {plan === 'plus' ? `שדרוג לפלאש+ ₪${FLASH_PLUS_PRICE}` : 'צרו פלאש — חינם'}
             </button>
-            <p className="final-sub">בלי כרטיס אשראי. משדרגים לפלאש+ מתי שרוצים.</p>
+            <p className="final-sub">
+              {plan === 'plus'
+                ? 'נרשמים ועוברים ישר לתשלום מאובטח. חד-פעמי.'
+                : 'בלי כרטיס אשראי. משדרגים לפלאש+ מתי שרוצים.'}
+            </p>
           </section>
         </div>
       </div>
