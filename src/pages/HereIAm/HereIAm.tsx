@@ -11,6 +11,14 @@ import { contactApi } from '@/services/api/contact.api';
  * competes with the other tiers. No price shown: this captures a lead through
  * the existing contact endpoint and the sale is closed by hand.
  */
+/** Guest photos that float behind the woman, same set as the mobile-landing hero. */
+const FLOATING_SHOTS = [
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/5tprJQnK.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/QMjzvJk9.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/xjRcq8Vz.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/vmGKCtLq.png',
+];
+
 export const HereIAm = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -53,7 +61,7 @@ export const HereIAm = () => {
             className="pb-16 md:pb-28"
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold-primary/15 text-[13px] font-bold text-charcoal mb-5">
-              <ScanFace size={14} /> החכמה · Here I Am
+              <ScanFace size={14} /> החבילה החכמה של My Night
             </div>
             <h1 className="text-4xl md:text-5xl font-black leading-[1.15] mb-5">
               כל אורח מקבל
@@ -73,13 +81,34 @@ export const HereIAm = () => {
           </motion.div>
 
           <div className="relative flex items-end justify-center min-h-[320px] md:min-h-[460px]">
+            {/* guest photos floating behind her — same motif as the mobile hero */}
+            <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+              {FLOATING_SHOTS.map((src, i) => (
+                <motion.img
+                  key={src}
+                  src={src}
+                  alt=""
+                  loading="lazy"
+                  initial={{ opacity: 0, y: 18, rotate: [-10, 8, -6, 10][i] }}
+                  animate={{ opacity: 1, y: 0, rotate: [-10, 8, -6, 10][i] }}
+                  transition={{ delay: 0.25 + i * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute w-[92px] md:w-[122px] rounded-xl shadow-[0_18px_38px_-14px_rgba(0,0,0,0.32)] ring-1 ring-black/5"
+                  style={[
+                    { top: '6%', right: '4%' },
+                    { top: '18%', left: '2%' },
+                    { bottom: '24%', right: '0%' },
+                    { bottom: '10%', left: '6%' },
+                  ][i]}
+                />
+              ))}
+            </div>
             <img
               src="/images/woman-holding-phone.png"
               alt="אישה מחזיקה טלפון עם האלבום האישי"
               loading="eager"
               decoding="async"
               fetchPriority="high"
-              className="object-contain max-h-[460px] w-auto drop-shadow-[0_42px_72px_rgba(0,0,0,0.14)]"
+              className="relative z-[1] object-contain max-h-[460px] w-auto drop-shadow-[0_42px_72px_rgba(0,0,0,0.14)]"
             />
           </div>
         </div>
