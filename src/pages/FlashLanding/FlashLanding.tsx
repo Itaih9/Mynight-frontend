@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoSvg from '@/assets/logo.svg';
 import './FlashLanding.css';
@@ -23,9 +24,30 @@ const GUEST_SHOTS = [
 export default function FlashLanding() {
   const navigate = useNavigate();
   const goRegister = () => navigate('/flash/register');
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  /* Scroll reveal — each [data-reveal] block fades up once, like a print
+     coming into focus. Respects prefers-reduced-motion (CSS handles that). */
+  useEffect(() => {
+    const els = rootRef.current?.querySelectorAll('[data-reveal]');
+    if (!els?.length) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-in');
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.18, rootMargin: '0px 0px -8% 0px' }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <div className="flp">
+    <div className="flp" ref={rootRef}>
       {/* foil gradient defs (shared by all inline ornaments) */}
       <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
         <defs>
@@ -58,7 +80,7 @@ export default function FlashLanding() {
               </div>
             </div>
 
-            <div className="hero-bottom">
+            <div className="hero-bottom" data-reveal>
               <h1 className="hero-h1">
                 החתונה שלכם,
                 <br />
@@ -87,10 +109,10 @@ export default function FlashLanding() {
             Real guest-uploaded photos from actual weddings (the same
             gallery_showcase set the album showcase uses). */}
         <section className="gallery">
-          <h2 className="gallery-h">החגיגה מעיניים של האורחים</h2>
+          <h2 className="gallery-h" data-reveal>החגיגה מעיניים של האורחים</h2>
           <div className="strip-g">
             {GUEST_SHOTS.map((src, i) => (
-              <div className={i % 2 ? 'shot tall' : 'shot'} key={src}>
+              <div className={i % 2 ? 'shot tall' : 'shot'} key={src} style={{ ['--i']: i } as React.CSSProperties}>
                 <img src={src} alt="" loading="lazy" />
                 <span className="veil" />
               </div>
@@ -108,7 +130,7 @@ export default function FlashLanding() {
             </div>
             <h2 className="h-sec">איך זה עובד</h2>
 
-            <div className="hiw">
+            <div className="hiw" data-reveal>
               <div className="hiw-item">
                 <span className="hiw-num foiltext">01</span>
                 <div className="hiw-text">
@@ -175,7 +197,7 @@ export default function FlashLanding() {
             </div>
             <h2 className="h-sec">הזוגות אהבו במיוחד</h2>
 
-            <div className="values">
+            <div className="values" data-reveal>
               <div className="value">
                 <svg className="vm" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
                   <rect
@@ -273,7 +295,7 @@ export default function FlashLanding() {
             </div>
             <h2 className="h-sec">מתחילים בחינם</h2>
 
-            <div className="tiers">
+            <div className="tiers" data-reveal>
               {/* FREE */}
               <div className="tier free" role="button" tabIndex={0} onClick={goRegister}
                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && goRegister()}>
@@ -339,7 +361,7 @@ export default function FlashLanding() {
           </section>
 
           {/* ================= FINAL CTA ================= */}
-          <section className="final">
+          <section className="final" data-reveal>
             <svg className="final-orn" width="48" height="26" viewBox="0 0 48 26" fill="none" aria-hidden="true">
               <path d="M24 5 C18 5 14 9 14 15" stroke="url(#foil)" strokeWidth="1" fill="none" />
               <path d="M24 5 C30 5 34 9 34 15" stroke="url(#foil)" strokeWidth="1" fill="none" />
