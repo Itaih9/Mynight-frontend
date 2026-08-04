@@ -11,6 +11,8 @@ import GiftClaim from '../pages/Gift/GiftClaim';
 import GiftCallback from '../pages/Gift/GiftCallback';
 import DisposableCamera from '../pages/DisposableCamera/DisposableCamera';
 import Flash from '../pages/Flash/Flash';
+import FlashLanding from '../pages/FlashLanding/FlashLanding';
+import FlashRegister from '../pages/FlashRegister/FlashRegister';
 import HereIAm from '../pages/HereIAm/HereIAm';
 import FlashPlus from '../pages/FlashPlus/FlashPlus';
 import FlashThanks from '../pages/FlashThanks/FlashThanks';
@@ -54,7 +56,11 @@ export const AppRoutes = () => {
       <Route path={ROUTES.GALLERY_LOGIN} element={<GalleryLogin />} />
       <Route path={ROUTES.START} element={<GiftChoice />} />
       <Route path={ROUTES.DISPOSABLE_CAMERA} element={<DisposableCamera />} />
-      <Route path={ROUTES.FLASH} element={<Flash />} />
+      {/* /flash = stationery ad landing (ad target); /flash/register = stationery signup.
+          The old combined Flash page stays reachable at /flash/legacy as a fallback. */}
+      <Route path={ROUTES.FLASH} element={<FlashLanding />} />
+      <Route path={ROUTES.FLASH_REGISTER} element={<FlashRegister />} />
+      <Route path="/flash/legacy" element={<Flash />} />
       <Route path={ROUTES.HERE_I_AM} element={<HereIAm />} />
       <Route path={ROUTES.FLASH_PLUS} element={<FlashPlus />} />
       <Route path={ROUTES.FLASH_THANKS} element={<FlashThanks />} />

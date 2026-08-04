@@ -4,7 +4,9 @@ export const ROUTES = {
   START: '/start',
   DISPOSABLE_CAMERA: '/camera/:code',
   // Free פלאש: its own landing + signup, deliberately not on the packages page.
+  // /flash = the ad landing page; /flash/register = the signup form.
   FLASH: '/flash',
+  FLASH_REGISTER: '/flash/register',
   // Single-product page for the Here I Am upsell — every upsell CTA lands here.
   HERE_I_AM: '/here-i-am',
   // Flash Plus (פלאש+) plans + upgrade checkout.

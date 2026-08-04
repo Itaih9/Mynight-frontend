@@ -1,0 +1,279 @@
+/* =========================================================
+   FlashLanding — ported from ad-landing-stationery.html
+   Every rule is scoped under .flp so the generic class names
+   (.hero, .btn, .tier, …) never leak globally.
+   ========================================================= */
+
+.flp{
+  /* My Night website palette */
+  --cream:#FAFAFA;      /* paper base = website background */
+  --cream-2:#F3F2F0;
+  --paper:#FFFFFF;      /* card stock, brightest */
+  --blush:#FFF1F2;      /* rose-50 */
+  --blush-2:#FFE4E6;    /* rose-100 */
+  --blush-3:#FECDD3;    /* rose-200 */
+  --ink:#1C1917;        /* stone-900 — primary text */
+  --ink-2:#14110F;      /* near-black — headings */
+  --ink-70:#44403C;     /* stone-700 — body */
+  --ink-55:#57534E;     /* stone-600 — secondary */
+  --ink-40:#6B655F;     /* stone-500/600 — captions */
+  --gold:#F5C518;       /* brand gold — accent/foil/fills only */
+  --gold-deep:#7A5B0E;  /* darkened gold — legible small accent text */
+  --gold-lite:#F9D970;  /* brand gold secondary */
+  --hair:rgba(199,154,22,.55);
+  --hair-soft:rgba(199,154,22,.32);
+  --hair-faint:rgba(199,154,22,.20);
+  --foil:linear-gradient(100deg,#C79A16 0%,#F5C518 24%,#F9D970 44%,#E9BE2A 60%,#F9D970 76%,#C79A16 100%);
+  --emboss:0 1px 0 rgba(255,255,255,.7);
+
+  min-height:100vh;
+  background:var(--cream);
+  font-family:'Assistant',sans-serif;font-weight:400;color:var(--ink);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+.flp *{margin:0;padding:0;box-sizing:border-box}
+
+/* centered mobile-first page column (replaces the mockup phone frame) */
+.flp .page{
+  position:relative;
+  max-width:480px;margin:0 auto;
+  background:var(--cream);
+  min-height:100vh;
+  overflow:hidden;
+  isolation:isolate;
+}
+
+/* real logo wordmark (replaces the Great Vibes text wordmark).
+   Sits on the dark photo hero, so a soft white ring keeps its
+   dark badge edge visible. */
+.flp .flp-logo{
+  height:38px;width:auto;display:block;margin:0 auto;
+  filter:drop-shadow(0 0 7px rgba(255,255,255,.35)) drop-shadow(0 2px 6px rgba(0,0,0,.45));
+}
+
+/* ---------- shared ornaments & heads ---------- */
+.flp .foiltext{
+  background:linear-gradient(100deg,#6E5209,#8A6A12 50%,#7A5B0E);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:#8A6A12;
+}
+.flp .rule{display:flex;align-items:center;justify-content:center;gap:13px}
+.flp .rule .rl{height:1px;width:64px;background:linear-gradient(90deg,transparent,var(--gold))}
+.flp .rule .rl.rev{background:linear-gradient(90deg,var(--gold),transparent)}
+
+.flp .eyebrow{
+  display:flex;align-items:center;justify-content:center;gap:11px;
+  font-family:'Assistant';font-weight:600;font-size:10.5px;letter-spacing:3.5px;
+  color:var(--gold-deep);
+}
+.flp .eyebrow i{display:block;height:1px;width:22px;background:var(--hair)}
+.flp .h-sec{
+  font-family:'Bellefair',serif;font-weight:400;
+  font-size:33px;line-height:1.12;color:var(--ink);
+  text-align:center;margin-top:12px;text-shadow:var(--emboss);
+}
+
+/* ---------- shared primary button ---------- */
+.flp .btn{
+  width:100%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  font-family:'Assistant';font-weight:700;font-size:16px;letter-spacing:.5px;color:#1C1917;
+  background:linear-gradient(180deg,#F9D970 0%, #F5C518 100%);
+  padding:17px;border-radius:13px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 16px 30px -18px rgba(245,197,24,.6);
+}
+.flp .btn svg{width:18px;height:18px;order:1}  /* icon to the left of the label */
+
+/* section spacing ornament */
+.flp .band{margin:44px 0 40px}
+.flp .band .rule{margin:0 auto}
+.flp .body{padding:0 28px 44px}
+
+/* =========================================================
+   HERO — full-bleed wedding photo, dark overlay, white copy
+   ========================================================= */
+.flp .hero{position:relative;min-height:512px;overflow:hidden;isolation:isolate}
+.flp .hero-img{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:50% 40%;
+  filter:saturate(1.02) contrast(1.02);
+}
+.flp .hero-shade{
+  position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(180deg,
+      rgba(20,17,15,.60) 0%,
+      rgba(20,17,15,.20) 22%,
+      rgba(20,17,15,.26) 46%,
+      rgba(20,17,15,.72) 76%,
+      rgba(20,17,15,.92) 100%);
+}
+.flp .hero-inner{
+  position:relative;z-index:2;min-height:512px;
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:64px 30px 30px;text-align:center;
+}
+.flp .brandline-photo{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:9px}
+.flp .brandline-photo i{height:1px;width:30px;background:linear-gradient(90deg,transparent,var(--gold-lite))}
+.flp .brandline-photo i.rev{background:linear-gradient(90deg,var(--gold-lite),transparent)}
+.flp .brandline-photo span{
+  font-family:'Assistant';font-weight:600;font-size:12px;letter-spacing:6px;
+  color:#FBF7EC;padding-right:2px;text-shadow:0 1px 4px rgba(0,0,0,.6);
+}
+.flp .hero-h1{
+  font-family:'Bellefair',serif;font-weight:400;
+  font-size:41px;line-height:1.14;color:#FFFFFF;letter-spacing:.3px;
+  text-shadow:0 2px 16px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.5);
+}
+.flp .hero-sub{
+  margin:15px auto 0;max-width:308px;
+  font-family:'Assistant';font-weight:300;font-size:15px;line-height:1.72;
+  color:#F5F2EE;text-shadow:0 1px 8px rgba(0,0,0,.6);
+}
+.flp .hero-cta{margin-top:22px}
+.flp .hero-cta.btn{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),
+             0 18px 34px -16px rgba(0,0,0,.6),
+             0 10px 24px -14px rgba(245,197,24,.45);
+}
+.flp .trust{
+  margin-top:15px;
+  font-family:'Assistant';font-weight:500;font-size:11.5px;letter-spacing:.5px;
+  color:#EFEAE2;text-shadow:0 1px 6px rgba(0,0,0,.7);
+}
+
+/* =========================================================
+   PHOTO STRIP — tasteful horizontal gallery
+   ========================================================= */
+.flp .gallery{padding:34px 0 4px}
+.flp .gallery .eyebrow{margin-bottom:16px}
+.flp .strip-g{
+  display:flex;gap:12px;overflow-x:auto;
+  padding:4px 28px 12px;scroll-snap-type:x proximity;scrollbar-width:none;
+  -webkit-mask:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent);
+          mask:linear-gradient(90deg,transparent,#000 26px,#000 calc(100% - 26px),transparent);
+}
+.flp .strip-g::-webkit-scrollbar{display:none}
+.flp .shot{
+  flex:0 0 auto;scroll-snap-align:center;position:relative;
+  width:150px;height:200px;border-radius:9px;overflow:hidden;
+  background:var(--paper);border:1px solid var(--hair);
+  box-shadow:0 18px 32px -24px rgba(91,78,69,.65), inset 0 0 0 1px rgba(255,255,255,.5);
+}
+.flp .shot.tall{height:224px}
+.flp .shot img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  filter:sepia(.14) saturate(1.05) contrast(1.02) brightness(1.02);
+}
+.flp .shot .veil{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg, rgba(255,247,232,.06) 0%, rgba(91,78,69,.16) 100%);
+  mix-blend-mode:multiply;
+}
+
+/* =========================================================
+   HOW IT WORKS — serif headings + gold hairlines, no icons
+   ========================================================= */
+.flp .hiw{
+  margin-top:26px;
+  border-top:1px solid var(--hair-faint);border-bottom:1px solid var(--hair-faint);
+}
+.flp .hiw-item{display:flex;align-items:flex-start;gap:16px;padding:19px 4px}
+.flp .hiw-item + .hiw-item{border-top:1px solid var(--hair-faint)}
+.flp .hiw-num{
+  font-family:'Bellefair',serif;font-size:27px;line-height:1.05;
+  min-width:30px;text-align:center;letter-spacing:1px;
+}
+.flp .hiw-h{
+  font-family:'Bellefair',serif;font-size:22px;color:var(--ink);letter-spacing:.3px;
+  text-shadow:var(--emboss);
+}
+.flp .hiw-p{
+  margin-top:5px;
+  font-family:'Assistant';font-weight:300;font-size:13.5px;line-height:1.58;color:var(--ink-70);
+}
+
+/* =========================================================
+   VALUE LIST — elegant hairline list
+   ========================================================= */
+.flp .values{
+  max-width:322px;margin:26px auto 0;
+  border-top:1px solid var(--hair-faint);border-bottom:1px solid var(--hair-faint);
+}
+.flp .value{display:flex;align-items:center;gap:14px;padding:16px 4px}
+.flp .value + .value{border-top:1px solid var(--hair-faint)}
+.flp .value .vm{flex:0 0 auto;display:block;order:2}  /* icon to the left of the text */
+.flp .value p{
+  font-family:'Assistant';font-weight:400;font-size:14.5px;line-height:1.5;color:var(--ink);
+}
+
+/* =========================================================
+   TIERS teaser — two compact cards, start FREE
+   ========================================================= */
+.flp .tiers{display:flex;gap:13px;margin-top:28px;align-items:stretch}
+.flp .tier{
+  flex:1 1 0;position:relative;text-align:center;
+  border:1px solid var(--hair);border-radius:14px;
+  padding:22px 14px 18px;
+  background:radial-gradient(120% 60% at 50% 0%, #FFFFFF 0%, rgba(255,255,255,0) 46%),
+             linear-gradient(180deg, var(--paper) 0%, #FCFBFA 100%);
+  box-shadow:0 22px 40px -32px rgba(91,78,69,.5), inset 0 0 0 1px rgba(255,255,255,.5);
+}
+.flp .tier.plus{
+  background:linear-gradient(170deg, var(--blush) 0%, var(--blush-2) 100%);
+  border-color:var(--hair);
+}
+.flp .tier .badge{
+  position:absolute;top:-11px;left:50%;transform:translateX(-50%);white-space:nowrap;
+  font-family:'Assistant';font-weight:800;font-size:9.5px;letter-spacing:1.6px;color:#1C1917;
+  background:linear-gradient(180deg,#F9D970,#F5C518);
+  padding:5px 13px;border-radius:100px;
+  box-shadow:0 8px 16px -10px rgba(183,147,85,.85), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.flp .tier-name{
+  font-family:'Bellefair',serif;font-size:27px;line-height:1;color:var(--ink-2);
+  letter-spacing:.4px;text-shadow:var(--emboss);
+}
+.flp .tier-price{
+  margin-top:7px;font-family:'Bellefair',serif;font-size:24px;line-height:1;
+  color:var(--gold-deep);letter-spacing:.5px;
+}
+.flp .tier-rule{margin:13px auto 12px}
+.flp .tier-rule .rl{width:40px}
+.flp .tier-feats{display:flex;flex-direction:column}
+.flp .tier-feat{
+  font-family:'Assistant';font-weight:400;font-size:12px;line-height:1.45;color:var(--ink-70);
+  padding:7px 0;
+}
+.flp .tier.plus .tier-feat{color:var(--ink-70)}
+.flp .tier-feat + .tier-feat{border-top:1px solid var(--hair-faint)}
+.flp .tier-feat b{font-weight:700;color:var(--ink)}
+.flp .tiers-note{
+  margin:16px auto 0;max-width:290px;text-align:center;
+  font-family:'Assistant';font-weight:300;font-size:12.5px;line-height:1.6;color:var(--ink-55);
+}
+
+/* =========================================================
+   FINAL CTA — a blush foil closing keepsake
+   ========================================================= */
+.flp .final{
+  position:relative;margin-top:44px;text-align:center;overflow:hidden;
+  background:linear-gradient(170deg, var(--blush) 0%, var(--blush-2) 100%);
+  border:1px solid var(--hair);border-radius:16px;
+  padding:36px 26px 30px;
+  box-shadow:0 26px 50px -34px rgba(91,78,69,.5), inset 0 0 0 1px rgba(255,255,255,.4);
+}
+.flp .final::before{
+  content:"";position:absolute;inset:8px;border:1px solid var(--hair-soft);border-radius:10px;pointer-events:none;
+}
+.flp .final > *{position:relative}
+.flp .final-orn{display:block;margin:0 auto 16px}
+.flp .final-h{
+  font-family:'Bellefair',serif;font-size:32px;line-height:1.16;color:var(--ink-2);
+  letter-spacing:.3px;text-shadow:var(--emboss);max-width:290px;margin:0 auto;
+}
+.flp .final .btn{margin-top:24px}
+.flp .final-sub{
+  margin:16px auto 0;max-width:270px;
+  font-family:'Assistant';font-weight:300;font-size:13px;line-height:1.6;color:var(--ink-55);
+}

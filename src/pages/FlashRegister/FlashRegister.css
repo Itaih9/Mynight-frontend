@@ -1,0 +1,329 @@
+/* ============================================================
+   FlashRegister — "stationery" sign-up form.
+   Every rule is scoped under the root .frg class so these
+   letterpress styles never leak into the rest of the app.
+   ============================================================ */
+
+.frg {
+  /* My Night website palette: #FAFAFA paper, stone/charcoal ink, brand gold, rose accent */
+  --cream: #FAFAFA;      /* paper base = website background */
+  --cream-2: #F3F2F0;
+  --paper: #FFFFFF;      /* card stock, brightest */
+  --blush: #FFF1F2;      /* rose-50 */
+  --blush-2: #FFE4E6;    /* rose-100 */
+  --blush-3: #FECDD3;    /* rose-200 */
+  --ink: #1C1917;        /* stone-900 — primary text */
+  --ink-2: #14110F;      /* near-black — headings */
+  --ink-70: #44403C;     /* stone-700 — body */
+  --ink-55: #57534E;     /* stone-600 — secondary */
+  --ink-40: #6B655F;     /* stone-500/600 — captions (still passes AA) */
+  --gold: #F5C518;       /* brand gold — accent/foil/fills only */
+  --gold-deep: #7A5B0E;  /* darkened gold — legible small accent text on light */
+  --gold-lite: #F9D970;  /* brand gold secondary */
+  --hair: rgba(199, 154, 22, .55);   /* gold hairline, deepened so it reads on white */
+  --hair-soft: rgba(199, 154, 22, .32);
+  --hair-faint: rgba(199, 154, 22, .20);
+  --foil: linear-gradient(100deg, #C79A16 0%, #F5C518 24%, #F9D970 44%, #E9BE2A 60%, #F9D970 76%, #C79A16 100%);
+  --emboss: 0 1px 0 rgba(255, 255, 255, .7);
+
+  font-family: 'Assistant', sans-serif;
+  font-weight: 400;
+  color: var(--ink);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--cream);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* scoped reset — keeps the letterpress metrics exact without touching the app */
+.frg *,
+.frg *::before,
+.frg *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* centered mobile-first paper column */
+.frg-col {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ---------- shared ornaments & heads ---------- */
+/* legible deep-gold gradient for text accents (bright brand gold fails contrast on light) */
+.frg .foiltext {
+  background: linear-gradient(100deg, #6E5209, #8A6A12 50%, #7A5B0E);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: #8A6A12;
+}
+.frg .rule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+}
+.frg .rule .rl {
+  height: 1px;
+  width: 64px;
+  background: linear-gradient(90deg, transparent, var(--gold));
+}
+.frg .rule .rl.rev {
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+
+.frg .eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 3.5px;
+  color: var(--gold-deep);
+}
+.frg .eyebrow i {
+  display: block;
+  height: 1px;
+  width: 22px;
+  background: var(--hair);
+}
+.frg .h-sec {
+  font-family: 'Bellefair', serif;
+  font-weight: 400;
+  font-size: 33px;
+  line-height: 1.12;
+  color: var(--ink);
+  text-align: center;
+  margin-top: 12px;
+  text-shadow: var(--emboss);
+}
+.frg .sub {
+  margin: 20px auto 0;
+  max-width: 290px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 300;
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: var(--ink-70);
+}
+
+/* actions — primary/secondary buttons (reused) */
+.frg .btn {
+  width: 100%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: .5px;
+  color: #1C1917;
+  background: linear-gradient(180deg, #F9D970 0%, #F5C518 100%);
+  padding: 17px;
+  border-radius: 13px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55), 0 16px 30px -18px rgba(245, 197, 24, .6);
+  transition: opacity .2s ease, transform .1s ease;
+}
+.frg .btn svg {
+  width: 20px;
+  height: 20px;
+}
+.frg .btn:active:not(:disabled) {
+  transform: scale(.99);
+}
+.frg .btn:disabled {
+  opacity: .45;
+  cursor: default;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .55);
+}
+.frg .btn-sec {
+  display: block;
+  margin: 15px auto 0;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: var(--ink-55);
+  padding: 8px 12px;
+  border-bottom: 1px solid transparent;
+  transition: color .2s ease, border-color .2s ease;
+}
+.frg .btn-sec:active {
+  color: var(--gold-deep);
+  border-color: var(--hair);
+}
+.frg .btn-sec strong {
+  font-weight: 700;
+  color: var(--gold-deep);
+}
+
+/* ========== top nav row ========== */
+.frg .nav {
+  position: relative;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 24px 4px;
+  padding-top: max(24px, env(safe-area-inset-top));
+}
+.frg .nav-back {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+.frg .nav-back svg {
+  display: block;
+}
+/* real logo replaces the wordmark */
+.frg-logo {
+  display: block;
+  height: 30px;
+  width: auto;
+}
+.frg .nav-tag {
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: var(--ink-55);
+  padding-inline-start: 2px;
+  min-width: 34px;
+  text-align: left;
+}
+
+/* ========== registration wrapper ========== */
+.frg .reg {
+  position: relative;
+  text-align: center;
+  padding: 14px 30px 42px;
+  padding-bottom: max(42px, env(safe-area-inset-bottom));
+  background: radial-gradient(120% 55% at 50% 0%, rgba(243, 228, 225, .5) 0%, rgba(243, 228, 225, 0) 52%);
+}
+.frg .reg .eyebrow {
+  margin-top: 6px;
+}
+.frg .reg .sub {
+  margin-top: 15px;
+  font-size: 15px;
+}
+.frg .reg .rule {
+  margin-top: 24px;
+}
+
+/* ========== form ========== */
+.frg .form {
+  margin-top: 26px;
+  text-align: right;
+}
+.frg .field + .field {
+  margin-top: 16px;
+}
+.frg .field label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  color: var(--gold-deep);
+}
+.frg .field input {
+  width: 100%;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  color: var(--ink);
+  background: #FFFFFF;
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  padding: 14px 15px;
+  text-align: right;
+  box-shadow: 0 6px 16px -14px rgba(91, 78, 69, .5);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.frg .field input::placeholder {
+  color: #6B655F;
+  opacity: 1;
+}
+.frg .field input:focus {
+  outline: none;
+  border-color: #C79A16;
+  box-shadow: 0 0 0 3px rgba(199, 154, 22, .18), 0 6px 16px -14px rgba(91, 78, 69, .5);
+}
+.frg .field .help {
+  margin-top: 7px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 300;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-55);
+}
+
+/* ========== cta + reassurance footer ========== */
+.frg .cta {
+  margin-top: 24px;
+}
+.frg .err {
+  margin: 14px auto 0;
+  max-width: 300px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  color: #B91C1C;
+  text-align: center;
+}
+.frg .trust {
+  margin: 14px auto 0;
+  max-width: 300px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 500;
+  font-size: 12.5px;
+  letter-spacing: .2px;
+  color: var(--ink-55);
+}
+.frg .foot-div {
+  margin: 26px 0 22px;
+}
+.frg .foot-div .rule {
+  margin: 0 auto;
+}
+.frg .whatnext {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  max-width: 300px;
+  margin: 0 auto;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 300;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink-40);
+}
+.frg .whatnext svg {
+  flex: 0 0 auto;
+}
+.frg .login {
+  margin-top: 20px;
+}
