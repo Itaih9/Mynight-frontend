@@ -9,16 +9,20 @@ import './FlashLanding.css';
  * phone frame / fake status bar / grain have been removed, and the
  * content now lives in a real full-page, mobile-first column.
  */
-/** Real guest-uploaded photos from real weddings (gallery_showcase set). */
-const SHOWCASE = 'https://d1sayt91mdit04.cloudfront.net/display/gallery_showcase';
+/**
+ * Photos actually uploaded BY GUESTS (disposable-camera shots and guest
+ * uploads), pulled from five different real weddings — not the photographer's
+ * set. That's the whole point of the strip: this is what פלאש collects.
+ */
+const CDN = 'https://d1sayt91mdit04.cloudfront.net/events';
 const GUEST_SHOTS = [
-  `${SHOWCASE}/000006270024.jpg`,
-  `${SHOWCASE}/000006310008.jpg`,
-  `${SHOWCASE}/000006270031.jpg`,
-  `${SHOWCASE}/000006310011.jpg`,
-  `${SHOWCASE}/000006270034.jpg`,
-  `${SHOWCASE}/000006310013.jpg`,
-  `${SHOWCASE}/000006270036.jpg`,
+  `${CDN}/DWVQNRW4/guest-uploads/WdVkTCc-LkzjMzPzpb2OT-1000406952.jpg`,
+  `${CDN}/KW97NB6J/disposable/otOvrOL43L89GXyDes6yo-shot-1784724918322.jpg`,
+  `${CDN}/B92JNJ55/guest-uploads/ns--pz68CpGz72cyJ5qo6-1000119281.jpg`,
+  `${CDN}/HNN6UFS9/guest-uploads/-ixzOLeV6Ys2lfQPdhT28-1000119281.jpg`,
+  `${CDN}/PCLKZS21/guest-uploads/QzYnC3wa9q_dgVqWLnH0m-IMG_7484.jpeg`,
+  `${CDN}/DWVQNRW4/guest-uploads/ZxPAYUeVDFg4AJyHahGoS-1000406814.jpg`,
+  `${CDN}/DWVQNRW4/guest-uploads/Ga7wozPWHqJE01y6SnvPs-1000406808.jpg`,
 ];
 
 export default function FlashLanding() {
