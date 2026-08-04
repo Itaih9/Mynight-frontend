@@ -9,6 +9,8 @@ export const ROUTES = {
   HERE_I_AM: '/here-i-am',
   // Flash Plus (פלאש+) plans + upgrade checkout.
   FLASH_PLUS: '/flash-plus',
+  // Flash+ code-in-link payment return (public, no auth).
+  FLASH_THANKS: '/flash/thanks',
   GIFT: '/gift',
   GIFT_CALLBACK: '/gift-callback',
   GIFT_CLAIM: '/gift/:code',

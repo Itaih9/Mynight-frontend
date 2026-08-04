@@ -47,6 +47,8 @@ export const API_ENDPOINTS = {
     CHARGE: '/api/payment/charge',
     SUMIT_REDIRECT_BEGIN: '/api/payment/sumit-redirect/begin',
     SUMIT_REDIRECT_VERIFY: '/api/payment/sumit-redirect/verify',
+    FLASH_PLUS_BEGIN: '/api/payment/flash-plus/begin',
+    FLASH_PLUS_VERIFY: '/api/payment/flash-plus/verify',
     PAY_WITH_COUPON: '/api/payment/pay-with-coupon',
     STATUS: (eventId: string) => `/api/payment/event/${eventId}/status`,
     HISTORY: '/api/payment',

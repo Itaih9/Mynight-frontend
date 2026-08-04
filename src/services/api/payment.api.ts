@@ -30,6 +30,13 @@ export interface CreatePaymentResponse {
   payment?: Payment;
 }
 
+export interface FlashPlusVerifyResult {
+  success: boolean;
+  message?: string;
+  eventCode?: string;
+  flashTier?: string;
+}
+
 export const paymentApi = {
   create: async (data: CreatePaymentRequest): Promise<ApiResponse<CreatePaymentResponse>> => {
     const response = await api.post(API_ENDPOINTS.PAYMENT.CREATE, data);
@@ -48,6 +55,17 @@ export const paymentApi = {
 
   verifySumitRedirect: async (paymentId: string): Promise<ApiResponse<Payment> & { success: boolean; message?: string }> => {
     const response = await api.post(API_ENDPOINTS.PAYMENT.SUMIT_REDIRECT_VERIFY, { paymentId });
+    return response.data;
+  },
+
+  // Public code-in-link Flash+ upgrade (no auth) — couple uses their event code from the QR/link.
+  beginFlashPlus: async (code: string): Promise<ApiResponse<{ redirectUrl: string }>> => {
+    const response = await api.post(API_ENDPOINTS.PAYMENT.FLASH_PLUS_BEGIN, { code });
+    return response.data;
+  },
+
+  verifyFlashPlus: async (paymentId: string): Promise<ApiResponse<FlashPlusVerifyResult> & { success: boolean; message?: string }> => {
+    const response = await api.post(API_ENDPOINTS.PAYMENT.FLASH_PLUS_VERIFY, { paymentId });
     return response.data;
   },
 

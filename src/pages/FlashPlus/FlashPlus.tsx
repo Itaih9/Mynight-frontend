@@ -16,7 +16,7 @@ import { ROUTES } from '@/config/routes';
 
 // Must match the backend price in src/shared/config/flashPlans.ts
 // (FLASH_PLUS_PRICE_ILS).
-const FLASH_PLUS_PRICE = 50;
+const FLASH_PLUS_PRICE = 1; // ⚠️ TEMP ₪1 for phone payment testing — restore to 50
 
 const BASIC_FEATURES = [
   { icon: Camera, label: '8 צילומים לכל אורח' },
@@ -25,10 +25,9 @@ const BASIC_FEATURES = [
 ];
 
 const PLUS_FEATURES = [
-  { icon: Camera, label: '24 צילומים לכל אורח' },
   { icon: Video, label: 'וידאו — לא רק תמונות' },
-  { icon: ScanFace, label: 'זיהוי פנים: כל אורח מקבל את התמונות שלו' },
-  { icon: Check, label: 'כולל התמונות מהצלם המקצועי' },
+  { icon: Camera, label: '24 צילומים לכל אורח' },
+  { icon: ScanFace, label: 'זיהוי פנים לכל אורח' },
 ];
 
 type Tier = 'basic' | 'plus';
@@ -85,16 +84,21 @@ export const FlashPlus = () => {
       setError('לא נמצא אירוע לשדרוג — היכנסו מהקישור שקיבלתם.');
       return;
     }
+    if (!code) {
+      setError('פתחו את העמוד מהקישור שקיבלתם (עם קוד האירוע).');
+      return;
+    }
     setSubmitting(true);
     try {
-      const res = await paymentApi.create({ eventId, product: 'flash_plus' });
-      const pid = (res.data as any)?.paymentId;
-      if (!pid) throw new Error('no paymentId');
-      setPaymentId(pid); // triggers the Sumit hosted redirect below
+      // Code-in-link (no login): the public endpoint creates the ₪ payment and
+      // returns Sumit's hosted URL. We hand off there; Sumit returns to
+      // /flash/thanks, which verifies and flips the event to פלאש+.
+      const res = await paymentApi.beginFlashPlus(code);
+      const url = (res.data as any)?.redirectUrl;
+      if (!url) throw new Error('no redirectUrl');
+      window.location.href = url;
     } catch (err: any) {
-      const status = err?.response?.status;
-      if (status === 401) setNeedLogin(true);
-      else setError(err?.response?.data?.error || err?.response?.data?.message || 'משהו השתבש, נסו שוב');
+      setError(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'משהו השתבש, נסו שוב');
       setSubmitting(false);
     }
   };
