@@ -394,12 +394,17 @@
   box-shadow:0 20px 32px -22px rgba(91,78,69,.6), inset 0 0 0 1px rgba(255,255,255,.6);
 }
 .flp .o4-scatter .sc img{width:100%;height:100%;object-fit:cover;filter:saturate(1.02)}
-.flp .o4-scatter .s1{top:40px;right:-28px;width:116px;height:146px;transform:rotate(-6deg)}
-.flp .o4-scatter .s2{top:118px;left:-26px;width:88px;height:112px;transform:rotate(7deg)}
-.flp .o4-scatter .s3{top:258px;left:-34px;width:70px;height:92px;transform:rotate(-9deg)}
-.flp .o4-scatter .s4{top:296px;right:-34px;width:92px;height:116px;transform:rotate(5deg)}
-.flp .o4-scatter .s5{top:452px;right:-20px;width:104px;height:82px;transform:rotate(4deg)}
-.flp .o4-scatter .s6{top:470px;left:-30px;width:82px;height:104px;transform:rotate(-5deg)}
+/* --py is driven by the scroll parallax; --rot keeps each print's own tilt */
+.flp .o4-scatter .sc{
+  transform:translate3d(0,var(--py,0px),0) rotate(var(--rot,0deg));
+  will-change:transform;
+}
+.flp .o4-scatter .s1{top:40px;right:-28px;width:116px;height:146px;--rot:-6deg}
+.flp .o4-scatter .s2{top:118px;left:-26px;width:88px;height:112px;--rot:7deg}
+.flp .o4-scatter .s3{top:258px;left:-34px;width:70px;height:92px;--rot:-9deg}
+.flp .o4-scatter .s4{top:296px;right:-34px;width:92px;height:116px;--rot:5deg}
+.flp .o4-scatter .s5{top:452px;right:-20px;width:104px;height:82px;--rot:4deg}
+.flp .o4-scatter .s6{top:470px;left:-30px;width:82px;height:104px;--rot:-5deg}
 .flp .o4-inner{
   position:relative;z-index:5;flex:1 1 auto;
   display:flex;flex-direction:column;align-items:center;justify-content:center;

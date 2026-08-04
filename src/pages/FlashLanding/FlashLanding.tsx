@@ -29,11 +29,11 @@ const HERO_SHOTS = [
 
 /** Below the hero — the scrolling strip. Deliberately no overlap with above. */
 const STRIP_SHOTS = [
-  `${CDN}/DWVQNRW4/guest-uploads/c30NhzgZm450qaXmOmVB1-20260713_161524.jpg`,
+  `${CDN}/DWVQNRW4/guest-uploads/gM1M4jVM7WNJKwyQV6m9V-1000406813.jpg`,
   `${CDN}/DWVQNRW4/guest-uploads/coazZgxLcfPkgbMIMhNAd-61D9228D-47F4-4B81-A3AF-A57B32CB211C.jpeg`,
   `${CDN}/PCLKZS21/guest-uploads/jkErWw9BkTVl0txwPdDBc-292764.jpg`,
-  `${CDN}/KW97NB6J/disposable/otOvrOL43L89GXyDes6yo-shot-1784724918322.jpg`,
-  `${CDN}/B92JNJ55/guest-uploads/ns--pz68CpGz72cyJ5qo6-1000119281.jpg`,
+  `${CDN}/DWVQNRW4/guest-uploads/e_tf9QoS_yz-7piAZ6SdA-1000406810.jpg`,
+  `${CDN}/DWVQNRW4/guest-uploads/c30NhzgZm450qaXmOmVB1-20260713_161524.jpg`,
   `${CDN}/DWVQNRW4/guest-uploads/Ga7wozPWHqJE01y6SnvPs-1000406808.jpg`,
 ];
 
@@ -66,6 +66,33 @@ export default function FlashLanding() {
     );
     els.forEach((el) => io.observe(el));
     return () => io.disconnect();
+  }, []);
+
+  /* Scroll parallax — the scattered prints drift at different rates as you
+     scroll, so the hero has depth instead of moving as one flat sheet. */
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const shots = rootRef.current?.querySelectorAll<HTMLElement>('.o4-scatter .sc');
+    if (!shots?.length) return;
+    // alternating depth + drift direction, so they separate rather than slide together
+    const depth = [0.26, -0.17, 0.32, -0.24, 0.19, -0.3];
+    let ticking = false;
+    const apply = () => {
+      const y = window.scrollY;
+      shots.forEach((el, i) => {
+        const d = depth[i % depth.length];
+        el.style.setProperty('--py', `${(y * d).toFixed(1)}px`);
+      });
+      ticking = false;
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(apply);
+    };
+    apply();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return (
@@ -373,10 +400,10 @@ export default function FlashLanding() {
                   <span className="rl rev" />
                 </div>
                 <div className="tier-feats">
-                  <div className="tier-feat">וידאו</div>
                   <div className="tier-feat">
                     <b>24 צילומים</b> לכל אורח
                   </div>
+                  <div className="tier-feat">וידאו</div>
                   <div className="tier-feat">זיהוי פנים לכל אורח</div>
                 </div>
               </div>

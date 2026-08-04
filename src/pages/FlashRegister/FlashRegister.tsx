@@ -98,6 +98,10 @@ export const FlashRegister = () => {
         >
           <div className="text-5xl mb-4">📸</div>
           <h1 className="text-3xl font-black mb-2">הפלאש שלכם מוכן</h1>
+          <p className="text-white/70 mb-2">
+            {coupleName.trim()}, מזל טוב! הכנו לכם מצלמה חד-פעמית לאורחים
+            {weddingDate ? ` לחתונה ב-${formatHebDate(weddingDate)}` : ''}.
+          </p>
           <p className="text-white/60 mb-8">
             שתפו את הקישור עם האורחים ביום החתונה. כל אורח מקבל {result.shotLimit} צילומים.
           </p>
@@ -142,25 +146,45 @@ export const FlashRegister = () => {
             </div>
           </div>
 
+          {/* How they reach the album — same instruction the email gives */}
+          <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-5 mb-4 text-right">
+            <p className="text-white font-bold mb-2">איך רואים את התמונות?</p>
+            <p className="text-white/60 text-sm leading-relaxed">
+              בבוקר שאחרי החתונה היכנסו ל-
+              <a href={ROUTES.LOGIN} className="text-gold-primary underline underline-offset-2">
+                mynight.co.il/login
+              </a>{' '}
+              עם מספר הטלפון{' '}
+              {phoneNumber.trim() ? (
+                <strong className="text-white" dir="ltr">{phoneNumber.trim()}</strong>
+              ) : (
+                'שאיתו נרשמתם'
+              )}{' '}
+              — האלבום שלכם יחכה שם.
+            </p>
+          </div>
+
           <p className="text-white/40 text-xs mb-10">
             שמרו את הקישור — שלחנו אותו גם למייל. הצילומים מתפתחים בבוקר שאחרי החתונה.
           </p>
 
-          {/* The upsell — free covers the shooting, this is the smart layer */}
+          {/* The upsell — free covers the shooting, this is the smart layer.
+              A plain button here (no plan pill): they've already got פלאש. */}
           <div className="rounded-2xl bg-gradient-to-b from-white/10 to-white/[0.03] ring-1 ring-white/15 p-6 text-right">
             <div className="flex items-center gap-2 mb-3">
               <Sparkles size={18} className="text-gold-primary" />
               <span className="font-bold text-lg">רוצים שכל אורח יקבל את התמונות שלו?</span>
             </div>
             <p className="text-white/65 text-sm leading-relaxed mb-4">
-              פלאש אוסף את הצילומים. <strong className="text-white">Here I Am</strong> מוסיף זיהוי פנים —
-              כל אורח מקבל אלבום אישי רק עם התמונות שהוא מופיע בהן, כולל התמונות מהצלם המקצועי.
+              פלאש אוסף את הצילומים. <strong className="text-white">החבילה החכמה של My Night</strong>{' '}
+              מוסיפה זיהוי פנים — כל אורח מקבל אלבום אישי רק עם התמונות שהוא מופיע בהן, כולל התמונות
+              מהצלם המקצועי.
             </p>
             <a
               href={ROUTES.HERE_I_AM}
               className="block w-full py-3.5 rounded-xl bg-gold-primary text-black font-bold text-center active:scale-[0.99] transition-transform"
             >
-              לפרטים על Here I Am
+              לפרטים על החבילה החכמה
             </a>
           </div>
         </motion.div>
