@@ -427,7 +427,9 @@
 .flp .o4-foot .hero-cta{margin-top:0}
 .flp .hero.o4 .trust{
   margin-top:12px;color:var(--ink-55);text-shadow:none;
+  text-align:center;   /* was inheriting start (=right) inside .o4-foot */
 }
+.flp .o4-foot{text-align:center}
 
 /* --- פלאש / פלאש+ pill toggle --- */
 .flp .toggle{
