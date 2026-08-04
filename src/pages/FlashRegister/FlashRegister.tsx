@@ -18,6 +18,9 @@ import './FlashRegister.css';
  * successful register we hand back Flash.tsx's proven QR / link success
  * screen (dark, functional) plus the Here I Am upsell.
  */
+/** Keep in sync with backend FLASH_PLUS_PRICE_ILS. */
+const FLASH_PLUS_PRICE = 1; // ⚠️ TEMP ₪1 for payment testing — restore to 50
+
 /** YYYY-MM-DD → 12.08.2026 for display */
 const formatHebDate = (iso: string) => {
   const [y, m, d] = iso.split('-');
@@ -37,7 +40,13 @@ export const FlashRegister = () => {
   const [result, setResult] = useState<FlashRegisterResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [params] = useSearchParams();
-  const wantsPlus = params.get('plan') === 'plus';
+  /* Arriving from the bottom CTA the plan is already chosen (?plan=…), so no
+     pill here. Arriving from the hero CTA there's no param — show the pill so
+     they can still pick before signing up. */
+  const planParam = params.get('plan');
+  const showPlanPill = !planParam;
+  const [plan, setPlan] = useState<'free' | 'plus'>(planParam === 'plus' ? 'plus' : 'free');
+  const wantsPlus = plan === 'plus';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -316,8 +325,37 @@ export const FlashRegister = () => {
 
             {/* primary submit — gold fill, charcoal text, sparkle to the LEFT of the label */}
             <div className="cta">
+              {showPlanPill && (
+                <div className={`toggle${plan === 'plus' ? ' is-plus' : ''}`}>
+                  <span className="thumb" />
+                  <button
+                    className={`seg${plan === 'free' ? ' is-on' : ''}`}
+                    type="button"
+                    aria-pressed={plan === 'free'}
+                    onClick={() => setPlan('free')}
+                  >
+                    פלאש
+                  </button>
+                  <button
+                    className={`seg${plan === 'plus' ? ' is-on' : ''}`}
+                    type="button"
+                    aria-pressed={plan === 'plus'}
+                    onClick={() => setPlan('plus')}
+                  >
+                    פלאש+
+                  </button>
+                </div>
+              )}
               <button className="btn" type="submit" disabled={!canSubmit}>
-                <span>{submitting ? 'יוצרים את הפלאש…' : 'צרו פלאש — חינם'}</span>
+                <span>
+                  {submitting
+                    ? wantsPlus
+                      ? 'מעבירים לתשלום…'
+                      : 'יוצרים את הפלאש…'
+                    : wantsPlus
+                      ? `המשך לתשלום — פלאש+ ₪${FLASH_PLUS_PRICE}`
+                      : 'צרו פלאש — חינם'}
+                </span>
                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M12 3 C12.5 9 15 11.5 21 12 C15 12.5 12.5 15 12 21 C11.5 15 9 12.5 3 12 C9 11.5 11.5 9 12 3 Z" fill="#1C1917" />
                   <path d="M18.6 2.6 C18.8 4.4 19.4 5 21.2 5.2 C19.4 5.4 18.8 6 18.6 7.8 C18.4 6 17.8 5.4 16 5.2 C17.8 5 18.4 4.4 18.6 2.6 Z" fill="#1C1917" />

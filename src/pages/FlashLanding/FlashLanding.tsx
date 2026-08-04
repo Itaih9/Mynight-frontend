@@ -32,7 +32,7 @@ const STRIP_SHOTS = [
   `${CDN}/DWVQNRW4/guest-uploads/gM1M4jVM7WNJKwyQV6m9V-1000406813.jpg`,
   `${CDN}/DWVQNRW4/guest-uploads/coazZgxLcfPkgbMIMhNAd-61D9228D-47F4-4B81-A3AF-A57B32CB211C.jpeg`,
   `${CDN}/PCLKZS21/guest-uploads/jkErWw9BkTVl0txwPdDBc-292764.jpg`,
-  `${CDN}/DWVQNRW4/guest-uploads/e_tf9QoS_yz-7piAZ6SdA-1000406810.jpg`,
+  `${CDN}/B92JNJ55/guest-uploads/ns--pz68CpGz72cyJ5qo6-1000119281.jpg`,
   `${CDN}/DWVQNRW4/guest-uploads/c30NhzgZm450qaXmOmVB1-20260713_161524.jpg`,
   `${CDN}/DWVQNRW4/guest-uploads/Ga7wozPWHqJE01y6SnvPs-1000406808.jpg`,
 ];
@@ -45,7 +45,10 @@ export default function FlashLanding() {
   const [plan, setPlan] = useState<'free' | 'plus'>('free');
   /* A payment needs an event to exist, so פלאש+ still registers first — the
      intent rides along as ?plan=plus and signup hands straight off to Sumit. */
-  const goRegister = () => navigate(plan === 'plus' ? '/flash/register?plan=plus' : '/flash/register');
+  /* Bottom CTA: the plan is already chosen here, so pass it through and the
+     signup page hides its own pill. The hero CTA passes nothing, so signup
+     shows the pill instead. */
+  const goRegister = () => navigate(`/flash/register?plan=${plan}`);
   const rootRef = useRef<HTMLDivElement>(null);
 
   /* Scroll reveal — each [data-reveal] block fades up once, like a print
@@ -251,67 +254,19 @@ export default function FlashLanding() {
 
             <div className="values" data-reveal>
               <div className="value">
-                <svg className="vm" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-                  <rect
-                    x="3.2"
-                    y="3.2"
-                    width="6.6"
-                    height="6.6"
-                    transform="rotate(45 6.5 6.5)"
-                    fill="none"
-                    stroke="url(#foil)"
-                    strokeWidth="1.1"
-                  />
-                  <circle cx="6.5" cy="6.5" r="1" fill="url(#foil)" />
-                </svg>
+                <svg className="vm" width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h2.2l1.2-2h8.2l1.2 2h2.2A1.5 1.5 0 0 1 21 8.5v9A1.5 1.5 0 0 1 19.5 19h-15A1.5 1.5 0 0 1 3 17.5Z" stroke="url(#foil)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><circle cx="12" cy="13" r="3.4" stroke="url(#foil)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
                 <p>כל אורח מצלם — זוויות שהצלם לא תופס</p>
               </div>
               <div className="value">
-                <svg className="vm" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-                  <rect
-                    x="3.2"
-                    y="3.2"
-                    width="6.6"
-                    height="6.6"
-                    transform="rotate(45 6.5 6.5)"
-                    fill="none"
-                    stroke="url(#foil)"
-                    strokeWidth="1.1"
-                  />
-                  <circle cx="6.5" cy="6.5" r="1" fill="url(#foil)" />
-                </svg>
+                <svg className="vm" width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.4" stroke="url(#foil)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><path d="M11 18.6h2" stroke="url(#foil)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
                 <p>בלי אפליקציה, עובד על כל טלפון</p>
               </div>
               <div className="value">
-                <svg className="vm" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-                  <rect
-                    x="3.2"
-                    y="3.2"
-                    width="6.6"
-                    height="6.6"
-                    transform="rotate(45 6.5 6.5)"
-                    fill="none"
-                    stroke="url(#foil)"
-                    strokeWidth="1.1"
-                  />
-                  <circle cx="6.5" cy="6.5" r="1" fill="url(#foil)" />
-                </svg>
+                <svg className="vm" width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6.5" width="13" height="13" rx="2" stroke="url(#foil)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><path d="M8 4.5h11a2 2 0 0 1 2 2v11" stroke="url(#foil)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><path d="m3 15.5 3.6-3.2 4 3.4" stroke="url(#foil)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
                 <p>הכול במקום אחד, בבוקר שאחרי</p>
               </div>
               <div className="value">
-                <svg className="vm" width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
-                  <rect
-                    x="3.2"
-                    y="3.2"
-                    width="6.6"
-                    height="6.6"
-                    transform="rotate(45 6.5 6.5)"
-                    fill="none"
-                    stroke="url(#foil)"
-                    strokeWidth="1.1"
-                  />
-                  <circle cx="6.5" cy="6.5" r="1" fill="url(#foil)" />
-                </svg>
+                <svg className="vm" width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2c.7 4.3 1.8 5.4 6.1 6.1-4.3.7-5.4 1.8-6.1 6.1-.7-4.3-1.8-5.4-6.1-6.1 4.3-.7 5.4-1.8 6.1-6.1Z" stroke="url(#foil)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><path d="M18.3 15.4c.3 1.7.8 2.2 2.5 2.5-1.7.3-2.2.8-2.5 2.5-.3-1.7-.8-2.2-2.5-2.5 1.7-.3 2.2-.8 2.5-2.5Z" stroke="url(#foil)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
                 <p>מתחילים בחינם, משדרגים אם רוצים</p>
               </div>
             </div>
