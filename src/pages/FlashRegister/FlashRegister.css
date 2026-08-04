@@ -632,3 +632,12 @@
   color:var(--ink-70);
 }
 .frg .thanks-btn{max-width:360px;text-decoration:none;justify-content:center}
+
+/* surfaced when a פלאש+ signup couldn't open the payment page */
+.frg .upgrade-note{
+  max-width:320px;margin:14px auto 0;padding:11px 14px;
+  background:#FFF7F7;border:1px solid var(--hair);border-radius:12px;
+  font-family:'Assistant',sans-serif;font-size:13.5px;line-height:1.6;
+  color:var(--ink-70);text-align:center;
+}
+.frg .nav-spacer{display:block;width:34px}

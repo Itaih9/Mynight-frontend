@@ -6,6 +6,7 @@ import { eventsApi } from '@/services/api/events.api';
 import { paymentApi } from '@/services/api';
 import { SumitHostedCheckout } from '@/components/payment/SumitHostedCheckout';
 import { ROUTES } from '@/config/routes';
+import { WomanWithPhotos } from '@/components/upsell/WomanWithPhotos';
 
 /**
  * פלאש / פלאש+ plans on one page: a pill toggle switches between the two tiers,
@@ -133,6 +134,11 @@ export const FlashPlus = () => {
             </div>
             <p className="text-white/70 text-lg leading-relaxed">בחרו את החבילה שלכם.</p>
           </div>
+
+          {/* Same motif as the mobile hero: woman with guest photos drifting behind */}
+
+          <WomanWithPhotos womanClassName="h-36 w-auto" className="mb-6" />
+
 
           {/* Pill toggle */}
           <div className="flex bg-white/10 rounded-full p-1 mb-7">

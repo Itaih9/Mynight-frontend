@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X, ScanFace } from 'lucide-react';
 import { ROUTES } from '@/config/routes';
 import { eventsApi } from '@/services/api/events.api';
+import { WomanWithPhotos } from './WomanWithPhotos';
 
 /**
  * Here I Am upsell popup for free פלאש couples.
@@ -15,16 +16,6 @@ import { eventsApi } from '@/services/api/events.api';
  * Otherwise it reappears every visit — dismissible and never blocking, since
  * the free tier is the goodwill engine and a trapped user would undo that.
  */
-/** The same six photos the mobile-landing hero floats behind the woman. */
-const FLOATING_SHOTS = [
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/5tprJQnK.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/QMjzvJk9.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/xjRcq8Vz.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/vmGKCtLq.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/rpqH7NC3.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/7LqRjnM2.png',
-];
-
 export const HereIAmUpsellModal = ({
   eventCode,
   delayMs = 7000,
@@ -102,45 +93,8 @@ export const HereIAmUpsellModal = ({
             </button>
 
             {/* Woman with guest photos floating behind her — same motif as the mobile hero */}
-            <div className="relative bg-gradient-to-b from-[#faf7f2] to-white pt-8 px-6 flex justify-center overflow-hidden">
-              {/* Marquee of guest photos drifting behind her — same treatment as
-                  the mobile-landing hero: framed 91px prints on a loop. */}
-              <div
-                className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[42%] -translate-y-1/2 w-[150%] overflow-hidden"
-                style={{ zIndex: 0 }}
-                aria-hidden="true"
-              >
-                <div className="flex whitespace-nowrap upsell-marquee" style={{ willChange: 'transform' }}>
-                  {[...FLOATING_SHOTS, ...FLOATING_SHOTS, ...FLOATING_SHOTS, ...FLOATING_SHOTS].map((src, i) => (
-                    <div
-                      key={i}
-                      className="mx-2 flex-shrink-0 rounded-[12px]"
-                      style={{
-                        width: 91,
-                        height: 91,
-                        padding: 3,
-                        backgroundColor: '#f5f5f4',
-                        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                      }}
-                    >
-                      <div className="w-full h-full bg-white rounded-[9px] overflow-hidden">
-                        <img src={src} alt="" loading="lazy" className="w-full h-full object-cover" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <style>{`
-                @keyframes upsellMarquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
-                .upsell-marquee { animation: upsellMarquee 26s linear infinite; }
-                @media (prefers-reduced-motion: reduce) { .upsell-marquee { animation: none } }
-              `}</style>
-              <img
-                src="/images/woman-holding-phone.png"
-                alt=""
-                loading="lazy"
-                className="relative z-[1] h-40 w-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.14)]"
-              />
+            <div className="bg-gradient-to-b from-[#faf7f2] to-white pt-8 px-6">
+              <WomanWithPhotos womanClassName="h-40 w-auto" />
             </div>
 
             <div className="px-6 pb-7 pt-5 text-center">

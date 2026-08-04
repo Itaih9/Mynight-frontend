@@ -358,8 +358,8 @@ export default function FlashLanding() {
                   <div className="tier-feat">
                     <b>24 צילומים</b> לכל אורח
                   </div>
-                  <div className="tier-feat">וידאו</div>
                   <div className="tier-feat">זיהוי פנים לכל אורח</div>
+                  <div className="tier-feat">וידאו</div>
                 </div>
               </div>
             </div>
@@ -419,6 +419,14 @@ export default function FlashLanding() {
                 פלאש+
               </button>
             </div>
+
+            {plan === 'plus' && (
+              <ul className="plan-benefits">
+                              <li><b>24 צילומים</b> לכל אורח (במקום 8)</li>
+                              <li>זיהוי פנים לכל אורח</li>
+                              <li>וידאו — לא רק תמונות</li>
+                            </ul>
+            )}
 
             <button className="btn" type="button" onClick={goRegister}>
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">

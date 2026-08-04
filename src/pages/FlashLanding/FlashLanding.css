@@ -462,3 +462,35 @@
 @media (prefers-reduced-motion: reduce){
   .flp .toggle .thumb{transition:none}
 }
+
+/* "הזוגות אהבו במיוחד" — 2x2 grid, like the My Night landing features */
+.flp .values{
+  display:grid;grid-template-columns:1fr 1fr;gap:0;
+  max-width:340px;margin:26px auto 0;
+  border-top:1px solid var(--hair-faint);border-bottom:1px solid var(--hair-faint);
+}
+.flp .value{
+  flex-direction:column;justify-content:flex-start;align-items:center;
+  gap:8px;padding:18px 12px;text-align:center;
+}
+.flp .value + .value{border-top:none}
+.flp .value:nth-child(-n+2){border-bottom:1px solid var(--hair-faint)}
+.flp .value:nth-child(odd){border-inline-start:1px solid var(--hair-faint)}
+.flp .value p{font-size:13.5px;line-height:1.45}
+.flp .value .vm{width:20px;height:20px}
+
+/* פלאש+ benefits revealed under the pill when it's selected */
+.flp .plan-benefits,.frg .plan-benefits{
+  max-width:300px;margin:0 auto 16px;padding:14px 16px;
+  background:#FFF7F7;border:1px solid var(--hair);border-radius:14px;
+  text-align:right;
+}
+.flp .plan-benefits li,.frg .plan-benefits li{
+  list-style:none;position:relative;padding-inline-start:0;padding-inline-end:16px;
+  font-family:'Assistant',sans-serif;font-size:13.5px;line-height:1.9;color:var(--ink-70);
+}
+.flp .plan-benefits li::before,.frg .plan-benefits li::before{
+  content:"\25C6";position:absolute;inset-inline-end:0;top:0;
+  color:var(--gold-deep);font-size:8px;line-height:2.4;
+}
+.flp .plan-benefits b,.frg .plan-benefits b{color:var(--ink);font-weight:700}

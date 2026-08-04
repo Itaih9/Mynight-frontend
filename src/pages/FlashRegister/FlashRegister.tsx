@@ -40,6 +40,7 @@ export const FlashRegister = () => {
   const [error, setError] = useState('');
   const [result, setResult] = useState<FlashRegisterResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [upgradeNote, setUpgradeNote] = useState('');
   const [params] = useSearchParams();
   /* Arriving from the bottom CTA the plan is already chosen (?plan=…), so no
      pill here. Arriving from the hero CTA there's no param — show the pill so
@@ -71,9 +72,16 @@ export const FlashRegister = () => {
             window.location.href = url;
             return; // leaving the page — keep the button in its busy state
           }
-        } catch {
-          /* upgrade couldn't start — fall through to the normal success
-             screen, where the upgrade CTA is still available. */
+          throw new Error('no redirectUrl');
+        } catch (payErr: any) {
+          /* Never fail silently here — the couple asked to pay. The common
+             case is a repeat signup on a phone whose event is already פלאש+
+             (registration is idempotent per phone), which the server rejects. */
+          const msg =
+            payErr?.response?.data?.error ||
+            payErr?.response?.data?.message ||
+            'לא הצלחנו לפתוח את דף התשלום. הפלאש נוצר — אפשר לשדרג מהכפתור למטה.';
+          setUpgradeNote(msg);
         }
       }
 
@@ -155,6 +163,10 @@ export const FlashRegister = () => {
               <p className="sub">
                 שתפו את הקישור עם האורחים ביום החתונה. כל אורח מקבל {result.shotLimit} צילומים.
               </p>
+
+              {upgradeNote && (
+                <p className="upgrade-note">{upgradeNote}</p>
+              )}
 
               <div className="rule">
                 <span className="rl"></span>
@@ -396,6 +408,13 @@ export const FlashRegister = () => {
                     פלאש+
                   </button>
                 </div>
+              )}
+              {plan === 'plus' && (
+                <ul className="plan-benefits">
+                              <li><b>24 צילומים</b> לכל אורח (במקום 8)</li>
+                              <li>זיהוי פנים לכל אורח</li>
+                              <li>וידאו — לא רק תמונות</li>
+                            </ul>
               )}
               <button className="btn" type="submit" disabled={!canSubmit}>
                 <span>
