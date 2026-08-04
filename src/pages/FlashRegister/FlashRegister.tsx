@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Copy, Sparkles, Download } from 'lucide-react';
+import { Check, Copy, Sparkles, Download, Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/Calendar';
 import { eventsApi, type FlashRegisterResult } from '@/services/api/events.api';
 import { HereIAmUpsellModal } from '@/components/upsell/HereIAmUpsellModal';
 import { API_BASE_URL } from '@/config/api';
@@ -16,11 +17,18 @@ import './FlashRegister.css';
  * successful register we hand back Flash.tsx's proven QR / link success
  * screen (dark, functional) plus the Here I Am upsell.
  */
+/** YYYY-MM-DD → 12.08.2026 for display */
+const formatHebDate = (iso: string) => {
+  const [y, m, d] = iso.split('-');
+  return y && m && d ? `${d}.${m}.${y}` : iso;
+};
+
 export const FlashRegister = () => {
   const navigate = useNavigate();
 
   const [coupleName, setCoupleName] = useState('');
   const [weddingDate, setWeddingDate] = useState('');
+  const [dateOpen, setDateOpen] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -69,7 +77,7 @@ export const FlashRegister = () => {
           className="w-full max-w-md text-center"
         >
           <div className="text-5xl mb-4">📸</div>
-          <h1 className="text-3xl font-black mb-2">פלאש שלכם מוכן</h1>
+          <h1 className="text-3xl font-black mb-2">הפלאש שלכם מוכן</h1>
           <p className="text-white/60 mb-8">
             שתפו את הקישור עם האורחים ביום החתונה. כל אורח מקבל {result.shotLimit} צילומים.
           </p>
@@ -205,16 +213,31 @@ export const FlashRegister = () => {
 
             <div className="field">
               <label htmlFor="f-date">תאריך החתונה</label>
-              <input
+              <button
                 id="f-date"
-                name="date"
-                type="text"
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="12.08.2026"
-                value={weddingDate}
-                onChange={(e) => setWeddingDate(e.target.value)}
-              />
+                type="button"
+                className={`date-trigger${weddingDate ? ' has-value' : ''}`}
+                onClick={() => setDateOpen((v) => !v)}
+                aria-expanded={dateOpen}
+              >
+                <CalendarIcon size={17} aria-hidden="true" />
+                <span>{weddingDate ? formatHebDate(weddingDate) : 'בחרו תאריך'}</span>
+              </button>
+              {dateOpen && (
+                <div className="date-pop">
+                  <Calendar
+                    selected={weddingDate ? new Date(weddingDate) : undefined}
+                    onSelect={(d) => {
+                      // store as YYYY-MM-DD (what the API expects), local-time safe
+                      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+                        d.getDate()
+                      ).padStart(2, '0')}`;
+                      setWeddingDate(iso);
+                      setDateOpen(false);
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="field">

@@ -68,7 +68,7 @@
 }
 .flp .eyebrow i{display:block;height:1px;width:22px;background:var(--hair)}
 .flp .h-sec{
-  font-family:'Bellefair',serif;font-weight:400;
+  font-family:'Frank Ruhl Libre',serif;font-weight:400;
   font-size:33px;line-height:1.12;color:var(--ink);
   text-align:center;margin-top:12px;text-shadow:var(--emboss);
 }
@@ -121,16 +121,18 @@
   color:#FBF7EC;padding-right:2px;text-shadow:0 1px 4px rgba(0,0,0,.6);
 }
 .flp .hero-h1{
-  font-family:'Bellefair',serif;font-weight:400;
-  font-size:41px;line-height:1.14;color:#FFFFFF;letter-spacing:.3px;
+  font-family:'Frank Ruhl Libre',serif;font-weight:700;
+  font-size:42px;line-height:1.14;color:#FFFFFF;letter-spacing:.2px;
   text-shadow:0 2px 16px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.5);
 }
+/* Subtext hugs the title; the CTA sits noticeably further away, so the
+   headline + subtext read as one block. */
 .flp .hero-sub{
-  margin:15px auto 0;max-width:308px;
+  margin:10px auto 0;max-width:308px;
   font-family:'Assistant';font-weight:300;font-size:15px;line-height:1.72;
   color:#F5F2EE;text-shadow:0 1px 8px rgba(0,0,0,.6);
 }
-.flp .hero-cta{margin-top:22px}
+.flp .hero-cta{margin-top:28px}
 .flp .hero-cta.btn{
   box-shadow:inset 0 1px 0 rgba(255,255,255,.55),
              0 18px 34px -16px rgba(0,0,0,.6),
@@ -147,6 +149,11 @@
    ========================================================= */
 .flp .gallery{padding:34px 0 4px}
 .flp .gallery .eyebrow{margin-bottom:16px}
+.flp .gallery-h{
+  font-family:'Frank Ruhl Libre',serif;font-weight:600;
+  font-size:26px;line-height:1.2;color:var(--ink);
+  text-align:center;margin:0 28px 18px;text-shadow:var(--emboss);
+}
 .flp .strip-g{
   display:flex;gap:12px;overflow-x:auto;
   padding:4px 28px 12px;scroll-snap-type:x proximity;scrollbar-width:none;
@@ -181,11 +188,11 @@
 .flp .hiw-item{display:flex;align-items:flex-start;gap:16px;padding:19px 4px}
 .flp .hiw-item + .hiw-item{border-top:1px solid var(--hair-faint)}
 .flp .hiw-num{
-  font-family:'Bellefair',serif;font-size:27px;line-height:1.05;
+  font-family:'Frank Ruhl Libre',serif;font-size:27px;line-height:1.05;
   min-width:30px;text-align:center;letter-spacing:1px;
 }
 .flp .hiw-h{
-  font-family:'Bellefair',serif;font-size:22px;color:var(--ink);letter-spacing:.3px;
+  font-family:'Frank Ruhl Libre',serif;font-size:22px;color:var(--ink);letter-spacing:.3px;
   text-shadow:var(--emboss);
 }
 .flp .hiw-p{
@@ -200,11 +207,13 @@
   max-width:322px;margin:26px auto 0;
   border-top:1px solid var(--hair-faint);border-bottom:1px solid var(--hair-faint);
 }
-.flp .value{display:flex;align-items:center;gap:14px;padding:16px 4px}
+/* rows centered, ornament to the RIGHT of the text (RTL reading order) */
+.flp .value{display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 4px}
 .flp .value + .value{border-top:1px solid var(--hair-faint)}
-.flp .value .vm{flex:0 0 auto;display:block;order:2}  /* icon to the left of the text */
+.flp .value .vm{flex:0 0 auto;display:block}
 .flp .value p{
   font-family:'Assistant';font-weight:400;font-size:14.5px;line-height:1.5;color:var(--ink);
+  text-align:center;
 }
 
 /* =========================================================
@@ -218,7 +227,10 @@
   background:radial-gradient(120% 60% at 50% 0%, #FFFFFF 0%, rgba(255,255,255,0) 46%),
              linear-gradient(180deg, var(--paper) 0%, #FCFBFA 100%);
   box-shadow:0 22px 40px -32px rgba(91,78,69,.5), inset 0 0 0 1px rgba(255,255,255,.5);
+  cursor:pointer;transition:transform .16s ease, box-shadow .16s ease;
 }
+.flp .tier:active{transform:scale(.985)}
+.flp .tier:focus-visible{outline:2px solid var(--gold-deep);outline-offset:3px}
 .flp .tier.plus{
   background:linear-gradient(170deg, var(--blush) 0%, var(--blush-2) 100%);
   border-color:var(--hair);
@@ -231,11 +243,11 @@
   box-shadow:0 8px 16px -10px rgba(183,147,85,.85), inset 0 1px 0 rgba(255,255,255,.5);
 }
 .flp .tier-name{
-  font-family:'Bellefair',serif;font-size:27px;line-height:1;color:var(--ink-2);
+  font-family:'Frank Ruhl Libre',serif;font-size:27px;line-height:1;color:var(--ink-2);
   letter-spacing:.4px;text-shadow:var(--emboss);
 }
 .flp .tier-price{
-  margin-top:7px;font-family:'Bellefair',serif;font-size:24px;line-height:1;
+  margin-top:7px;font-family:'Frank Ruhl Libre',serif;font-size:24px;line-height:1;
   color:var(--gold-deep);letter-spacing:.5px;
 }
 .flp .tier-rule{margin:13px auto 12px}
@@ -269,7 +281,7 @@
 .flp .final > *{position:relative}
 .flp .final-orn{display:block;margin:0 auto 16px}
 .flp .final-h{
-  font-family:'Bellefair',serif;font-size:32px;line-height:1.16;color:var(--ink-2);
+  font-family:'Frank Ruhl Libre',serif;font-size:32px;line-height:1.16;color:var(--ink-2);
   letter-spacing:.3px;text-shadow:var(--emboss);max-width:290px;margin:0 auto;
 }
 .flp .final .btn{margin-top:24px}

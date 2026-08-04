@@ -266,6 +266,40 @@
   color: #6B655F;
   opacity: 1;
 }
+
+/* date picker — trigger styled exactly like an input, popover holds the
+   shared My Night <Calendar /> */
+.frg .field { position: relative; }
+.frg .date-trigger {
+  width: 100%;
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 400; font-size: 16px;
+  color: #6B655F;                 /* placeholder tone until a date is picked */
+  background: #FFFFFF;
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  padding: 14px 15px;
+  text-align: right;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -14px rgba(91, 78, 69, .5);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.frg .date-trigger.has-value { color: var(--ink); }
+.frg .date-trigger svg { color: #7A5B0E; flex: 0 0 auto; }
+.frg .date-trigger:focus-visible {
+  outline: none;
+  border-color: #C79A16;
+  box-shadow: 0 0 0 3px rgba(199, 154, 22, .18), 0 6px 16px -14px rgba(91, 78, 69, .5);
+}
+.frg .date-pop {
+  position: absolute; z-index: 30; top: calc(100% + 8px); right: 0; left: 0;
+  background: #FFFFFF;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 24px 48px -24px rgba(91, 78, 69, .55);
+}
 .frg .field input:focus {
   outline: none;
   border-color: #C79A16;

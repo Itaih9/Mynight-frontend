@@ -15,9 +15,17 @@ import { eventsApi } from '@/services/api/events.api';
  * Otherwise it reappears every visit — dismissible and never blocking, since
  * the free tier is the goodwill engine and a trapped user would undo that.
  */
+/** Guest photos that float behind the woman, same set as the mobile-landing hero. */
+const FLOATING_SHOTS = [
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/5tprJQnK.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/QMjzvJk9.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/xjRcq8Vz.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/vmGKCtLq.png',
+];
+
 export const HereIAmUpsellModal = ({
   eventCode,
-  delayMs = 900,
+  delayMs = 7000,
 }: {
   eventCode?: string;
   delayMs?: number;
@@ -90,18 +98,39 @@ export const HereIAmUpsellModal = ({
               <X size={18} />
             </button>
 
-            <div className="bg-gradient-to-b from-[#faf7f2] to-white pt-8 px-6 flex justify-center">
+            {/* Woman with guest photos floating behind her — same motif as the mobile hero */}
+            <div className="relative bg-gradient-to-b from-[#faf7f2] to-white pt-8 px-6 flex justify-center overflow-hidden">
+              <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+                {FLOATING_SHOTS.map((src, i) => (
+                  <motion.img
+                    key={src}
+                    src={src}
+                    alt=""
+                    loading="lazy"
+                    initial={{ opacity: 0, y: 14, rotate: [-9, 7, -5, 9][i] }}
+                    animate={{ opacity: 1, y: 0, rotate: [-9, 7, -5, 9][i] }}
+                    transition={{ delay: 0.15 + i * 0.09, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute w-[74px] rounded-lg shadow-[0_10px_24px_-10px_rgba(0,0,0,0.35)] ring-1 ring-black/5"
+                    style={[
+                      { top: '14%', right: '6%' },
+                      { top: '8%', left: '8%' },
+                      { bottom: '16%', right: '2%' },
+                      { bottom: '10%', left: '3%' },
+                    ][i]}
+                  />
+                ))}
+              </div>
               <img
                 src="/images/woman-holding-phone.png"
                 alt=""
                 loading="lazy"
-                className="h-40 w-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.14)]"
+                className="relative z-[1] h-40 w-auto object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.14)]"
               />
             </div>
 
             <div className="px-6 pb-7 pt-5 text-center">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold-primary/15 text-[12px] font-bold mb-3">
-                <ScanFace size={13} /> החכמה · Here I Am
+                <ScanFace size={13} /> החבילה החכמה של My Night
               </div>
               <h2 id="upsell-title" className="text-2xl font-black mb-3 leading-tight">
                 רוצים שכל אורח יקבל

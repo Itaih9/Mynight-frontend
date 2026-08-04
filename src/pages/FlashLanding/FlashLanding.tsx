@@ -8,6 +8,18 @@ import './FlashLanding.css';
  * phone frame / fake status bar / grain have been removed, and the
  * content now lives in a real full-page, mobile-first column.
  */
+/** Real guest-uploaded photos from real weddings (gallery_showcase set). */
+const SHOWCASE = 'https://d1sayt91mdit04.cloudfront.net/display/gallery_showcase';
+const GUEST_SHOTS = [
+  `${SHOWCASE}/000006270024.jpg`,
+  `${SHOWCASE}/000006310008.jpg`,
+  `${SHOWCASE}/000006270031.jpg`,
+  `${SHOWCASE}/000006310011.jpg`,
+  `${SHOWCASE}/000006270034.jpg`,
+  `${SHOWCASE}/000006310013.jpg`,
+  `${SHOWCASE}/000006270036.jpg`,
+];
+
 export default function FlashLanding() {
   const navigate = useNavigate();
   const goRegister = () => navigate('/flash/register');
@@ -66,42 +78,23 @@ export default function FlashLanding() {
                 </svg>
                 להתחיל בחינם
               </button>
-              <div className="trust">בלי אפליקציה · חינם להתחיל · מוכן תוך דקה</div>
+              <div className="trust">בלי אפליקציה · מוכן תוך דקה</div>
             </div>
           </div>
         </section>
 
-        {/* ================= PHOTO STRIP ================= */}
+        {/* ================= PHOTO STRIP =================
+            Real guest-uploaded photos from actual weddings (the same
+            gallery_showcase set the album showcase uses). */}
         <section className="gallery">
+          <h2 className="gallery-h">החגיגה מעיניים של האורחים</h2>
           <div className="strip-g">
-            <div className="shot">
-              <img src="https://d1sayt91mdit04.cloudfront.net/static/landing/S2Yn2dBx.jpg" alt="" />
-              <span className="veil" />
-            </div>
-            <div className="shot tall">
-              <img src="https://d1sayt91mdit04.cloudfront.net/static/landing/sGFvpSzG.jpg" alt="" />
-              <span className="veil" />
-            </div>
-            <div className="shot">
-              <img src="https://d1sayt91mdit04.cloudfront.net/static/landing/7Jvfg74k.jpg" alt="" />
-              <span className="veil" />
-            </div>
-            <div className="shot tall">
-              <img src="https://d1sayt91mdit04.cloudfront.net/static/landing/n9vMTzV6.jpg" alt="" />
-              <span className="veil" />
-            </div>
-            <div className="shot">
-              <img src="https://d1sayt91mdit04.cloudfront.net/static/landing/Fkj1GRs5.jpg" alt="" />
-              <span className="veil" />
-            </div>
-            <div className="shot tall">
-              <img src="https://d1sayt91mdit04.cloudfront.net/static/landing/Lhfqmyk1.jpg" alt="" />
-              <span className="veil" />
-            </div>
-            <div className="shot">
-              <img src="https://d1sayt91mdit04.cloudfront.net/static/landing/56VXywpK.jpg" alt="" />
-              <span className="veil" />
-            </div>
+            {GUEST_SHOTS.map((src, i) => (
+              <div className={i % 2 ? 'shot tall' : 'shot'} key={src}>
+                <img src={src} alt="" loading="lazy" />
+                <span className="veil" />
+              </div>
+            ))}
           </div>
         </section>
 
@@ -177,10 +170,10 @@ export default function FlashLanding() {
           <section>
             <div className="eyebrow">
               <i />
-              הסיבות
+              למה אתם צריכים
               <i />
             </div>
-            <h2 className="h-sec">למה זוגות אוהבים</h2>
+            <h2 className="h-sec">הזוגות אהבו במיוחד</h2>
 
             <div className="values">
               <div className="value">
@@ -282,7 +275,8 @@ export default function FlashLanding() {
 
             <div className="tiers">
               {/* FREE */}
-              <div className="tier free">
+              <div className="tier free" role="button" tabIndex={0} onClick={goRegister}
+                   onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && goRegister()}>
                 <span className="badge">מתחילים כאן</span>
                 <div className="tier-name">פלאש</div>
                 <div className="tier-price">חינם</div>
@@ -310,8 +304,9 @@ export default function FlashLanding() {
                 </div>
               </div>
 
-              {/* PLUS */}
-              <div className="tier plus">
+              {/* PLUS — also starts with the free signup; the upgrade is offered right after. */}
+              <div className="tier plus" role="button" tabIndex={0} onClick={goRegister}
+                   onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && goRegister()}>
                 <div className="tier-name">פלאש+</div>
                 <div className="tier-price">₪50</div>
                 <div className="rule tier-rule">
