@@ -479,20 +479,37 @@ export const DisposableCamera = () => {
     const mirror = facing === 'user'; // mirror selfies (matches the preview)
     const tempId = `tmp-${Date.now()}`;
 
-    // Fire the shot INSTANTLY: a quick low-res poster off the live preview drives
-    // the history thumbnail and the fly animation right now — the full-res render
-    // below can take ~1s and we don't want the animation waiting on it.
-    const quick = posterFromVideo(video, { mirror, zoom });
-    if (quick) {
-      setShots((s) => [...s, { _id: tempId, url: quick, thumbnailUrl: quick, type: 'photo' }]);
-      flyToHistory(quick);
-    }
-
     const track = streamRef.current?.getVideoTracks()[0];
+
+    // With the flash off we can fire INSTANTLY: a quick low-res poster off the
+    // live preview drives the history thumbnail and the fly animation right now,
+    // since the full-res render below can take ~1s.
+    // With the flash ON we must wait for the torch first, otherwise the preview
+    // (and the animation) shows the dark, un-lit frame.
+    const makeQuick = () => {
+      const q = posterFromVideo(video, { mirror, zoom });
+      if (q) {
+        setShots((s) => [...s, { _id: tempId, url: q, thumbnailUrl: q, type: 'photo' }]);
+        flyToHistory(q);
+      }
+      return q;
+    };
+    let quick = flashMode ? null : makeQuick();
+
     try {
       // Real flash: pulse the torch on just for the exposure, then off.
+      // A phone torch needs ~300ms to reach full brightness, and auto-exposure
+      // then needs a few frames to settle to the new lighting. 120ms fired the
+      // shutter while the LED was still ramping, so flash shots came out dark.
       if (flashMode && track) {
-        try { await track.applyConstraints({ advanced: [{ torch: true } as any] }); await new Promise((r) => setTimeout(r, 120)); } catch { /* no torch */ }
+        try {
+          await track.applyConstraints({ advanced: [{ torch: true } as any] });
+          await new Promise((r) => setTimeout(r, 320));           // LED ramp-up
+          await new Promise((r) => requestAnimationFrame(() => r(null))); // let AE settle
+          await new Promise((r) => requestAnimationFrame(() => r(null)));
+        } catch { /* no torch on this device */ }
+        // now that the scene is lit, the instant preview reflects the real shot
+        quick = makeQuick();
       }
       // Highest quality: a full-resolution ImageCapture still where supported
       // (Android → sensor photo res), else the video frame (iOS/Safari). Full res,

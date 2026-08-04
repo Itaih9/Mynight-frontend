@@ -13,6 +13,19 @@ import '../FlashRegister/FlashRegister.css';
  */
 type Status = 'verifying' | 'success' | 'failed';
 
+/** Deterministic confetti in the brand palette — gold, rose, ink. */
+const CONFETTI_COLORS = ['#F5C518', '#F9D970', '#C79A16', '#FFE4E6', '#FECDD3', '#1C1917'];
+const CONFETTI = Array.from({ length: 46 }, (_, i) => ({
+  left: (i * 37) % 100,
+  color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  w: i % 5 === 0 ? 6 : 8,
+  h: i % 3 === 0 ? 6 : 12,
+  round: i % 4 === 0,
+  delay: (i % 12) * 0.12,
+  dur: 2.6 + ((i % 7) * 0.28),
+  rot: (i * 53) % 360,
+}));
+
 export const FlashThanks = () => {
   const [params] = useSearchParams();
   const paymentId = params.get('paymentId') || '';
@@ -69,7 +82,24 @@ export const FlashThanks = () => {
 
       {status === 'success' && (
         <div className="max-w-sm">
-          <div className="text-5xl mb-4">🎉</div>
+          {/* gold/rose confetti burst — brand colours, no emoji */}
+          <div className="thanks-confetti" aria-hidden="true">
+            {CONFETTI.map((c, i) => (
+              <span
+                key={i}
+                style={{
+                  left: `${c.left}%`,
+                  background: c.color,
+                  width: c.w,
+                  height: c.h,
+                  borderRadius: c.round ? '50%' : '1px',
+                  animationDelay: `${c.delay}s`,
+                  animationDuration: `${c.dur}s`,
+                  ['--rot' as any]: `${c.rot}deg`,
+                }}
+              />
+            ))}
+          </div>
           <h1 className="thanks-h">פלאש+ פעיל</h1>
           <p className="thanks-sub">
             האירוע שלכם שודרג — וידאו, 24 צילומים לכל אורח, וזיהוי פנים לכל אורח.

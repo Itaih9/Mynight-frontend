@@ -641,3 +641,22 @@
   color:var(--ink-70);text-align:center;
 }
 .frg .nav-spacer{display:block;width:34px}
+
+/* --- confetti burst on the Flash+ success screen (brand colours, no emoji) --- */
+.frg .thanks-confetti{
+  position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:5;
+}
+.frg .thanks-confetti span{
+  position:absolute;top:-6vh;display:block;opacity:0;
+  animation-name:thanksFall;animation-timing-function:cubic-bezier(.25,.6,.4,1);
+  animation-fill-mode:forwards;
+}
+@keyframes thanksFall{
+  0%   {opacity:0;transform:translateY(-10vh) rotate(0deg)}
+  8%   {opacity:1}
+  85%  {opacity:1}
+  100% {opacity:0;transform:translateY(105vh) rotate(var(--rot,180deg))}
+}
+@media (prefers-reduced-motion: reduce){
+  .frg .thanks-confetti{display:none}
+}
