@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, Copy, Sparkles, Download, Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/Calendar';
 import { eventsApi, type FlashRegisterResult } from '@/services/api/events.api';
+import { paymentApi } from '@/services/api';
 import { HereIAmUpsellModal } from '@/components/upsell/HereIAmUpsellModal';
 import { API_BASE_URL } from '@/config/api';
 import { ROUTES } from '@/config/routes';
@@ -35,6 +36,8 @@ export const FlashRegister = () => {
   const [error, setError] = useState('');
   const [result, setResult] = useState<FlashRegisterResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [params] = useSearchParams();
+  const wantsPlus = params.get('plan') === 'plus';
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +50,23 @@ export const FlashRegister = () => {
         phoneNumber: phoneNumber.trim(),
         email: email.trim(),
       });
+
+      // Arrived from the פלאש+ pill: the event now exists, so hand straight
+      // off to Sumit instead of showing the free success screen.
+      if (wantsPlus && res.data?.eventCode) {
+        try {
+          const pay = await paymentApi.beginFlashPlus(res.data.eventCode);
+          const url = (pay.data as any)?.redirectUrl;
+          if (url) {
+            window.location.href = url;
+            return; // leaving the page — keep the button in its busy state
+          }
+        } catch {
+          /* upgrade couldn't start — fall through to the normal success
+             screen, where the upgrade CTA is still available. */
+        }
+      }
+
       setResult(res.data!);
     } catch (err: any) {
       setError(err?.response?.data?.error || 'משהו השתבש, נסו שוב');

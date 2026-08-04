@@ -375,3 +375,82 @@
   .flp .final-orn{animation:none}
   .flp .shot{opacity:1;filter:none}
 }
+
+/* =========================================================
+   HERO "פזורה" — scattered editorial (chosen option 4)
+   Guest photos of varying sizes sit asymmetrically around a
+   clean, airy centre. Reads like a magazine spread, not an ad.
+   ========================================================= */
+.flp .hero.o4{
+  min-height:auto;
+  display:flex;flex-direction:column;
+  background:linear-gradient(180deg,#FDFCFB 0%, #F6F4F1 100%);
+  padding:46px 0 26px;
+}
+.flp .o4-scatter{position:absolute;inset:0;z-index:1;pointer-events:none}
+.flp .o4-scatter .sc{
+  position:absolute;overflow:hidden;background:#fff;border-radius:8px;
+  border:1px solid rgba(199,154,22,.28);
+  box-shadow:0 20px 32px -22px rgba(91,78,69,.6), inset 0 0 0 1px rgba(255,255,255,.6);
+}
+.flp .o4-scatter .sc img{width:100%;height:100%;object-fit:cover;filter:saturate(1.02)}
+.flp .o4-scatter .s1{top:40px;right:-28px;width:116px;height:146px;transform:rotate(-6deg)}
+.flp .o4-scatter .s2{top:118px;left:-26px;width:88px;height:112px;transform:rotate(7deg)}
+.flp .o4-scatter .s3{top:258px;left:-34px;width:70px;height:92px;transform:rotate(-9deg)}
+.flp .o4-scatter .s4{top:296px;right:-34px;width:92px;height:116px;transform:rotate(5deg)}
+.flp .o4-scatter .s5{top:452px;right:-20px;width:104px;height:82px;transform:rotate(4deg)}
+.flp .o4-scatter .s6{top:470px;left:-30px;width:82px;height:104px;transform:rotate(-5deg)}
+.flp .o4-inner{
+  position:relative;z-index:5;flex:1 1 auto;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:34px 22px 10px;text-align:center;
+}
+/* soft paper halo keeps the copy legible over the scatter */
+.flp .o4-block{
+  padding:26px 8px 22px;width:100%;
+  background:radial-gradient(closest-side at 50% 50%, rgba(253,252,251,.98) 62%, rgba(253,252,251,0) 100%);
+}
+.flp .hero.o4 .flp-logo{filter:none;height:34px}
+.flp .hero.o4 .brandline-photo i{background:linear-gradient(90deg,transparent,var(--gold))}
+.flp .hero.o4 .brandline-photo i.rev{background:linear-gradient(90deg,var(--gold),transparent)}
+.flp .hero.o4 .brandline-photo span{color:var(--gold-deep);text-shadow:none}
+.flp .o4-h1{
+  margin-top:20px;
+  font-family:'Heebo',sans-serif;font-weight:900;font-size:32px;line-height:1.13;
+  letter-spacing:-1.1px;color:var(--ink-2);
+}
+.flp .hero.o4 .hero-sub{
+  margin:11px auto 0;max-width:250px;
+  font-size:13.5px;line-height:1.62;color:var(--ink-70);text-shadow:none;
+}
+.flp .o4-foot{position:relative;z-index:5;padding:0 34px;margin-top:10px}
+.flp .o4-foot .hero-cta{margin-top:0}
+.flp .hero.o4 .trust{
+  margin-top:12px;color:var(--ink-55);text-shadow:none;
+}
+
+/* --- פלאש / פלאש+ pill toggle --- */
+.flp .toggle{
+  position:relative;display:flex;width:224px;margin:0 auto 14px;padding:4px;
+  border-radius:100px;background:rgba(28,25,23,.055);
+  border:1px solid var(--hair-faint);
+  box-shadow:inset 0 1px 2px rgba(28,25,23,.06);
+}
+.flp .toggle .thumb{
+  position:absolute;top:4px;right:4px;bottom:4px;width:calc(50% - 4px);
+  border-radius:100px;background:linear-gradient(180deg,#F9D970 0%,#F5C518 100%);
+  box-shadow:0 6px 14px -8px rgba(183,147,85,.95), inset 0 1px 0 rgba(255,255,255,.6);
+  transition:transform .34s cubic-bezier(.16,1,.3,1);
+}
+.flp .toggle.is-plus .thumb{transform:translateX(-100%)}
+.flp .toggle .seg{
+  position:relative;z-index:2;flex:1 1 0;border:none;background:none;cursor:pointer;
+  font-family:'Assistant',sans-serif;font-weight:700;font-size:13px;letter-spacing:.3px;
+  color:var(--ink-55);padding:8px 0;border-radius:100px;
+  transition:color .2s ease;
+}
+.flp .toggle .seg.is-on{color:#1C1917}
+
+@media (prefers-reduced-motion: reduce){
+  .flp .toggle .thumb{transition:none}
+}
