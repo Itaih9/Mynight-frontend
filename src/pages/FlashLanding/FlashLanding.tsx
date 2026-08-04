@@ -337,7 +337,7 @@ export default function FlashLanding() {
               <div className="tier plus" role="button" tabIndex={0} onClick={goRegister}
                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && goRegister()}>
                 <div className="tier-name">פלאש+</div>
-                <div className="tier-price">₪50</div>
+                <div className="tier-price">₪{FLASH_PLUS_PRICE}</div>
                 <div className="rule tier-rule">
                   <span className="rl" />
                   <svg width="18" height="7" viewBox="0 0 18 7" fill="none" aria-hidden="true">

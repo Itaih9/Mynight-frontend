@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { paymentApi } from '@/services/api';
 import { ROUTES } from '@/config/routes';
+import logoSvg from '@/assets/logo.svg';
+// reuse the sign-up screen's stationery system so the funnel stays one design
+import '../FlashRegister/FlashRegister.css';
 
 /**
  * Flash+ (code-in-link) payment return page. Sumit redirects here as
@@ -51,25 +54,27 @@ export const FlashThanks = () => {
   const backHref = eventCode ? `${ROUTES.FLASH_PLUS}?code=${eventCode}` : ROUTES.FLASH_PLUS;
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center justify-center px-6 text-center" dir="rtl">
+    <div className="frg" dir="rtl">
+      <div className="frg-col thanks-wrap">
+        <img src={logoSvg} alt="My Night" className="frg-logo thanks-logo" />
       {status === 'verifying' && (
         <>
-          <div className="w-12 h-12 rounded-full border-4 border-white/20 border-t-gold-primary animate-spin mb-5" />
-          <p className="text-white/70">מאמתים את התשלום…</p>
+          <div className="w-12 h-12 rounded-full border-4 border-black/10 border-t-[#F5C518] animate-spin mb-5" />
+          <p className="thanks-sub">מאמתים את התשלום…</p>
         </>
       )}
 
       {status === 'success' && (
         <div className="max-w-sm">
           <div className="text-5xl mb-4">🎉</div>
-          <h1 className="text-3xl font-black mb-3">פלאש+ פעיל</h1>
-          <p className="text-white/70 leading-relaxed mb-8">
+          <h1 className="thanks-h">פלאש+ פעיל</h1>
+          <p className="thanks-sub">
             האירוע שלכם שודרג — וידאו, 24 צילומים לכל אורח, וזיהוי פנים לכל אורח.
             הכול מתפתח בבוקר שאחרי החתונה.
           </p>
           <Link
             to={backHref}
-            className="block w-full py-4 rounded-2xl bg-gold-primary text-black font-black text-lg active:scale-[0.99] transition-transform"
+            className="btn thanks-btn"
           >
             חזרה לאירוע שלי
           </Link>
@@ -79,16 +84,17 @@ export const FlashThanks = () => {
       {status === 'failed' && (
         <div className="max-w-sm">
           <div className="text-5xl mb-4">😕</div>
-          <h1 className="text-2xl font-black mb-3">התשלום לא הושלם</h1>
-          <p className="text-white/60 mb-8">{message || 'אפשר לנסות שוב.'}</p>
+          <h1 className="thanks-h">התשלום לא הושלם</h1>
+          <p className="thanks-sub">{message || 'אפשר לנסות שוב.'}</p>
           <Link
             to={backHref}
-            className="block w-full py-4 rounded-2xl bg-white text-black font-black text-lg active:scale-[0.99] transition-transform"
+            className="btn thanks-btn"
           >
             חזרה לשדרוג
           </Link>
         </div>
       )}
+      </div>
     </div>
   );
 };

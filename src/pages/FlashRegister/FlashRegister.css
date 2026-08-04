@@ -383,3 +383,252 @@
 }
 .frg .toggle .seg.is-on{color:#1C1917}
 @media (prefers-reduced-motion: reduce){ .frg .toggle .thumb{transition:none} }
+
+/* ============================================================
+   SUCCESS / POST-REGISTRATION screen — same stationery system:
+   cream paper, white card stock, gold hairlines, deep-gold text
+   accents (never bright #F5C518 as text — it fails AA on light).
+   Everything below stays scoped under .frg.
+   ============================================================ */
+
+/* stands in for the form's back chevron so the logo keeps the same
+   centred position when the couple lands on the success screen */
+.frg .nav-spacer {
+  display: block;
+  width: 34px;
+  height: 34px;
+}
+
+/* foil seal above the headline */
+.frg .seal {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+.frg .seal svg {
+  width: 46px;
+  height: 46px;
+}
+.frg .success .eyebrow {
+  margin-top: 18px;
+}
+/* second paragraph steps down a tone, like the old dark screen did */
+.frg .success .sub + .sub {
+  color: var(--ink-55);
+  font-size: 14.5px;
+}
+
+/* ---------- white card stock ---------- */
+.frg .card {
+  margin-top: 20px;
+  text-align: right;
+  background: var(--paper);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 26px -20px rgba(91, 78, 69, .6);
+}
+.frg .card-label {
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  color: var(--gold-deep);
+  margin-bottom: 9px;
+}
+.frg .card-title {
+  font-family: 'Bellefair', serif;
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.25;
+  color: var(--ink);
+  text-shadow: var(--emboss);
+}
+.frg .card-note {
+  margin-top: 6px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 300;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-55);
+}
+.frg .card-body {
+  margin-top: 8px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 300;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-70);
+}
+.frg .card-body strong {
+  font-weight: 700;
+  color: var(--ink);
+}
+.frg .card .btn {
+  margin-top: 15px;
+}
+.frg a.btn {
+  text-decoration: none;
+}
+
+/* inline text link inside card copy */
+.frg .ilink {
+  color: var(--gold-deep);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* the guest link itself — LTR url on a recessed cream slip */
+.frg .link-url {
+  font-family: 'Assistant', sans-serif;
+  font-weight: 500;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  text-align: left;
+  word-break: break-all;
+  background: var(--cream);
+  border: 1px solid var(--hair-faint);
+  border-radius: 10px;
+  padding: 11px 12px;
+}
+
+/* ---------- QR card ---------- */
+.frg .qr-card {
+  text-align: center;
+}
+/* the PNG is dark-on-white, so the frame around it must stay white */
+.frg .qr-frame {
+  display: inline-flex;
+  margin-top: 16px;
+  background: #FFFFFF;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  padding: 10px;
+  box-shadow: 0 10px 26px -20px rgba(91, 78, 69, .6);
+}
+.frg .qr-frame img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  background: #FFFFFF;
+}
+
+/* outlined secondary button — same footprint as .btn but quiet.
+   Layered on .btn-sec, so it must stay after those rules in this file. */
+.frg .btn-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin: 15px 0 0;
+  padding: 14px;
+  cursor: pointer;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 14.5px;
+  letter-spacing: .3px;
+  color: var(--ink);
+  background: #FFFFFF;
+  border: 1px solid var(--hair);
+  border-radius: 13px;
+  text-decoration: none;
+  box-shadow: 0 6px 16px -14px rgba(91, 78, 69, .5);
+  transition: color .2s ease, border-color .2s ease, transform .1s ease;
+}
+.frg .btn-line svg {
+  flex: 0 0 auto;
+  color: var(--gold-deep);
+}
+.frg .btn-line:active {
+  transform: scale(.99);
+  color: var(--gold-deep);
+  border-color: #C79A16;
+}
+
+/* where-to-print tips, recessed inside the QR card */
+.frg .tips {
+  margin-top: 16px;
+  text-align: right;
+  background: var(--cream);
+  border: 1px solid var(--hair-faint);
+  border-radius: 12px;
+  padding: 14px 15px;
+}
+.frg .tips-title {
+  font-family: 'Assistant', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  color: var(--gold-deep);
+  margin-bottom: 9px;
+}
+.frg .tips ul {
+  list-style: disc;
+  padding-inline-start: 17px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 300;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--ink-70);
+}
+.frg .tips li::marker {
+  color: var(--gold-deep);
+}
+
+/* keep-the-link footnote */
+.frg .save-note {
+  margin: 20px auto 0;
+  max-width: 320px;
+  font-family: 'Assistant', sans-serif;
+  font-weight: 300;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-40);
+  text-align: center;
+}
+
+/* ---------- Here I Am upsell card ---------- */
+.frg .upsell {
+  margin-top: 28px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFFCF3 100%);
+  box-shadow: 0 18px 36px -26px rgba(199, 154, 22, .7);
+}
+.frg .upsell-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.frg .upsell-head svg {
+  flex: 0 0 auto;
+  color: var(--gold-deep);
+}
+.frg .upsell-head span {
+  font-family: 'Bellefair', serif;
+  font-weight: 400;
+  font-size: 21px;
+  line-height: 1.25;
+  color: var(--ink);
+  text-shadow: var(--emboss);
+}
+
+/* --- Flash+ thank-you screen (shares this stationery system) --- */
+.frg .thanks-wrap{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:48px 28px;min-height:100vh;min-height:100dvh;
+}
+.frg .thanks-logo{margin:0 auto 26px}
+.frg .thanks-h{
+  font-family:'Frank Ruhl Libre',serif;font-weight:700;
+  font-size:34px;line-height:1.15;color:var(--ink-2);margin-bottom:12px;
+  text-shadow:var(--emboss);
+}
+.frg .thanks-sub{
+  max-width:330px;margin:0 auto 28px;
+  font-family:'Assistant',sans-serif;font-weight:400;font-size:15.5px;line-height:1.7;
+  color:var(--ink-70);
+}
+.frg .thanks-btn{max-width:360px;text-decoration:none;justify-content:center}

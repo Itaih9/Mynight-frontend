@@ -14,9 +14,10 @@ import './FlashRegister.css';
 /**
  * Free פלאש sign-up — the "stationery" designed form.
  *
- * The FORM is the ported letterpress mockup (scoped under .frg); on a
- * successful register we hand back Flash.tsx's proven QR / link success
- * screen (dark, functional) plus the Here I Am upsell.
+ * Both screens live in the same letterpress system (scoped under .frg): the
+ * sign-up form, and — after a successful register — the QR / link success
+ * screen plus the Here I Am upsell. Same cream paper, white cards, gold
+ * hairlines, so the couple never jumps between two themes on their phone.
  */
 /** Keep in sync with backend FLASH_PLUS_PRICE_ILS. */
 const FLASH_PLUS_PRICE = 1; // ⚠️ TEMP ₪1 for payment testing — restore to 50
@@ -97,111 +98,161 @@ export const FlashRegister = () => {
     !submitting && !!coupleName.trim() && !!weddingDate && !!phoneNumber.trim() && !!email.trim();
 
   // ---- Success: hand them the link, then pitch Here I Am ----
+  // Same "stationery" system as the form below (scoped under .frg) so the
+  // couple stays on cream paper instead of dropping into a dark screen.
   if (result) {
     return (
-      <div className="min-h-screen bg-neutral-950 text-white flex flex-col items-center px-6 py-14" dir="rtl">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md text-center"
-        >
-          <div className="text-5xl mb-4">📸</div>
-          <h1 className="text-3xl font-black mb-2">הפלאש שלכם מוכן</h1>
-          <p className="text-white/70 mb-2">
-            {coupleName.trim()}, מזל טוב! הכנו לכם מצלמה חד-פעמית לאורחים
-            {weddingDate ? ` לחתונה ב-${formatHebDate(weddingDate)}` : ''}.
-          </p>
-          <p className="text-white/60 mb-8">
-            שתפו את הקישור עם האורחים ביום החתונה. כל אורח מקבל {result.shotLimit} צילומים.
-          </p>
+      <>
+        <div className="frg" dir="rtl">
+          {/* foil gradient defs (shared by all inline ornaments) */}
+          <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden="true">
+            <defs>
+              <linearGradient id="foil" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stopColor="#C79A16" />
+                <stop offset=".3" stopColor="#F9D970" />
+                <stop offset=".55" stopColor="#F5C518" />
+                <stop offset=".78" stopColor="#F9D970" />
+                <stop offset="1" stopColor="#C79A16" />
+              </linearGradient>
+            </defs>
+          </svg>
 
-          <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-5 mb-4 text-right">
-            <p className="text-white/40 text-xs mb-2">הקישור לאורחים</p>
-            <p className="text-white text-sm break-all mb-4" dir="ltr">{result.cameraUrl}</p>
-            <button
-              onClick={copyLink}
-              className="w-full py-3 rounded-xl bg-white text-black font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
-            >
-              {copied ? <><Check size={18} /> הועתק</> : <><Copy size={18} /> העתקת הקישור</>}
-            </button>
-          </div>
-
-          {/* QR of the camera link — the couple prints/displays it, guests scan it. */}
-          <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-5 mb-4 text-center">
-            <p className="text-white font-bold mb-1">קוד ה-QR לאורחים</p>
-            <p className="text-white/40 text-xs mb-4">הדפיסו והציבו — האורחים סורקים ומצלמים, בלי אפליקציה.</p>
-            <img
-              src={`${API_BASE_URL}/api/events/code/${result.eventCode}/qr.png`}
-              alt="קוד QR"
-              width={200}
-              height={200}
-              className="mx-auto rounded-xl bg-white p-2"
-            />
-            <a
-              href={`${API_BASE_URL}/api/events/code/${result.eventCode}/qr.png?download=1`}
-              download={`mynight-flash-${result.eventCode}.png`}
-              className="mt-4 w-full py-3 rounded-xl bg-white text-black font-bold flex items-center justify-center gap-2 active:scale-[0.99] transition-transform"
-            >
-              <Download size={18} /> הורדת קוד ה-QR
-            </a>
-            <div className="mt-4 text-right bg-white/5 rounded-xl p-4">
-              <p className="text-white/80 text-xs font-bold mb-2">איפה להדפיס ולהציב</p>
-              <ul className="text-white/60 text-xs space-y-1.5 list-disc pr-4">
-                <li>הדפיסו בגודל A5–A4 על נייר מט</li>
-                <li>על שולחן קבלת הפנים וליד ספר הברכות</li>
-                <li>מסגרת קטנה על כל שולחן אורחים</li>
-                <li>ליד הבר ובאזור רחבת הריקודים</li>
-              </ul>
+          <div className="frg-col">
+            {/* TOP NAV — same row as the form (spacer stands in for the back
+                chevron so the logo keeps its exact position across screens) */}
+            <div className="nav">
+              <span className="nav-spacer" aria-hidden="true" />
+              <img src={logoSvg} alt="My Night" className="frg-logo" />
+              <span className="nav-tag">פלאש</span>
             </div>
-          </div>
 
-          {/* How they reach the album — same instruction the email gives */}
-          <div className="rounded-2xl bg-white/5 ring-1 ring-white/10 p-5 mb-4 text-right">
-            <p className="text-white font-bold mb-2">איך רואים את התמונות?</p>
-            <p className="text-white/60 text-sm leading-relaxed">
-              בבוקר שאחרי החתונה היכנסו ל-
-              <a href={ROUTES.LOGIN} className="text-gold-primary underline underline-offset-2">
-                mynight.co.il/login
-              </a>{' '}
-              עם מספר הטלפון{' '}
-              {phoneNumber.trim() ? (
-                <strong className="text-white" dir="ltr">{phoneNumber.trim()}</strong>
-              ) : (
-                'שאיתו נרשמתם'
-              )}{' '}
-              — האלבום שלכם יחכה שם.
-            </p>
-          </div>
-
-          <p className="text-white/40 text-xs mb-10">
-            שמרו את הקישור — שלחנו אותו גם למייל. הצילומים מתפתחים בבוקר שאחרי החתונה.
-          </p>
-
-          {/* The upsell — free covers the shooting, this is the smart layer.
-              A plain button here (no plan pill): they've already got פלאש. */}
-          <div className="rounded-2xl bg-gradient-to-b from-white/10 to-white/[0.03] ring-1 ring-white/15 p-6 text-right">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles size={18} className="text-gold-primary" />
-              <span className="font-bold text-lg">רוצים שכל אורח יקבל את התמונות שלו?</span>
-            </div>
-            <p className="text-white/65 text-sm leading-relaxed mb-4">
-              פלאש אוסף את הצילומים. <strong className="text-white">החבילה החכמה של My Night</strong>{' '}
-              מוסיפה זיהוי פנים — כל אורח מקבל אלבום אישי רק עם התמונות שהוא מופיע בהן, כולל התמונות
-              מהצלם המקצועי.
-            </p>
-            <a
-              href={ROUTES.HERE_I_AM}
-              className="block w-full py-3.5 rounded-xl bg-gold-primary text-black font-bold text-center active:scale-[0.99] transition-transform"
+            <motion.section
+              className="reg success"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
             >
-              לפרטים על החבילה החכמה
-            </a>
+              {/* foil seal — the letterpress stand-in for the old emoji */}
+              <div className="seal" aria-hidden="true">
+                <svg viewBox="0 0 44 44" fill="none">
+                  <circle cx="22" cy="22" r="20.5" stroke="url(#foil)" strokeWidth="1" />
+                  <circle cx="22" cy="22" r="17" stroke="url(#foil)" strokeWidth=".6" opacity=".55" />
+                  <path
+                    d="M14.8 22.4 L19.6 27.2 L29.2 16.8"
+                    stroke="url(#foil)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+
+              <div className="eyebrow"><i></i>הרשמה · הושלמה<i></i></div>
+              <h1 className="h-sec">הפלאש שלכם מוכן</h1>
+              <p className="sub">
+                {coupleName.trim()}, מזל טוב! הכנו לכם מצלמה חד-פעמית לאורחים
+                {weddingDate ? ` לחתונה ב-${formatHebDate(weddingDate)}` : ''}.
+              </p>
+              <p className="sub">
+                שתפו את הקישור עם האורחים ביום החתונה. כל אורח מקבל {result.shotLimit} צילומים.
+              </p>
+
+              <div className="rule">
+                <span className="rl"></span>
+                <svg width="30" height="8" viewBox="0 0 30 8" fill="none" aria-hidden="true">
+                  <circle cx="4" cy="4" r="1" fill="url(#foil)" />
+                  <rect x="12.6" y="1.6" width="4.8" height="4.8" transform="rotate(45 15 4)" fill="none" stroke="url(#foil)" strokeWidth="1" />
+                  <circle cx="26" cy="4" r="1" fill="url(#foil)" />
+                </svg>
+                <span className="rl rev"></span>
+              </div>
+
+              <div className="card">
+                <p className="card-label">הקישור לאורחים</p>
+                <p className="link-url" dir="ltr">{result.cameraUrl}</p>
+                <button className="btn" type="button" onClick={copyLink}>
+                  {copied ? <Check size={18} aria-hidden="true" /> : <Copy size={18} aria-hidden="true" />}
+                  <span>{copied ? 'הועתק' : 'העתקת הקישור'}</span>
+                </button>
+              </div>
+
+              {/* QR of the camera link — the couple prints/displays it, guests scan it.
+                  The PNG is dark-on-white, so its frame stays white. */}
+              <div className="card qr-card">
+                <p className="card-title">קוד ה-QR לאורחים</p>
+                <p className="card-note">הדפיסו והציבו — האורחים סורקים ומצלמים, בלי אפליקציה.</p>
+                <div className="qr-frame">
+                  <img
+                    src={`${API_BASE_URL}/api/events/code/${result.eventCode}/qr.png`}
+                    alt="קוד QR"
+                    width={200}
+                    height={200}
+                  />
+                </div>
+                <a
+                  className="btn-sec btn-line"
+                  href={`${API_BASE_URL}/api/events/code/${result.eventCode}/qr.png?download=1`}
+                  download={`mynight-flash-${result.eventCode}.png`}
+                >
+                  <Download size={18} aria-hidden="true" />
+                  <span>הורדת קוד ה-QR</span>
+                </a>
+                <div className="tips">
+                  <p className="tips-title">איפה להדפיס ולהציב</p>
+                  <ul>
+                    <li>הדפיסו בגודל A5–A4 על נייר מט</li>
+                    <li>על שולחן קבלת הפנים וליד ספר הברכות</li>
+                    <li>מסגרת קטנה על כל שולחן אורחים</li>
+                    <li>ליד הבר ובאזור רחבת הריקודים</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* How they reach the album — same instruction the email gives */}
+              <div className="card">
+                <p className="card-title">איך רואים את התמונות?</p>
+                <p className="card-body">
+                  בבוקר שאחרי החתונה היכנסו ל-
+                  <a href={ROUTES.LOGIN} className="ilink">
+                    mynight.co.il/login
+                  </a>{' '}
+                  עם מספר הטלפון{' '}
+                  {phoneNumber.trim() ? (
+                    <strong dir="ltr">{phoneNumber.trim()}</strong>
+                  ) : (
+                    'שאיתו נרשמתם'
+                  )}{' '}
+                  — האלבום שלכם יחכה שם.
+                </p>
+              </div>
+
+              <p className="save-note">
+                שמרו את הקישור — שלחנו אותו גם למייל. הצילומים מתפתחים בבוקר שאחרי החתונה.
+              </p>
+
+              {/* The upsell — free covers the shooting, this is the smart layer.
+                  A plain button here (no plan pill): they've already got פלאש. */}
+              <div className="card upsell">
+                <div className="upsell-head">
+                  <Sparkles size={18} aria-hidden="true" />
+                  <span>רוצים שכל אורח יקבל את התמונות שלו?</span>
+                </div>
+                <p className="card-body">
+                  פלאש אוסף את הצילומים. <strong>החבילה החכמה של My Night</strong>{' '}
+                  מוסיפה זיהוי פנים — כל אורח מקבל אלבום אישי רק עם התמונות שהוא מופיע בהן, כולל התמונות
+                  מהצלם המקצועי.
+                </p>
+                <a className="btn" href={ROUTES.HERE_I_AM}>
+                  <span>לפרטים על החבילה החכמה</span>
+                </a>
+              </div>
+            </motion.section>
           </div>
-        </motion.div>
+        </div>
 
         {/* Post-registration upsell. Recurs every visit; suppressed only once the
             server reports the event as paid. */}
         <HereIAmUpsellModal eventCode={result.eventCode} />
-      </div>
+      </>
     );
   }
 
