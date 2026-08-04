@@ -14,14 +14,26 @@ import './FlashLanding.css';
  * uploads), pulled from five different real weddings — not the photographer's
  * set. That's the whole point of the strip: this is what פלאש collects.
  */
-const CDN = 'https://d1sayt91mdit04.cloudfront.net/events';
-const GUEST_SHOTS = [
+// `display/` = the resized derivative (~0.4MB) rather than the 2–3MB original.
+const CDN = 'https://d1sayt91mdit04.cloudfront.net/display/events';
+
+/** Hero — the six photos scattered around the headline (s1…s6, in order). */
+const HERO_SHOTS = [
   `${CDN}/DWVQNRW4/guest-uploads/WdVkTCc-LkzjMzPzpb2OT-1000406952.jpg`,
-  `${CDN}/KW97NB6J/disposable/otOvrOL43L89GXyDes6yo-shot-1784724918322.jpg`,
-  `${CDN}/B92JNJ55/guest-uploads/ns--pz68CpGz72cyJ5qo6-1000119281.jpg`,
+  `${CDN}/DWVQNRW4/guest-uploads/7xTIPmv9OTALDpr9bUwZt-IMG_0450.jpeg`,
+  `${CDN}/HNN6UFS9/guest-uploads/xDMqCrWZE7AagMim9NtCt-1000119338.jpg`,
   `${CDN}/HNN6UFS9/guest-uploads/-ixzOLeV6Ys2lfQPdhT28-1000119281.jpg`,
   `${CDN}/PCLKZS21/guest-uploads/QzYnC3wa9q_dgVqWLnH0m-IMG_7484.jpeg`,
   `${CDN}/DWVQNRW4/guest-uploads/ZxPAYUeVDFg4AJyHahGoS-1000406814.jpg`,
+];
+
+/** Below the hero — the scrolling strip. Deliberately no overlap with above. */
+const STRIP_SHOTS = [
+  `${CDN}/DWVQNRW4/guest-uploads/c30NhzgZm450qaXmOmVB1-20260713_161524.jpg`,
+  `${CDN}/DWVQNRW4/guest-uploads/coazZgxLcfPkgbMIMhNAd-61D9228D-47F4-4B81-A3AF-A57B32CB211C.jpeg`,
+  `${CDN}/PCLKZS21/guest-uploads/jkErWw9BkTVl0txwPdDBc-292764.jpg`,
+  `${CDN}/KW97NB6J/disposable/otOvrOL43L89GXyDes6yo-shot-1784724918322.jpg`,
+  `${CDN}/B92JNJ55/guest-uploads/ns--pz68CpGz72cyJ5qo6-1000119281.jpg`,
   `${CDN}/DWVQNRW4/guest-uploads/Ga7wozPWHqJE01y6SnvPs-1000406808.jpg`,
 ];
 
@@ -76,7 +88,7 @@ export default function FlashLanding() {
         <section className="hero o4">
           {/* guest photos scattered asymmetrically around a clean centre */}
           <div className="o4-scatter" aria-hidden="true">
-            {GUEST_SHOTS.slice(0, 6).map((src, i) => (
+            {HERO_SHOTS.map((src, i) => (
               <div className={`sc s${i + 1}`} key={src}>
                 <img src={src} alt="" loading={i < 2 ? 'eager' : 'lazy'} />
               </div>
@@ -124,7 +136,7 @@ export default function FlashLanding() {
         <section className="gallery">
           <h2 className="gallery-h" data-reveal>החגיגה מעיניים של האורחים</h2>
           <div className="strip-g">
-            {GUEST_SHOTS.map((src, i) => (
+            {STRIP_SHOTS.map((src, i) => (
               <div className={i % 2 ? 'shot tall' : 'shot'} key={src} style={{ ['--i']: i } as React.CSSProperties}>
                 <img src={src} alt="" loading="lazy" />
                 <span className="veil" />
