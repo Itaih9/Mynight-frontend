@@ -271,7 +271,7 @@ export const FlashRegister = () => {
                 <p className="card-title">איך רואים את התמונות?</p>
                 <p className="card-body">
                   בבוקר שאחרי החתונה היכנסו ל-
-                  <a href={ROUTES.LOGIN} className="ilink">
+                  <a href={`${ROUTES.LOGIN}?method=phone`} className="ilink">
                     mynight.co.il/login
                   </a>{' '}
                   עם מספר הטלפון{' '}
@@ -536,7 +536,7 @@ export const FlashRegister = () => {
           </p>
 
           <div className="login">
-            <button className="btn-sec" type="button" onClick={() => navigate(ROUTES.LOGIN)}>
+            <button className="btn-sec" type="button" onClick={() => navigate(`${ROUTES.LOGIN}?method=phone`)}>
               כבר יש לכם פלאש? <strong>התחברו</strong>
             </button>
           </div>

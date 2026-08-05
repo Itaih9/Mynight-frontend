@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Phone, Lock, X, Loader2, CheckCircle, ArrowLeft, Smartphone, Eye, EyeOff, KeyRound, Sparkles } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar, CelebrationButton, VerificationButton } from '@/components/common';
 import { useUserStore } from '@/store/userStore';
@@ -11,7 +11,13 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const { login, setCurrentEvent, token } = useUserStore();
 
-  const [view, setView] = useState<'phone' | 'otp' | 'password'>('password');
+  /* ?method=phone opens straight on the phone/OTP step. פלאש couples never set
+     a password — they only ever have their phone number — so sending them to
+     the password screen would strand them. */
+  const [searchParams] = useSearchParams();
+  const [view, setView] = useState<'phone' | 'otp' | 'password'>(
+    searchParams.get('method') === 'phone' ? 'phone' : 'password'
+  );
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
