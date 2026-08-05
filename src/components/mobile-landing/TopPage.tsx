@@ -5,12 +5,12 @@ import { SplitText } from './SplitText';
 import { HighlightEffect } from './utils/HighlightEffect';
 
 const INTRO_FLOATING_IMAGES = [
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/upsell-smiling.jpg',    // AA
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/hero-1.jpg',    // AA
   'https://d1sayt91mdit04.cloudfront.net/static/landing/QMjzvJk9.png',    // BB
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/upsell-hugging.jpg', // MM
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/hero-2.jpg', // MM
   'https://d1sayt91mdit04.cloudfront.net/static/landing/vmGKCtLq.png', // CC
   'https://d1sayt91mdit04.cloudfront.net/static/landing/rpqH7NC3.png',    // DD
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/upsell-wedding.jpg'     // EE
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/hero-3.jpg'     // EE
 ];
 
 interface TopPageProps {

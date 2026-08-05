@@ -13,9 +13,9 @@ import { contactApi } from '@/services/api/contact.api';
  */
 /** Guest photos that float behind the woman, same set as the mobile-landing hero. */
 const FLOATING_SHOTS = [
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/upsell-smiling.jpg',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/hero-1.jpg',
   'https://d1sayt91mdit04.cloudfront.net/static/landing/QMjzvJk9.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/upsell-hugging.jpg',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/hero-2.jpg',
   'https://d1sayt91mdit04.cloudfront.net/static/landing/vmGKCtLq.png',
 ];
 

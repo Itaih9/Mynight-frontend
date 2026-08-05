@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Check, Copy, Sparkles, Download, Calendar as CalendarIcon } from 'lucide-react';
+import { Check, Copy, Sparkles, Search, Download, Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/Calendar';
 import { eventsApi, type FlashRegisterResult } from '@/services/api/events.api';
 import { paymentApi } from '@/services/api';
@@ -127,8 +127,30 @@ export const FlashRegister = () => {
     } catch { /* clipboard blocked — the link is on screen anyway */ }
   };
 
-  const canSubmit =
-    !submitting && !!coupleName.trim() && !!weddingDate && !!phoneNumber.trim() && !!email.trim();
+  /* Format checks mirroring the server's — the phone is their login to the
+     album and the email carries the whole follow-up, so a typo is costly.
+     Shown inline once a field has content, never as a wall of red up front. */
+  const normalizedPhone = phoneNumber.replace(/\D/g, '').replace(/^972/, '0');
+  const phoneOk = /^05\d{8}$/.test(normalizedPhone);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(email.trim());
+  const nameOk = coupleName.trim().length >= 2;
+  const dateOk = (() => {
+    if (!weddingDate) return false;
+    const d = new Date(weddingDate);
+    if (isNaN(d.getTime())) return false;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const max = new Date(); max.setFullYear(max.getFullYear() + 4);
+    return d >= today && d <= max;
+  })();
+
+  const fieldError = {
+    name: coupleName.trim() && !nameOk ? 'השם קצר מדי' : '',
+    phone: phoneNumber.trim() && !phoneOk ? 'מספר לא תקין — למשל 050-0000000' : '',
+    email: email.trim() && !emailOk ? 'כתובת אימייל לא תקינה' : '',
+    date: weddingDate && !dateOk ? 'התאריך חייב להיות בעתיד' : '',
+  };
+
+  const canSubmit = !submitting && nameOk && dateOk && phoneOk && emailOk;
 
   // ---- Success: hand them the link, then pitch Here I Am ----
   // Same "stationery" system as the form below (scoped under .frg) so the
@@ -266,11 +288,29 @@ export const FlashRegister = () => {
                 שמרו את הקישור — שלחנו אותו גם למייל. הצילומים מתפתחים בבוקר שאחרי החתונה.
               </p>
 
-              {/* The upsell — free covers the shooting, this is the smart layer.
+              {/* Step up inside פלאש first — cheap, instant, same product.
+                  Hidden once they're already on פלאש+. */}
+              {result.shotLimit < 24 && (
+                <div className="card upsell-plus">
+                  <div className="upsell-head">
+                    <Sparkles size={18} aria-hidden="true" />
+                    <span>רוצים יותר מהפלאש?</span>
+                  </div>
+                  <p className="card-body">
+                    <strong>פלאש+</strong> נותן לכל אורח 24 צילומים במקום 8, מוסיף וידאו,
+                    ומפעיל זיהוי פנים לכל אורח.
+                  </p>
+                  <a className="btn" href={`${ROUTES.FLASH_PLUS}?code=${result.eventCode}`}>
+                    <span>שדרוג לפלאש+ ₪{FLASH_PLUS_PRICE}</span>
+                  </a>
+                </div>
+              )}
+
+              {/* The bigger upsell — free covers the shooting, this is the smart layer.
                   A plain button here (no plan pill): they've already got פלאש. */}
               <div className="card upsell">
                 <div className="upsell-head">
-                  <Sparkles size={18} aria-hidden="true" />
+                  <Search size={18} aria-hidden="true" />
                   <span>רוצים שכל אורח יקבל את התמונות שלו?</span>
                 </div>
                 <p className="card-body">
@@ -354,6 +394,7 @@ export const FlashRegister = () => {
                 value={coupleName}
                 onChange={(e) => setCoupleName(e.target.value)}
               />
+              {fieldError.name && <p className="field-err">{fieldError.name}</p>}
             </div>
 
             <div className="field">
@@ -381,7 +422,8 @@ export const FlashRegister = () => {
                       setDateOpen(false);
                     }}
                   />
-                </div>
+                  {fieldError.date && <p className="field-err">{fieldError.date}</p>}
+            </div>
               )}
             </div>
 
@@ -398,6 +440,7 @@ export const FlashRegister = () => {
                 onChange={(e) => setPhoneNumber(e.target.value)}
               />
               <p className="help">המספר שאיתו תיכנסו לאלבום.</p>
+              {fieldError.phone && <p className="field-err">{fieldError.phone}</p>}
             </div>
 
             {/* email — omitted from the mockup; the backend needs it to email the QR/link */}
@@ -413,6 +456,7 @@ export const FlashRegister = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
+              {fieldError.email && <p className="field-err">{fieldError.email}</p>}
             </div>
 
             {/* primary submit — gold fill, charcoal text, sparkle to the LEFT of the label */}

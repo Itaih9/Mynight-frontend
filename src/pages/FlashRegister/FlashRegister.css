@@ -660,3 +660,17 @@
 @media (prefers-reduced-motion: reduce){
   .frg .thanks-confetti{display:none}
 }
+
+/* inline field validation */
+.frg .field-err{
+  margin-top:6px;
+  font-family:'Assistant',sans-serif;font-size:12.5px;line-height:1.5;
+  color:#9E2B25;text-align:right;
+}
+
+/* Flash+ step-up on the success screen — gold-tinted so it reads as the
+   in-product upgrade, distinct from the rose My Night package card below */
+.frg .card.upsell-plus{
+  background:linear-gradient(170deg,#FFFDF4 0%,#FDF7E3 100%);
+  border-color:var(--hair);
+}
