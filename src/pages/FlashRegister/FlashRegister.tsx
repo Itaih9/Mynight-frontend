@@ -20,7 +20,7 @@ import './FlashRegister.css';
  * hairlines, so the couple never jumps between two themes on their phone.
  */
 /** Keep in sync with backend FLASH_PLUS_PRICE_ILS. */
-const FLASH_PLUS_PRICE = 1; // ⚠️ TEMP ₪1 for payment testing — restore to 50
+const FLASH_PLUS_PRICE = 50;
 
 /** YYYY-MM-DD → 12.08.2026 for display */
 const formatHebDate = (iso: string) => {

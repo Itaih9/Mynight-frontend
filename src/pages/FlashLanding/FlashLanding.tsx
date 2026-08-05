@@ -38,7 +38,7 @@ const STRIP_SHOTS = [
 ];
 
 /** Keep in sync with backend FLASH_PLUS_PRICE_ILS. */
-const FLASH_PLUS_PRICE = 1; // ⚠️ TEMP ₪1 for payment testing — restore to 50
+const FLASH_PLUS_PRICE = 50;
 
 export default function FlashLanding() {
   const navigate = useNavigate();

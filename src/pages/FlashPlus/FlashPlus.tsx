@@ -17,7 +17,7 @@ import { WomanWithPhotos } from '@/components/upsell/WomanWithPhotos';
 
 // Must match the backend price in src/shared/config/flashPlans.ts
 // (FLASH_PLUS_PRICE_ILS).
-const FLASH_PLUS_PRICE = 1; // ⚠️ TEMP ₪1 for phone payment testing — restore to 50
+const FLASH_PLUS_PRICE = 50;
 
 const BASIC_FEATURES = [
   { icon: Camera, label: '8 צילומים לכל אורח' },

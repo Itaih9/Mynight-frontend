@@ -3,12 +3,12 @@ import LandingCelebrationButton from './CelebrationButton';
 import { ArrowDown } from 'lucide-react';
 
 const INTRO_FLOATING_IMAGES = [
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/5tprJQnK.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/upsell-smiling.jpg',
   'https://d1sayt91mdit04.cloudfront.net/static/landing/QMjzvJk9.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/xjRcq8Vz.png',
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/upsell-hugging.jpg',
   'https://d1sayt91mdit04.cloudfront.net/static/landing/vmGKCtLq.png',
   'https://d1sayt91mdit04.cloudfront.net/static/landing/rpqH7NC3.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/7LqRjnM2.png'
+  'https://d1sayt91mdit04.cloudfront.net/static/landing/upsell-wedding.jpg'
 ];
 
 const PHOTO_CODES = ['AA', 'BB', 'MM', 'CC', 'DD', 'EE'];
