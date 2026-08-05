@@ -5,13 +5,14 @@
  */
 
 /** The same six photos the mobile-landing hero floats behind the woman. */
+const S = 'https://d1sayt91mdit04.cloudfront.net/static/landing';
 export const FLOATING_SHOTS = [
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/5tprJQnK.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/QMjzvJk9.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/xjRcq8Vz.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/vmGKCtLq.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/rpqH7NC3.png',
-  'https://d1sayt91mdit04.cloudfront.net/static/landing/7LqRjnM2.png',
+  `${S}/upsell-smiling.jpg`, // replaced 5tprJQnK
+  `${S}/QMjzvJk9.png`,
+  `${S}/upsell-hugging.jpg`, // replaced xjRcq8Vz
+  `${S}/vmGKCtLq.png`,
+  `${S}/rpqH7NC3.png`,
+  `${S}/upsell-wedding.jpg`, // replaced 7LqRjnM2
 ];
 
 export const WomanWithPhotos = ({
