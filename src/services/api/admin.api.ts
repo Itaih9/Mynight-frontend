@@ -71,6 +71,7 @@ export interface AdminEvent {
   _id: string;
   name: string;
   eventCode: string;
+  weddingDate?: string;
   customSlug?: string;
   slugChangeCount?: number;
   isPaid: boolean;

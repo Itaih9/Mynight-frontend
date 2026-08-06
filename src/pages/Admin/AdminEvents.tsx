@@ -262,6 +262,24 @@ export const AdminEvents = () => {
     return new Date() > new Date(event.uploadExpiresAt);
   };
 
+  // The date alone doesn't answer the question you actually have when scanning
+  // this table — how long is left to upsell them, and has the night happened
+  // yet. Compared date-only so "today" stays today all day.
+  const weddingCountdown = (iso?: string) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+
+    const startOfDay = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const days = Math.round((startOfDay(d) - startOfDay(new Date())) / 86_400_000);
+
+    const date = d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (days === 0) return { date, label: 'today', tone: 'text-emerald-600 font-semibold' };
+    if (days < 0) return { date, label: `${Math.abs(days)}d ago`, tone: 'text-slate-400' };
+    if (days <= 14) return { date, label: `in ${days}d`, tone: 'text-amber-600 font-semibold' };
+    return { date, label: `in ${days}d`, tone: 'text-slate-400' };
+  };
+
   const openPhotoModal = async (event: AdminEvent) => {
     setPhotoModalEvent(event);
     setPhotosLoading(true);
@@ -934,11 +952,12 @@ export const AdminEvents = () => {
         ) : (
           <>
             <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
-              <table className="w-full min-w-[800px]">
+              <table className="w-full min-w-[920px]">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="text-left text-xs font-semibold text-slate-600 uppercase px-6 py-4">Event Name</th>
                     <th className="text-left text-xs font-semibold text-slate-600 uppercase px-6 py-4">Code</th>
+                    <th className="text-left text-xs font-semibold text-slate-600 uppercase px-6 py-4">Wedding</th>
                     <th className="text-left text-xs font-semibold text-slate-600 uppercase px-6 py-4">Owner</th>
                     <th className="text-left text-xs font-semibold text-slate-600 uppercase px-6 py-4">Cover</th>
                     <th className="text-left text-xs font-semibold text-slate-600 uppercase px-6 py-4">Photos</th>
@@ -963,6 +982,18 @@ export const AdminEvents = () => {
                       </td>
                       <td className="px-6 py-4">
                         <code className="text-xs bg-slate-100 px-2 py-1 rounded">{event.eventCode}</code>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {(() => {
+                          const wd = weddingCountdown(event.weddingDate);
+                          if (!wd) return <span className="text-xs text-slate-400">-</span>;
+                          return (
+                            <>
+                              <div className="text-sm text-slate-900 font-medium">{wd.date}</div>
+                              <div className={`text-xs ${wd.tone}`}>{wd.label}</div>
+                            </>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-slate-900 font-medium">{event.userId?.phoneNumber || '-'}</div>
