@@ -107,6 +107,8 @@ export const DisposableCamera = () => {
   facingRef.current = facing;
   const recordingRef = useRef(recording);
   recordingRef.current = recording;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   // Camera-acquisition bookkeeping: the generation counter invalidates stale
   // getUserMedia requests (the classic "two requests race, the loser holds the
   // camera forever" bug), busyRetries drives quiet retries when another app
@@ -147,6 +149,11 @@ export const DisposableCamera = () => {
         muted: track?.muted,
         readyState: track?.readyState,
         visibility: document.visibilityState,
+        // Reported because the photo/video toggle was seen flipping back to
+        // photo on its own, and nothing in the code writes `mode` except the
+        // two toggle buttons — so the next occurrence needs to be observable.
+        mode: modeRef.current,
+        recording: recordingRef.current,
         detail: detail === undefined ? undefined : String(detail),
         ua: navigator.userAgent,
       });
@@ -482,7 +489,14 @@ export const DisposableCamera = () => {
       if (phaseRef.current !== 'ready' || recordingRef.current) return;
       const track = streamRef.current?.getVideoTracks()[0];
       const v = videoRef.current;
-      if (!track || track.readyState === 'ended' || !v || v.videoWidth === 0) {
+      // `muted` has to be checked HERE, not just in the onmute handler. iOS
+      // suspends timers in a backgrounded tab, so the 1.5s restart scheduled
+      // when the track muted does not run until the page is foregrounded again
+      // — measured at 5m35s in one session, the whole of which the guest spent
+      // staring at a frozen viewfinder. Becoming visible is the one moment we
+      // are guaranteed to be running, so the check belongs on this path.
+      if (!track || track.readyState === 'ended' || track.muted || !v || v.videoWidth === 0) {
+        camLog('revive-restart', track?.muted ? 'muted' : 'dead');
         armWatchdog();
         startStreamRef.current(facingRef.current);
       } else if (v.paused) {
@@ -497,7 +511,7 @@ export const DisposableCamera = () => {
       window.removeEventListener('pageshow', revive);
       window.removeEventListener('focus', revive);
     };
-  }, [armWatchdog]);
+  }, [armWatchdog, camLog]);
 
   // Frozen-preview detector. Every other recovery path keys off an event the
   // browser promises to fire — ended, visibilitychange, mute. This one keys off
