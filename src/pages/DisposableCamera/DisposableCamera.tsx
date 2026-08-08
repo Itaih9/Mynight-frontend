@@ -62,6 +62,13 @@ export const DisposableCamera = () => {
   const [flash, setFlash] = useState(false);
   const [mode, setMode] = useState<Mode>('photo');
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
+  // `facing` is what we ASKED for; this is what the browser actually handed us.
+  // They diverge because the fallback chain requests `facingMode: {ideal}`, which
+  // never fails — it just returns whatever lens it likes. Mirroring must follow
+  // the real lens, or a recovery restart that lands on a different camera flips
+  // the image mid-session. Kept separate from `facing` so reconciling it can't
+  // retrigger the acquisition effect and loop.
+  const [actualFacing, setActualFacing] = useState<'environment' | 'user'>('environment');
   // Flash fires only during a photo (like a real camera), not a constant torch.
   const [flashMode, setFlashMode] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -109,6 +116,54 @@ export const DisposableCamera = () => {
   const busyRetriesRef = useRef(0);
   const watchdogRef = useRef<number | undefined>(undefined);
   const startStreamRef = useRef<(which: 'environment' | 'user') => void>(() => {});
+  const actualFacingRef = useRef(actualFacing);
+  actualFacingRef.current = actualFacing;
+  // Wall-clock of the last frame the preview actually painted. A frozen stream
+  // is the one failure mode that reports nothing: iOS mutes a track instead of
+  // ending it, so readyState stays 'live', videoWidth keeps its last value and
+  // the element never pauses. Watching frames arrive detects the freeze without
+  // having to know what caused it.
+  const lastFrameAtRef = useRef(0);
+  const stallGuardRef = useRef<number | undefined>(undefined);
+
+  // Camera telemetry. These failures only happen on a guest's real phone at a
+  // real venue — nothing we can drive reproduces them — so the camera has to
+  // report on itself. sendBeacon rather than fetch because the most interesting
+  // events fire exactly as the page is being backgrounded, when a normal
+  // request gets cancelled.
+  const camSessionRef = useRef(Math.random().toString(36).slice(2, 10));
+  const camLog = useCallback((event: string, detail?: unknown) => {
+    try {
+      const track = streamRef.current?.getVideoTracks()[0];
+      const s = (track?.getSettings?.() || {}) as MediaTrackSettings;
+      const body = JSON.stringify({
+        session: camSessionRef.current,
+        code,
+        event,
+        requested: facingRef.current,
+        granted: s.facingMode,
+        width: s.width,
+        height: s.height,
+        muted: track?.muted,
+        readyState: track?.readyState,
+        visibility: document.visibilityState,
+        detail: detail === undefined ? undefined : String(detail),
+        ua: navigator.userAgent,
+      });
+      const url = `${API_BASE_URL}/api/client-log/camera`;
+      const blob = new Blob([body], { type: 'application/json' });
+      if (!navigator.sendBeacon?.(url, blob)) {
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      /* telemetry must never break the camera it's watching */
+    }
+  }, [code]);
 
   const flashOnce = () => { setFlash(true); setTimeout(() => setFlash(false), 200); };
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2500); };
@@ -317,6 +372,7 @@ export const DisposableCamera = () => {
           : n === 'NotFoundError' || n === 'DevicesNotFoundError' || n === 'OverconstrainedError' ? 'notfound'
           : null
       );
+      camLog('acquire-failed', n || 'unknown');
       setCamStuck(true);
       return;
     }
@@ -338,25 +394,68 @@ export const DisposableCamera = () => {
     // If the OS reclaims the camera (lock screen, phone call, another app),
     // restart as soon as we're visible in the viewfinder again.
     const track = stream.getVideoTracks()[0];
+
+    // Which lens did we ACTUALLY get? The fallback chain asks with `ideal`, so a
+    // restart can quietly land on a different camera than the one before it —
+    // that is what flips the image mid-session. Safari doesn't always report
+    // facingMode, so fall back to what we asked for.
+    const granted = (track?.getSettings?.().facingMode as string | undefined) || which;
+    setActualFacing(granted === 'user' ? 'user' : 'environment');
+    actualFacingRef.current = granted === 'user' ? 'user' : 'environment';
+    camLog('acquired', granted === which ? undefined : `lens-swap requested=${which}`);
+
+    const restart = () => {
+      if (streamRef.current !== stream || recordingRef.current) return;
+      if (phaseRef.current !== 'ready') return;
+      armWatchdog();
+      startStreamRef.current(facingRef.current);
+    };
+
     if (track) {
       track.onended = () => {
-        if (streamRef.current !== stream || recordingRef.current) return;
-        if (document.visibilityState === 'visible' && phaseRef.current === 'ready') {
-          armWatchdog();
-          startStreamRef.current(facingRef.current);
-        }
+        camLog('track-ended');
+        if (document.visibilityState === 'visible') restart();
+      };
+      // iOS interrupts by MUTING, not ending — a phone call, Control Center, or
+      // another app taking the camera leaves readyState 'live' forever, which is
+      // why none of the existing recovery paths fired on iPhone. Give it a beat
+      // to come back on its own (a brief interruption unmutes) before restarting.
+      track.onmute = () => {
+        camLog('track-mute');
+        window.setTimeout(() => {
+          if (streamRef.current === stream && track.muted) {
+            camLog('track-mute-restart');
+            restart();
+          }
+        }, 1500);
+      };
+      track.onunmute = () => {
+        camLog('track-unmute');
+        lastFrameAtRef.current = Date.now();
       };
     }
+
     // srcObject was already attached while proving this stream paints frames;
     // just make sure it's playing and clear the recovery UI.
     const v = videoRef.current;
     if (v) {
       if (v.srcObject !== stream) v.srcObject = stream;
-      v.play().catch(() => setTimeout(() => v.play().catch(() => {}), 150));
+      v.play().catch(() =>
+        setTimeout(() => {
+          v.play().catch((err) => {
+            // iOS refuses play() without a fresh user gesture once the page has
+            // been backgrounded. Retrying can't fix that, so stop failing
+            // silently and put the recovery UI up — a tap is what's needed.
+            camLog('play-rejected', err?.name || err);
+            if (streamRef.current === stream && phaseRef.current === 'ready') setCamStuck(true);
+          });
+        }, 150)
+      );
     }
+    lastFrameAtRef.current = Date.now();
     setCamStuck(false);
     setCamError(null);
-  }, [armWatchdog]);
+  }, [armWatchdog, camLog]);
   startStreamRef.current = startStream;
 
   useEffect(() => {
@@ -399,6 +498,74 @@ export const DisposableCamera = () => {
       window.removeEventListener('focus', revive);
     };
   }, [armWatchdog]);
+
+  // Frozen-preview detector. Every other recovery path keys off an event the
+  // browser promises to fire — ended, visibilitychange, mute. This one keys off
+  // frames actually arriving, so it also catches the modes that announce
+  // nothing at all, which is the class the iPhone kept landing in.
+  useEffect(() => {
+    if (phase !== 'ready') return;
+    const v = videoRef.current;
+    if (!v) return;
+
+    const anyV = v as any;
+    const hasRvfc = typeof anyV.requestVideoFrameCallback === 'function';
+    let cancelled = false;
+    let handle = 0;
+    let lastTime = -1;
+    let lastRestartAt = 0;
+    lastFrameAtRef.current = Date.now(); // else the first tick reads a 1970 stamp as a stall
+
+    const onFrame = () => {
+      if (cancelled) return;
+      lastFrameAtRef.current = Date.now();
+      handle = anyV.requestVideoFrameCallback(onFrame);
+    };
+    if (hasRvfc) handle = anyV.requestVideoFrameCallback(onFrame);
+
+    stallGuardRef.current = window.setInterval(() => {
+      if (cancelled || recordingRef.current) return;
+      // A hidden tab stops painting by design — that's not a stall, and the
+      // revive listeners already own the way back.
+      if (document.visibilityState !== 'visible') {
+        lastFrameAtRef.current = Date.now();
+        return;
+      }
+      // Only police a preview that has actually run. Before the first frame we'd
+      // be racing the acquisition itself — the fallback chain can legitimately
+      // take ~12s, and restarting mid-chain would kill the stream it's proving.
+      // That window belongs to armWatchdog.
+      if ((v.videoWidth || 0) === 0) {
+        lastFrameAtRef.current = Date.now();
+        return;
+      }
+      if (!hasRvfc) {
+        // Older WebKit without rVFC: currentTime advancing is the next best
+        // proof that frames are still landing.
+        const t = v.currentTime;
+        if (t !== lastTime) {
+          lastTime = t;
+          lastFrameAtRef.current = Date.now();
+        }
+      }
+      const now = Date.now();
+      if (now - lastFrameAtRef.current > 2500 && now - lastRestartAt > 6000) {
+        lastRestartAt = now;
+        lastFrameAtRef.current = now; // grace period while the restart lands
+        camLog('stall-restart', `rvfc=${hasRvfc}`);
+        armWatchdog();
+        startStreamRef.current(facingRef.current);
+      }
+    }, 1000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(stallGuardRef.current);
+      if (hasRvfc && handle && typeof anyV.cancelVideoFrameCallback === 'function') {
+        anyV.cancelVideoFrameCallback(handle);
+      }
+    };
+  }, [phase, armWatchdog, camLog]);
 
   // Manual recovery — runs inside a user gesture, which also satisfies browsers
   // that refuse to open the camera without one (the classic silent re-entry bug).
@@ -476,7 +643,9 @@ export const DisposableCamera = () => {
     // Consume the shot SYNCHRONOUSLY (not just via setState) so rapid taps can't
     // slip past the guard before a re-render — that's what let people exceed the limit.
     setRem(remainingRef.current - 1);
-    const mirror = facing === 'user'; // mirror selfies (matches the preview)
+    // Read through the ref, not the state: this callback is memoised, and a lens
+    // reconciled after a mid-session restart must reach it without a re-render.
+    const mirror = actualFacingRef.current === 'user'; // mirror selfies (matches the preview)
     const tempId = `tmp-${Date.now()}`;
 
     const track = streamRef.current?.getVideoTracks()[0];
@@ -565,10 +734,9 @@ export const DisposableCamera = () => {
     const st = videoTracks[0]?.getSettings?.() || {};
     let recW = (st.width as number) || 1920;
     let recH = (st.height as number) || 1080;
-    // Mirror ONLY the real front lens: trust the track's actual facingMode over the
-    // `facing` state, so the back lens is never mirrored even if a getUserMedia
-    // fallback handed us a different camera than requested.
-    const frontLens = st.facingMode ? st.facingMode === 'user' : facing === 'user';
+    // Same source of truth as the preview and the stills — the lens we were
+    // actually granted, not the one we asked for.
+    const frontLens = actualFacingRef.current === 'user';
     const src = videoRef.current;
     if (frontLens && src && typeof (document.createElement('canvas') as any).captureStream === 'function') {
       try {
@@ -891,7 +1059,7 @@ export const DisposableCamera = () => {
             onCanPlay={(e) => e.currentTarget.play().catch(() => {})}
             onPlaying={() => { setCamStuck(false); setCamError(null); }}
             className="absolute inset-0 w-full h-full object-cover transition-transform duration-200"
-            style={{ transform: `${facing === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})`, transformOrigin: 'center' }}
+            style={{ transform: `${actualFacing === 'user' ? 'scaleX(-1) ' : ''}scale(${zoom})`, transformOrigin: 'center' }}
           />
           <div className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-200 ${flash ? 'opacity-90' : 'opacity-0'}`} />
 
