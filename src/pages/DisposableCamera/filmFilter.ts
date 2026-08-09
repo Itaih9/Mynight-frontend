@@ -2,13 +2,27 @@ export type FrameSource = HTMLVideoElement | ImageBitmap | HTMLCanvasElement;
 
 /**
  * Grab the highest-quality still a live video track can give. Where the browser
- * exposes the ImageCapture API (Android Chrome), `takePhoto()` returns a full
- * *photo*-resolution frame straight off the sensor — commonly 12MP, versus the
- * ~2MP a getUserMedia video frame carries. Returns null on iOS/Safari or any
- * failure, so the caller falls back to grabbing a frame from the <video>.
+ * exposes a WORKING ImageCapture API (Android Chrome), `takePhoto()` returns a
+ * full *photo*-resolution frame straight off the sensor — commonly 12MP, versus
+ * the ~2MP a getUserMedia video frame carries. Returns null anywhere else, so
+ * the caller falls back to grabbing a frame from the <video>.
+ *
+ * Gated on Android rather than feature-detected, deliberately.
+ *
+ * iOS 26 / Safari 26 ADDED ImageCapture, so the old `if (!window.ImageCapture)`
+ * guard silently stopped firing on iPhones and takePhoto() started running
+ * against the live track. WebKit's implementation leaves that track muted and
+ * delivering no frames: the camera worked for exactly one shot and then died,
+ * every subsequent capture producing a solid-black frame. Confirmed on an
+ * iPhone 13 / iOS 26.6 — `typeof window.ImageCapture === 'function'` with a
+ * full prototype, and the track dead immediately after the first photo.
+ *
+ * Feature detection cannot express "present but breaks the stream", and this
+ * exists purely as an Android quality win, so it asks for Android by name.
  */
 export async function captureStill(track: MediaStreamTrack): Promise<ImageBitmap | null> {
   try {
+    if (!/Android/i.test(navigator.userAgent)) return null;
     const IC = (window as any).ImageCapture;
     if (!IC || typeof createImageBitmap !== 'function') return null;
     const ic = new IC(track);
