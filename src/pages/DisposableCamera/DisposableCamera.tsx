@@ -47,6 +47,22 @@ function pickVideoMime(): string {
 type Phase = 'loading' | 'name' | 'ready' | 'disabled' | 'review' | 'done' | 'error';
 type Mode = 'photo' | 'video';
 
+/**
+ * What we ask the camera for, hardest first. The stream resolution IS the photo
+ * resolution — stills are drawn from the video frame — so tier 0 is what we want
+ * whenever the phone can sustain it.
+ *
+ * Tier 1 and 2 exist because a hot, throttled, or Low Power Mode phone answers a
+ * 2560×1440 request with a track that is already muted, and no amount of
+ * retrying at the same size fixes that. 1920×1080 is still 2MP, which is more
+ * than an album viewed on a phone needs; 720p is the "at least it works" floor.
+ */
+const CAPTURE_TIERS: MediaTrackConstraints[] = [
+  { width: { ideal: 2560 }, height: { ideal: 1440 }, frameRate: { ideal: 30 } },
+  { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+  { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 24 } },
+];
+
 export const DisposableCamera = () => {
   const { code = '' } = useParams<{ code: string }>();
   const deviceId = getDeviceId();
@@ -130,6 +146,8 @@ export const DisposableCamera = () => {
   // Timestamps of automatic restarts, for the budget below.
   const restartsRef = useRef<number[]>([]);
   const autoRestartRef = useRef<(reason: string, detail?: string) => void>(() => {});
+  // How hard we're willing to push the camera. Index into CAPTURE_TIERS.
+  const qualityTierRef = useRef(0);
 
   // Camera telemetry. These failures only happen on a guest's real phone at a
   // real venue — nothing we can drive reproduces them — so the camera has to
@@ -157,6 +175,7 @@ export const DisposableCamera = () => {
         // two toggle buttons — so the next occurrence needs to be observable.
         mode: modeRef.current,
         recording: recordingRef.current,
+        tier: qualityTierRef.current,
         detail: detail === undefined ? undefined : String(detail),
         ua: navigator.userAgent,
       });
@@ -343,9 +362,17 @@ export const DisposableCamera = () => {
 
     // High resolution first (a bare request gives 640×480 on many phones), then
     // progressively simpler.
+    //
+    // The FIRST entry is chosen by qualityTier, not fixed. Guests reach this on
+    // phones that are hot, throttled, or in Low Power Mode — the normal state of
+    // a phone at 11pm at a wedding — and asking a struggling device for 2560×1440
+    // every single time is what makes it hand back a track that is already muted.
+    // Each muted acquisition steps this down (see below), so the camera degrades
+    // instead of failing.
+    const tier = CAPTURE_TIERS[Math.min(qualityTierRef.current, CAPTURE_TIERS.length - 1)];
     const attempts: MediaStreamConstraints[] = [
-      { video: { facingMode: { ideal: which }, width: { ideal: 2560 }, height: { ideal: 1440 }, frameRate: { ideal: 30 } } },
-      { video: { facingMode: { ideal: which }, frameRate: { ideal: 30 } } },
+      { video: { facingMode: { ideal: which }, ...tier } },
+      { video: { facingMode: { ideal: which }, frameRate: { ideal: 24 } } },
       { video: { facingMode: which } },
       { video: true },
     ];
@@ -446,9 +473,21 @@ export const DisposableCamera = () => {
     camLog('acquired', granted === which ? undefined : `lens-swap requested=${which}`);
 
     // A track handed back already muted means the camera is contended at the OS
-    // level, not that our stream went stale — restarting will just produce
-    // another muted one. Only a clean acquisition earns back the restart budget.
-    if (track && !track.muted) restartsRef.current = [];
+    // level, not that our stream went stale — restarting at the same quality
+    // will just produce another muted one. Only a clean acquisition earns back
+    // the restart budget; a muted one buys a cheaper request next time.
+    //
+    // Deliberately one-way within a session: stepping back up on every clean
+    // acquisition would oscillate on a phone sitting right at its thermal limit,
+    // and a flapping resolution is worse than a slightly soft one. A page load
+    // resets to full quality.
+    if (track) {
+      if (track.muted) {
+        qualityTierRef.current = Math.min(CAPTURE_TIERS.length - 1, qualityTierRef.current + 1);
+      } else {
+        restartsRef.current = [];
+      }
+    }
 
     const restart = (reason: string) => {
       if (streamRef.current !== stream || recordingRef.current) return;
