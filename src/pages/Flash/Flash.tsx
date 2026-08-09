@@ -117,14 +117,18 @@ export const Flash = () => {
               <span className="font-bold text-lg">רוצים שכל אורח יקבל את התמונות שלו?</span>
             </div>
             <p className="text-white/65 text-sm leading-relaxed mb-4">
-              פלאש אוסף את הצילומים. <strong className="text-white">Here I Am</strong> מוסיף זיהוי פנים —
+              {/* Always "My Night" in post-פלאש copy, never the catalogue name
+                  "Here I Am" — a free פלאש couple has never seen that name, and
+                  naming a product they don't recognise reads as a different
+                  company asking them for money. */}
+              פלאש אוסף את הצילומים. <strong className="text-white">My Night</strong> מוסיף זיהוי פנים —
               כל אורח מקבל אלבום אישי רק עם התמונות שהוא מופיע בהן, כולל התמונות מהצלם המקצועי.
             </p>
             <a
               href={ROUTES.HERE_I_AM}
               className="block w-full py-3.5 rounded-xl bg-gold-primary text-black font-bold text-center active:scale-[0.99] transition-transform"
             >
-              לפרטים על Here I Am
+              שדרוג ל-My Night
             </a>
           </div>
         </motion.div>
