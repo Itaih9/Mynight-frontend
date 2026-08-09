@@ -739,9 +739,16 @@ export const DisposableCamera = () => {
     // roll. Observed on-device: ten taps, ten black 361KB images, film gone.
     // A guest cannot get those shots back, so this check comes before the
     // decrement, not after.
+    // Track state and videoWidth are NOT sufficient on their own: a shot slipped
+    // through with the track live and unmuted, videoWidth 1440, and came back
+    // solid black anyway — the element reports the dimensions of a stream it has
+    // not painted a frame from yet. Only frames actually arriving proves the
+    // pipeline works, so freshness is the primary check. 1500ms tolerates the
+    // 1s currentTime poll used when requestVideoFrameCallback is unavailable.
     const liveTrack = streamRef.current?.getVideoTracks()[0];
-    if (!video.videoWidth || !liveTrack || liveTrack.muted || liveTrack.readyState !== 'live') {
-      camLog('capture-blocked', `muted=${liveTrack?.muted} state=${liveTrack?.readyState} vw=${video.videoWidth}`);
+    const framesStale = Date.now() - lastFrameAtRef.current > 1500;
+    if (!video.videoWidth || !liveTrack || liveTrack.muted || liveTrack.readyState !== 'live' || framesStale) {
+      camLog('capture-blocked', `muted=${liveTrack?.muted} state=${liveTrack?.readyState} vw=${video.videoWidth} stale=${framesStale}`);
       showToast('רגע, המצלמה מתעוררת…');
       autoRestartRef.current('capture-blocked-restart');
       return;
@@ -826,8 +833,9 @@ export const DisposableCamera = () => {
     // Same guard as takePhoto — a muted track records a black clip and still
     // costs the guest a shot.
     const liveTrack = stream.getVideoTracks()[0];
-    if (!liveTrack || liveTrack.muted || liveTrack.readyState !== 'live') {
-      camLog('capture-blocked', `video muted=${liveTrack?.muted} state=${liveTrack?.readyState}`);
+    const framesStale = Date.now() - lastFrameAtRef.current > 1500;
+    if (!liveTrack || liveTrack.muted || liveTrack.readyState !== 'live' || framesStale) {
+      camLog('capture-blocked', `video muted=${liveTrack?.muted} state=${liveTrack?.readyState} stale=${framesStale}`);
       showToast('רגע, המצלמה מתעוררת…');
       autoRestartRef.current('capture-blocked-restart');
       return;
