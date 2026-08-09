@@ -739,9 +739,9 @@ export const DisposableCamera = () => {
     // roll. Observed on-device: ten taps, ten black 361KB images, film gone.
     // A guest cannot get those shots back, so this check comes before the
     // decrement, not after.
-    const track = streamRef.current?.getVideoTracks()[0];
-    if (!video.videoWidth || !track || track.muted || track.readyState !== 'live') {
-      camLog('capture-blocked', `muted=${track?.muted} state=${track?.readyState} vw=${video.videoWidth}`);
+    const liveTrack = streamRef.current?.getVideoTracks()[0];
+    if (!video.videoWidth || !liveTrack || liveTrack.muted || liveTrack.readyState !== 'live') {
+      camLog('capture-blocked', `muted=${liveTrack?.muted} state=${liveTrack?.readyState} vw=${video.videoWidth}`);
       showToast('רגע, המצלמה מתעוררת…');
       autoRestartRef.current('capture-blocked-restart');
       return;
