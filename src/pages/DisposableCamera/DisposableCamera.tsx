@@ -127,6 +127,9 @@ export const DisposableCamera = () => {
   // having to know what caused it.
   const lastFrameAtRef = useRef(0);
   const stallGuardRef = useRef<number | undefined>(undefined);
+  // Timestamps of automatic restarts, for the budget below.
+  const restartsRef = useRef<number[]>([]);
+  const autoRestartRef = useRef<(reason: string, detail?: string) => void>(() => {});
 
   // Camera telemetry. These failures only happen on a guest's real phone at a
   // real venue — nothing we can drive reproduces them — so the camera has to
@@ -283,6 +286,37 @@ export const DisposableCamera = () => {
     }, 12000);
   }, []);
 
+  /**
+   * The single entry point for every AUTOMATIC camera restart, with a budget.
+   *
+   * When iOS hands back a track that is already muted, restarting cannot help —
+   * and the mute handler and the stall watchdog were both firing into it,
+   * swapping srcObject fast enough to abort play() and re-opening the camera
+   * every couple of seconds. Retrying harder made it worse.
+   *
+   * So: at most 3 automatic restarts per 15s, then stop and show the recovery
+   * UI. A human tapping "try again" is a better recovery than a machine
+   * retrying a thing that is not working, and on iOS the tap doubles as the
+   * user gesture that play() needs anyway.
+   */
+  const autoRestart = useCallback(
+    (reason: string, detail?: string) => {
+      const now = Date.now();
+      restartsRef.current = restartsRef.current.filter((t) => now - t < 15000);
+      if (restartsRef.current.length >= 3) {
+        camLog('restart-giveup', `${reason}${detail ? ':' + detail : ''}`);
+        setCamStuck(true);
+        return;
+      }
+      restartsRef.current.push(now);
+      camLog(reason, detail);
+      armWatchdog();
+      startStreamRef.current(facingRef.current);
+    },
+    [armWatchdog, camLog]
+  );
+  autoRestartRef.current = autoRestart;
+
   // (Re)start the camera stream for the current facing. VIDEO ONLY — requesting
   // the mic up front makes getUserMedia fail whenever the mic is busy/partial.
   // Audio is grabbed on-demand only when recording a video (below).
@@ -411,17 +445,21 @@ export const DisposableCamera = () => {
     actualFacingRef.current = granted === 'user' ? 'user' : 'environment';
     camLog('acquired', granted === which ? undefined : `lens-swap requested=${which}`);
 
-    const restart = () => {
+    // A track handed back already muted means the camera is contended at the OS
+    // level, not that our stream went stale — restarting will just produce
+    // another muted one. Only a clean acquisition earns back the restart budget.
+    if (track && !track.muted) restartsRef.current = [];
+
+    const restart = (reason: string) => {
       if (streamRef.current !== stream || recordingRef.current) return;
       if (phaseRef.current !== 'ready') return;
-      armWatchdog();
-      startStreamRef.current(facingRef.current);
+      autoRestartRef.current(reason);
     };
 
     if (track) {
       track.onended = () => {
         camLog('track-ended');
-        if (document.visibilityState === 'visible') restart();
+        if (document.visibilityState === 'visible') restart('track-ended-restart');
       };
       // iOS interrupts by MUTING, not ending — a phone call, Control Center, or
       // another app taking the camera leaves readyState 'live' forever, which is
@@ -430,10 +468,7 @@ export const DisposableCamera = () => {
       track.onmute = () => {
         camLog('track-mute');
         window.setTimeout(() => {
-          if (streamRef.current === stream && track.muted) {
-            camLog('track-mute-restart');
-            restart();
-          }
+          if (streamRef.current === stream && track.muted) restart('track-mute-restart');
         }, 1500);
       };
       track.onunmute = () => {
@@ -504,9 +539,7 @@ export const DisposableCamera = () => {
       // staring at a frozen viewfinder. Becoming visible is the one moment we
       // are guaranteed to be running, so the check belongs on this path.
       if (!track || track.readyState === 'ended' || track.muted || !v || v.videoWidth === 0) {
-        camLog('revive-restart', track?.muted ? 'muted' : 'dead');
-        armWatchdog();
-        startStreamRef.current(facingRef.current);
+        autoRestartRef.current('revive-restart', track?.muted ? 'muted' : 'dead');
       } else if (v.paused) {
         v.play().catch(() => {});
       }
@@ -574,9 +607,7 @@ export const DisposableCamera = () => {
       if (now - lastFrameAtRef.current > 2500 && now - lastRestartAt > 6000) {
         lastRestartAt = now;
         lastFrameAtRef.current = now; // grace period while the restart lands
-        camLog('stall-restart', `rvfc=${hasRvfc}`);
-        armWatchdog();
-        startStreamRef.current(facingRef.current);
+        autoRestartRef.current('stall-restart', `rvfc=${hasRvfc}`);
       }
     }, 1000);
 
