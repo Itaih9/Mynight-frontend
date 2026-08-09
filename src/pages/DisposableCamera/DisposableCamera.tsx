@@ -487,7 +487,15 @@ export const DisposableCamera = () => {
     const revive = () => {
       if (document.visibilityState !== 'visible') return;
       if (phaseRef.current !== 'ready' || recordingRef.current) return;
-      const track = streamRef.current?.getVideoTracks()[0];
+      // Reviving is for a stream we ALREADY had and lost. While streamRef is
+      // null the mount effect owns acquisition — and it nulls the ref for the
+      // duration of every attempt, so treating null as "camera is dead" made
+      // pageshow/focus fire a second getUserMedia racing the first. Telemetry
+      // showed a spurious revive-restart on every single page load, twice in
+      // one session: three concurrent 1440x2560 camera opens at startup, on a
+      // page iOS was already discarding under load.
+      if (!streamRef.current) return;
+      const track = streamRef.current.getVideoTracks()[0];
       const v = videoRef.current;
       // `muted` has to be checked HERE, not just in the onmute handler. iOS
       // suspends timers in a backgrounded tab, so the 1.5s restart scheduled
