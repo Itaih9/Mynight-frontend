@@ -730,6 +730,23 @@ export const DisposableCamera = () => {
   const takePhoto = useCallback(async () => {
     const video = videoRef.current;
     if (!video || remainingRef.current <= 0) return;
+
+    // Never burn a shot on a frame that isn't there.
+    //
+    // When iOS mutes the camera the preview freezes but the video element keeps
+    // its dimensions, so drawing it to a canvas succeeds and silently yields a
+    // solid-black JPEG — which was then uploaded AND counted against the guest's
+    // roll. Observed on-device: ten taps, ten black 361KB images, film gone.
+    // A guest cannot get those shots back, so this check comes before the
+    // decrement, not after.
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!video.videoWidth || !track || track.muted || track.readyState !== 'live') {
+      camLog('capture-blocked', `muted=${track?.muted} state=${track?.readyState} vw=${video.videoWidth}`);
+      showToast('רגע, המצלמה מתעוררת…');
+      autoRestartRef.current('capture-blocked-restart');
+      return;
+    }
+
     flashOnce();
     if (remainingRef.current <= 1) setFinishing(true); // last frame — "developing…"
     // Consume the shot SYNCHRONOUSLY (not just via setState) so rapid taps can't
@@ -797,7 +814,7 @@ export const DisposableCamera = () => {
       showToast('צילום נכשל, נסו שוב');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uploadShot, flashMode, zoom, facing]);
+  }, [uploadShot, flashMode, zoom, facing, camLog]);
 
   const stopVideo = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
@@ -806,6 +823,15 @@ export const DisposableCamera = () => {
   const startVideo = useCallback(async () => {
     const stream = streamRef.current;
     if (!stream || remainingRef.current <= 0 || recording) return;
+    // Same guard as takePhoto — a muted track records a black clip and still
+    // costs the guest a shot.
+    const liveTrack = stream.getVideoTracks()[0];
+    if (!liveTrack || liveTrack.muted || liveTrack.readyState !== 'live') {
+      camLog('capture-blocked', `video muted=${liveTrack?.muted} state=${liveTrack?.readyState}`);
+      showToast('רגע, המצלמה מתעוררת…');
+      autoRestartRef.current('capture-blocked-restart');
+      return;
+    }
     const mime = pickVideoMime();
     const chunks: BlobPart[] = [];
 
@@ -917,7 +943,7 @@ export const DisposableCamera = () => {
       setRecPct(pct);
       if (pct >= 100) stopVideo();
     }, 60);
-  }, [recording, uploadShot, flashMode, stopVideo, facing]);
+  }, [recording, uploadShot, flashMode, stopVideo, facing, camLog]);
 
   const flip = () => {
     setZoom(1);
