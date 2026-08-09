@@ -194,7 +194,10 @@ export const DisposableCamera = () => {
     }
   }, [code]);
 
-  const flashOnce = () => { setFlash(true); setTimeout(() => setFlash(false), 200); };
+  // Default is a shutter blink. With flash armed it has to outlast the exposure
+  // delay below — on iPhone this white overlay IS the flash, so clearing it at
+  // 200ms meant the screen went dark again before the frame was taken.
+  const flashOnce = (ms = 200) => { setFlash(true); setTimeout(() => setFlash(false), ms); };
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(''), 2500); };
 
   // Grab an instant poster (first/last frame) from the live preview so a video's
@@ -754,7 +757,7 @@ export const DisposableCamera = () => {
       return;
     }
 
-    flashOnce();
+    flashOnce(flashMode ? 560 : 200);
     if (remainingRef.current <= 1) setFinishing(true); // last frame — "developing…"
     // Consume the shot SYNCHRONOUSLY (not just via setState) so rapid taps can't
     // slip past the guard before a re-render — that's what let people exceed the limit.
@@ -786,13 +789,26 @@ export const DisposableCamera = () => {
       // A phone torch needs ~300ms to reach full brightness, and auto-exposure
       // then needs a few frames to settle to the new lighting. 120ms fired the
       // shutter while the LED was still ramping, so flash shots came out dark.
-      if (flashMode && track) {
-        try {
-          await track.applyConstraints({ advanced: [{ torch: true } as any] });
-          await new Promise((r) => setTimeout(r, 320));           // LED ramp-up
-          await new Promise((r) => requestAnimationFrame(() => r(null))); // let AE settle
-          await new Promise((r) => requestAnimationFrame(() => r(null)));
-        } catch { /* no torch on this device */ }
+      if (flashMode) {
+        let torchOn = false;
+        if (track) {
+          try {
+            await track.applyConstraints({ advanced: [{ torch: true } as any] });
+            torchOn = true;
+          } catch {
+            // iOS Safari exposes no torch constraint at all, so on iPhone the
+            // white screen overlay is the only light there is.
+          }
+        }
+        // This wait used to sit INSIDE the try, after applyConstraints. On any
+        // device without a torch that first line throws, so the delay was
+        // skipped and the shutter fired instantly — which is why flash appeared
+        // to do nothing on iPhone. Wait either way: an LED needs ~300ms to reach
+        // full brightness, and auto-exposure needs a few frames to settle to the
+        // new lighting whether that light is the LED or the screen.
+        await new Promise((r) => setTimeout(r, torchOn ? 320 : 260));
+        await new Promise((r) => requestAnimationFrame(() => r(null)));
+        await new Promise((r) => requestAnimationFrame(() => r(null)));
         // now that the scene is lit, the instant preview reflects the real shot
         quick = makeQuick();
       }
