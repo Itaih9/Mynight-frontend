@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, Check, Copy, Gift } from 'lucide-react';
+import { X, Check, Copy, Gift, MessageCircle } from 'lucide-react';
 import { couponApi } from '@/services/api';
-import { ROUTES } from '@/config/routes';
 
 /**
  * Gift offered to a guest right after face recognition finds their photos.
@@ -104,6 +103,17 @@ export const GuestGiftPopup = ({
   if (!coupon) return null;
   const amount = coupon.discountAmount || 200;
 
+  // Written from the GUEST's side, not the couple's — they are forwarding this
+  // to a friend, so it has to read like a person passing on a tip rather than
+  // a brand talking. The code goes on its own line so it survives WhatsApp's
+  // link preview and is easy to long-press.
+  const shareText =
+    `הייתי בחתונה של ${coupleName || 'חברים'} וכל התמונות שלי הגיעו אליי אוטומטית 📸\n\n` +
+    `מתחתנים בקרוב? יש לכם גיפט קארד של ${amount} שקלים ל-My Night:\n` +
+    `${coupon.code}\n\n` +
+    `https://mynight.co.il`;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
   return (
     <AnimatePresence>
       {open && (
@@ -139,33 +149,41 @@ export const GuestGiftPopup = ({
                 <Gift size={26} className="text-gold-primary" />
               </div>
 
-              <p className="text-[11px] font-bold tracking-[2px] text-gray-800/45 mb-2">מתנה מהזוג</p>
               <h2 id="gift-title" className="text-[22px] font-black leading-tight mb-3">
-                מתנה מיוחדת
-                {coupleName ? <><br />לאורחי {coupleName}</> : null}
+                החגיגה נגמרה — אבל המתנות עוד מגיעות!
               </h2>
 
+              <p className="text-gray-800/65 text-[15px] leading-relaxed mb-1">מכירים מישהו שמתחתן בקרוב?</p>
               <p className="text-gray-800/65 text-[15px] leading-relaxed mb-6">
-                מצאתם את התמונות שלכם. מתחתנים גם? קבלו <strong className="text-charcoal">₪{amount} הנחה</strong> על My Night — מתנה{coupleName ? ` מ${coupleName}` : ''}.
+                כל האורחים של {coupleName || 'הזוג'} מקבלים גיפט קארד של{' '}
+                <strong className="text-charcoal">{amount} שקלים</strong> — למימוש לאלבום המושלם!
               </p>
 
-              <button
-                onClick={copy}
-                className="w-full mb-3 rounded-2xl border-2 border-dashed border-gold-primary/60 bg-gold-primary/5 px-4 py-4 flex items-center justify-center gap-3 active:scale-[0.99] transition-transform"
-              >
+              <div className="w-full mb-4 rounded-2xl border-2 border-dashed border-gold-primary/60 bg-gold-primary/5 px-4 py-4">
                 <span id="gift-code" className="font-mono font-black text-lg tracking-wider" dir="ltr">
                   {coupon.code}
                 </span>
-                {copied ? <Check size={18} className="text-green-600 shrink-0" /> : <Copy size={18} className="text-gray-800/40 shrink-0" />}
+              </div>
+
+              <button
+                onClick={copy}
+                className="w-full py-3.5 rounded-2xl bg-charcoal text-white font-bold text-lg active:scale-[0.99] transition-transform mb-3 flex items-center justify-center gap-2"
+              >
+                {copied ? <Check size={20} /> : <Copy size={18} />}
+                {copied ? 'הקוד הועתק' : 'להעתקה'}
               </button>
-              <p className="text-gray-800/40 text-xs mb-5">{copied ? 'הקוד הועתק' : 'לחצו להעתקה'}</p>
 
               <a
-                href={ROUTES.UPGRADE_CHECKOUT}
-                className="block w-full py-3.5 rounded-2xl bg-charcoal text-white font-bold text-lg active:scale-[0.99] transition-transform mb-3"
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="w-full py-3.5 rounded-2xl bg-[#25D366] text-white font-bold text-lg active:scale-[0.99] transition-transform mb-3 flex items-center justify-center gap-2"
               >
-                לצפייה בחבילות
+                <MessageCircle size={20} />
+                לשיתוף בווצאפ
               </a>
+
               <button
                 onClick={() => setOpen(false)}
                 className="text-gray-800/45 text-sm hover:text-gray-800/70 transition-colors"
