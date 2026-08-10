@@ -15,6 +15,7 @@ import type { Event, Photo } from '@/types/api.types';
 import { formatCategoryLabel } from '@/lib/utils';
 import { FacePhotosOverlay } from '@/components/faces/FacePhotosOverlay';
 import { PhotographerCard } from '@/components/gallery/PhotographerCard';
+import { GuestGiftPopup } from '@/components/upsell/GuestGiftPopup';
 import type { FaceEntry } from '@/components/faces/faceCrop';
 import logoSvg from '@/assets/logo.svg';
 
@@ -1011,6 +1012,15 @@ const GuestGallery: React.FC = () => {
           </>
         )}
       </AnimatePresence>
+
+      {/* Fires once the guest is actually looking at their own matched photos —
+          both the in-page face match and the arrival from GuestSelfie land in
+          the same state, so this covers both. */}
+      <GuestGiftPopup
+        eventId={event?._id}
+        coupleName={coupleName}
+        ready={!showAuthModal && photos.length > 0}
+      />
 
     </div>
   );
