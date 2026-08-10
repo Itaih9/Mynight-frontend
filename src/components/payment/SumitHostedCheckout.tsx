@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { paymentApi } from '@/services/api';
 
@@ -15,7 +15,24 @@ export const SumitHostedCheckout: React.FC<SumitHostedCheckoutProps> = ({
 }) => {
   const [error, setError] = useState<string | null>(null);
 
+  // Held in a ref so it can stay OUT of the effect's dependencies. The parent
+  // passes an inline arrow, which is a new identity on every one of its
+  // renders — with onFailure in the deps the effect re-ran on each render and
+  // opened another payment session. A real customer got three within two
+  // seconds, each racing the others' window.location.href, so the browser never
+  // navigated: they sat on a dead screen for four minutes, went back, and
+  // retried until it worked. Their checkout left five events behind.
+  const onFailureRef = useRef(onFailure);
+  onFailureRef.current = onFailure;
+
+  // A payment session must be opened at most once per paymentId. Guards both a
+  // stray re-render and React StrictMode's deliberate double-invoke in dev.
+  const startedForRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (startedForRef.current === paymentId) return;
+    startedForRef.current = paymentId;
+
     let cancelled = false;
     setError(null);
 
@@ -26,7 +43,7 @@ export const SumitHostedCheckout: React.FC<SumitHostedCheckoutProps> = ({
         const url = res?.data?.redirectUrl;
         if (!url) {
           setError('שגיאה ביצירת דף תשלום');
-          onFailure?.('שגיאה ביצירת דף תשלום');
+          onFailureRef.current?.('שגיאה ביצירת דף תשלום');
           return;
         }
         window.location.href = url;
@@ -41,7 +58,7 @@ export const SumitHostedCheckout: React.FC<SumitHostedCheckoutProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [paymentId, onFailure]);
+  }, [paymentId]);
 
   if (error) {
     return (
