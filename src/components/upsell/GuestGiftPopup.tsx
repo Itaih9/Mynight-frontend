@@ -28,7 +28,7 @@ export const GuestGiftPopup = ({
   delayMs?: number;
 }) => {
   const [open, setOpen] = useState(false);
-  const [coupon, setCoupon] = useState<{ code: string; discountAmount?: number } | null>(null);
+  const [coupon, setCoupon] = useState<{ code: string; discountAmount?: number; expiresAt?: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   // Once per guest per event. A returning guest browsing their photos again
@@ -51,7 +51,7 @@ export const GuestGiftPopup = ({
         // No coupon configured for this event is a perfectly normal state —
         // stay silent rather than showing an empty offer.
         if (!c?.code) return;
-        setCoupon({ code: c.code, discountAmount: c.discountAmount });
+        setCoupon({ code: c.code, discountAmount: c.discountAmount, expiresAt: (c as any).expiresAt });
         timer = window.setTimeout(() => {
           if (cancelled) return;
           setOpen(true);
@@ -114,6 +114,10 @@ export const GuestGiftPopup = ({
     `https://mynight.co.il`;
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
+  const expiryLabel = coupon.expiresAt
+    ? new Date(coupon.expiresAt).toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '';
+
   return (
     <AnimatePresence>
       {open && (
@@ -159,11 +163,14 @@ export const GuestGiftPopup = ({
                 <strong className="text-charcoal">{amount} שקלים</strong> — למימוש לאלבום המושלם!
               </p>
 
-              <div className="w-full mb-4 rounded-2xl border-2 border-dashed border-gold-primary/60 bg-gold-primary/5 px-4 py-4">
+              <div className="w-full mb-2 rounded-2xl border-2 border-dashed border-gold-primary/60 bg-gold-primary/5 px-4 py-4">
                 <span id="gift-code" className="font-mono font-black text-lg tracking-wider" dir="ltr">
                   {coupon.code}
                 </span>
               </div>
+              {expiryLabel && (
+                <p className="text-gray-800/45 text-xs mb-4">גיפט קארד תקף לשימוש עד {expiryLabel}</p>
+              )}
 
               <button
                 onClick={copy}
