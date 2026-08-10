@@ -698,10 +698,18 @@ const GuestGallery: React.FC = () => {
                                     <span className="text-xs text-gray-400">(נמחק את התמונה מיד לאחר הזיהוי)</span>
                                 </p>
 
+                                {/* No `capture` attribute: it forces the camera
+                                    and skips the picker entirely, which made
+                                    the "העלאה" half of this button's own label
+                                    impossible to act on. A guest leaving a dark
+                                    venue often has a far better photo of
+                                    themselves already on the phone than
+                                    anything the front camera can take there,
+                                    and face matching is only as good as the
+                                    face it is given. */}
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    capture="user"
                                     className="hidden"
                                     ref={fileInputRef}
                                     onChange={handleFileSelect}
