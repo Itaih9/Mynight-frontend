@@ -9,8 +9,14 @@ export const ROUTES = {
   FLASH_REGISTER: '/flash/register',
   // Existing event's post-registration page (QR, link, tips) — e.g. after paying.
   FLASH_EVENT: '/flash/event',
-  // Single-product page for the Here I Am upsell — every upsell CTA lands here.
+  // Single-product page for the Here I Am upsell. NOT where upsell CTAs go:
+  // it captures contact details, and a couple who has already decided should
+  // not be made to ask to be called back. CTAs use UPGRADE_CHECKOUT.
   HERE_I_AM: '/here-i-am',
+  // Straight into checkout for the החכמה package. No ?price — the server
+  // charges the package's own price and the page reads it from /api/packages,
+  // so a stale link can never quote the wrong figure.
+  UPGRADE_CHECKOUT: '/register?package=Here%20I%20Am',
   // Flash Plus (פלאש+) plans + upgrade checkout.
   FLASH_PLUS: '/flash-plus',
   // Flash+ code-in-link payment return (public, no auth).

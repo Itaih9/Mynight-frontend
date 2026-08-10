@@ -111,10 +111,10 @@ export const HereIAmUpsellModal = ({
               </p>
 
               <a
-                href={ROUTES.HERE_I_AM}
+                href={ROUTES.UPGRADE_CHECKOUT}
                 className="block w-full py-3.5 rounded-2xl bg-charcoal text-white font-bold text-lg active:scale-[0.99] transition-transform mb-3"
               >
-                רוצה לשמוע עוד
+                שדרוג ל-My Night
               </a>
               <button
                 onClick={() => setOpen(false)}

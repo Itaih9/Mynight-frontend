@@ -21,7 +21,7 @@ import { Calendar } from '@/components/ui';
 import { BuildingGalleryLoader, InfinityRingsLoader, VerificationButton, Navbar } from '@/components/common';
 import { useUserStore } from '@/store/userStore';
 import { ROUTES } from '@/config/routes';
-import { authApi, couponApi, paymentApi } from '@/services/api';
+import { authApi, couponApi, paymentApi, packagesApi } from '@/services/api';
 import { SumitHostedCheckout } from '@/components/payment/SumitHostedCheckout';
 
 
@@ -117,7 +117,12 @@ export const Register: React.FC = () => {
   const { login, setNewUser, setCurrentEvent, currentEvent } = useUserStore();
 
   const packageName = searchParams.get('package') || 'UNLIMITED';
-  const basePrice = parseInt(searchParams.get('price') || '590', 10);
+  // The URL price is only a first paint. The server charges the package's own
+  // price regardless of what arrives in the request — it has to, since `price`
+  // is a URL parameter anyone can edit — so the page must show that same
+  // number or the customer is quoted one figure and charged another. Links can
+  // therefore omit ?price entirely.
+  const [basePrice, setBasePrice] = useState(parseInt(searchParams.get('price') || '590', 10));
   const refCodeFromUrl = (searchParams.get('ref') || '').trim().toUpperCase() || undefined;
   const resumePayment = searchParams.get('resumePayment') === '1';
 
@@ -220,6 +225,34 @@ export const Register: React.FC = () => {
   const [isSendingContact, setIsSendingContact] = useState(false);
 
   const calendarRef = useRef<HTMLDivElement>(null);
+
+  // Pull the real package price so the quoted figure matches what is charged.
+  // Only applied before a coupon is in play, so it can never overwrite a
+  // discounted total the guest is already looking at.
+  useEffect(() => {
+    let cancelled = false;
+    packagesApi
+      .getPublic()
+      .then((res) => {
+        if (cancelled) return;
+        const pkg = (res.data || []).find(
+          (p: any) => p.englishTitle === packageName || p.title === packageName
+        );
+        if (!pkg?.price) return;
+        setBasePrice(pkg.price);
+        if (!isCouponApplied) {
+          setFinalPrice(pkg.price);
+          setDisplayedPrice(pkg.price);
+        }
+      })
+      .catch(() => {
+        /* keep the URL price — the server still decides what is charged */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [packageName]);
 
   useEffect(() => {
     const isTouch = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;

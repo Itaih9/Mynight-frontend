@@ -125,7 +125,7 @@ export const Flash = () => {
               כל אורח מקבל אלבום אישי רק עם התמונות שהוא מופיע בהן, כולל התמונות מהצלם המקצועי.
             </p>
             <a
-              href={ROUTES.HERE_I_AM}
+              href={ROUTES.UPGRADE_CHECKOUT}
               className="block w-full py-3.5 rounded-xl bg-gold-primary text-black font-bold text-center active:scale-[0.99] transition-transform"
             >
               שדרוג ל-My Night
