@@ -47,7 +47,8 @@ interface RawPackage {
   backendKey: string;
   name: string;
   englishName: string;
-  price: number;
+  /** null until /api/packages answers — never a hardcoded guess. */
+  price: number | null;
   compareAtPrice?: number;
   recommended: boolean;
   gradient: string;
@@ -58,21 +59,21 @@ interface RawPackage {
 
 const RAW_PACKAGES: RawPackage[] = [
   {
-    key: 'starter', backendKey: 'morning_after', name: 'האוספת', englishName: 'Morning After', price: 425, recommended: false,
+    key: 'starter', backendKey: 'morning_after', name: 'האוספת', englishName: 'Morning After', price: null, recommended: false,
     gradient: 'linear-gradient(299deg,rgba(146,143,142,.78) 0%,rgba(92,92,92,.82) 34%)',
     ringColor: 'rgba(92,92,92,.7)',
     solidGradient: 'linear-gradient(299deg,hsl(35,2%,56%) 0%,hsl(35,0%,36%) 34%)',
     ctaVeil: 'linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22))',
   },
   {
-    key: 'smart', backendKey: 'here_i_am', name: 'החכמה', englishName: 'Here I Am', price: 575, recommended: false,
+    key: 'smart', backendKey: 'here_i_am', name: 'החכמה', englishName: 'Here I Am', price: null, recommended: false,
     gradient: 'linear-gradient(307deg,rgba(85,87,90,.8) 0%,rgba(36,36,36,.85) 41%)',
     ringColor: 'rgba(36,36,36,.7)',
     solidGradient: 'linear-gradient(307deg,hsl(200,2%,34%) 0%,hsl(200,0%,14%) 41%)',
     ctaVeil: 'linear-gradient(rgba(0,0,0,.22),rgba(0,0,0,.22))',
   },
   {
-    key: 'unlimited', backendKey: 'unlimited', name: 'המושלמת', englishName: 'Perfect Night', price: 975, recommended: true,
+    key: 'unlimited', backendKey: 'unlimited', name: 'המושלמת', englishName: 'Perfect Night', price: null, recommended: true,
     gradient: 'linear-gradient(112deg,rgba(243,221,161,.8) 0%,rgba(227,180,68,.85) 50%)',
     ringColor: 'rgba(227,180,68,.7)',
     solidGradient: 'linear-gradient(112deg,hsl(43,80%,80%) 0%,hsl(43,78%,60%) 50%)',
@@ -168,7 +169,12 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
 
   // Perfect Night's struck-through "top" price: the admin-set compareAtPrice,
   // or (0 = auto) the sum of the other packages' prices.
-  const otherSum = pkgData.filter((p) => p.key !== 'unlimited').reduce((s, p) => s + (p.price || 0), 0);
+  // Stays null until every other price is known: a partial sum would render as a
+  // struck-through figure barely above the real one, reading as a token discount.
+  const otherPkgs = pkgData.filter((p) => p.key !== 'unlimited');
+  const otherSum = otherPkgs.every((p) => p.price !== null)
+    ? otherPkgs.reduce((sum, p) => sum + (p.price as number), 0)
+    : null;
 
   const packages = pkgData.map((p) => {
     const isSelected = selected === p.key;
@@ -234,8 +240,11 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
       // a single tap to continue.
       onCta: () => {
         if (isSelected) {
-          if (onChoosePackage) onChoosePackage(p.key, p.price);
-          else navigate(`${ROUTES.START}?package=${p.name}&price=${p.price}`);
+          // With no price loaded there is nothing to hand on: the gift flow would
+          // quote ₪0, and the register page treats the param as the price. That
+          // page fetches its own, so navigation simply omits it.
+          if (onChoosePackage) { if (p.price !== null) onChoosePackage(p.key, p.price); }
+          else navigate(`${ROUTES.START}?package=${p.name}${p.price !== null ? `&price=${p.price}` : ''}`);
         } else {
           setSelected(p.key);
         }
@@ -362,16 +371,24 @@ export const Packages: React.FC<PackagesProps> = ({ highlightedPackageIndex, ani
                   {pkg.isUnlimited ? (
                     <div style={pkg.priceFlagWrapStyle}>
                       <div style={pkg.priceNoteStyle}>
-                        <span style={pkg.strikeStyle}>
-                          ₪{formatPrice(pkg.topPrice)}
-                          <span style={pkg.diagonalLineStyle} />
-                        </span>
-                        <div style={{ ...pkg.priceStyle, marginTop: '2px' }}>₪{formatPrice(pkg.price)}</div>
+                        {pkg.topPrice !== null && (
+                          <span style={pkg.strikeStyle}>
+                            ₪{formatPrice(pkg.topPrice)}
+                            <span style={pkg.diagonalLineStyle} />
+                          </span>
+                        )}
+                        {/* A non-breaking space holds the row's height while the
+                            real price is still in flight, so nothing jumps. */}
+                        <div style={{ ...pkg.priceStyle, marginTop: '2px' }}>
+                          {pkg.price === null ? ' ' : `₪${formatPrice(pkg.price)}`}
+                        </div>
                       </div>
                     </div>
                   ) : (
                     <div style={pkg.priceNoteStyle}>
-                      <div style={pkg.priceStyle}>₪{formatPrice(pkg.price)}</div>
+                      <div style={pkg.priceStyle}>
+                        {pkg.price === null ? ' ' : `₪${formatPrice(pkg.price)}`}
+                      </div>
                     </div>
                   )}
                 </div>

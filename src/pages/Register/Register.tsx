@@ -122,7 +122,10 @@ export const Register: React.FC = () => {
   // is a URL parameter anyone can edit — so the page must show that same
   // number or the customer is quoted one figure and charged another. Links can
   // therefore omit ?price entirely.
-  const [basePrice, setBasePrice] = useState(parseInt(searchParams.get('price') || '590', 10));
+  // 0 = not known yet. This used to default to a hardcoded 590, which quietly
+  // became the quoted price for anyone arriving without a ?price= (or while the
+  // packages call was still in flight) long after 590 stopped being real.
+  const [basePrice, setBasePrice] = useState(parseInt(searchParams.get('price') || '0', 10));
   const refCodeFromUrl = (searchParams.get('ref') || '').trim().toUpperCase() || undefined;
   const resumePayment = searchParams.get('resumePayment') === '1';
 
@@ -552,6 +555,13 @@ export const Register: React.FC = () => {
     const evId = (currentEvent as any)?._id || (currentEvent as any)?.id;
     if (!evId) {
       setSumitRedirectError('שגיאה: לא נמצא אירוע');
+      return;
+    }
+    // Never open a payment the page can't quote. The server prices the charge
+    // itself, so this isn't about the amount being wrong — it's that the guest
+    // would be agreeing to a figure they were never shown.
+    if (!basePrice) {
+      setSumitRedirectError('רגע, טוענים את המחיר...');
       return;
     }
     setSumitRedirectStarting(true);
@@ -1122,7 +1132,7 @@ export const Register: React.FC = () => {
                         <div className="bg-gray-50 p-8 rounded-[32px] border border-gray-100 overflow-hidden text-right">
                           <div className="flex justify-between items-start mb-6">
                             <h3 className="font-black text-black text-2xl tracking-tight">החבילה {currentPackage.hebrewName}</h3>
-                            <p className="text-4xl font-black text-black transition-all duration-300">₪{basePrice}</p>
+                            <p className="text-4xl font-black text-black transition-all duration-300">{basePrice ? `₪${basePrice}` : ' '}</p>
                           </div>
                           <div className="space-y-4">
                             {currentPackage.features.map((feature, i) => (
@@ -1149,7 +1159,7 @@ export const Register: React.FC = () => {
                             {couponError && !isCouponApplied && <p className="text-red-500 font-bold text-base animate-fade-in text-right px-1">אופס! הקופון לא עבר. שננסה שוב עם קוד אחר?</p>}
                             <div className="mt-8 flex justify-between items-center bg-gray-50 p-6 rounded-2xl border border-gray-100">
                               <span className="font-bold text-gray-600 text-xl">סה"כ לתשלום:</span>
-                              <span className="font-black text-4xl text-black">₪{displayedPrice}</span>
+                              <span className="font-black text-4xl text-black">{displayedPrice ? `₪${displayedPrice}` : ' '}</span>
                             </div>
                           </div>
                         )}

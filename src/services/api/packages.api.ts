@@ -42,10 +42,30 @@ export interface PackageItem {
   updatedAt?: string;
 }
 
+/**
+ * Prices are the one thing on the page we must never guess at, and every screen
+ * that shows one now renders nothing until this resolves. A backend restart is
+ * a few seconds of connection refused, so it's worth waiting out rather than
+ * leaving a visitor looking at a priceless package list.
+ */
+const RETRY_DELAYS_MS = [700, 1500, 3000];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const packagesApi = {
   getPublic: async (): Promise<ApiResponse<PackageItem[]>> => {
-    const response = await api.get('/api/packages');
-    return response.data;
+    let lastError: unknown;
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const response = await api.get('/api/packages');
+        return response.data;
+      } catch (error) {
+        lastError = error;
+        const delay = RETRY_DELAYS_MS[attempt];
+        if (delay === undefined) throw lastError;
+        await sleep(delay);
+      }
+    }
   },
 
   getAllAdmin: async (): Promise<ApiResponse<PackageItem[]>> => {

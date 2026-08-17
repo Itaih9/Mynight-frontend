@@ -73,6 +73,10 @@ interface LandingPackagesProps {
   isHoverDisabled: boolean;
 }
 
+// Prices are deliberately empty here and filled from /api/packages below. They
+// used to carry the then-current numbers, which meant that any hiccup fetching
+// the real ones showed a visitor a confident, wrong price — the card renders
+// without a figure instead, which is the honest failure.
 const defaultPackages = [
     {
       key: "morning_after",
@@ -80,7 +84,7 @@ const defaultPackages = [
       englishTitle: "The Morning After",
       baseColor: "#F0D9B7",
       shadow: "shadow-[0_20px_40px_rgba(219,198,167,0.1)]",
-      price: "350₪",
+      price: "",
       ctaText: "לבחירה",
       iconStyle: "square",
       textColor: "text-white",
@@ -99,7 +103,7 @@ const defaultPackages = [
       englishTitle: "UNLIMITED",
       baseColor: "#DBC056",
       shadow: "shadow-[0_25px_50px_rgba(15,23,42,0.25)]",
-      price: "590₪",
+      price: "",
       ctaText: "לבחירה",
       isPopular: true,
       iconStyle: "circle",
@@ -122,7 +126,7 @@ const defaultPackages = [
       englishTitle: "Here I Am",
       baseColor: "#B5D9EA",
       shadow: "shadow-[0_20px_40px_rgba(181,217,234,0.15)]",
-      price: "450₪",
+      price: "",
       ctaText: "לבחירה",
       isSmart: true,
       iconStyle: "square",
@@ -523,7 +527,12 @@ const LandingPackages: React.FC<LandingPackagesProps> = ({ highlightedPackageInd
 
                                 <div className={`relative group/btn w-full ${pkg.isPopular ? '' : 'mt-[12px]'} z-20`}>
                                     <button
-                                      onClick={() => navigate(`${ROUTES.START}?package=${encodeURIComponent(pkg.englishTitle)}&price=${pkg.price.replace(/\D/g, '')}`)}
+                                      // Carry the price only when we actually have one; the register
+                                      // page fetches it itself, and an empty &price= would land there
+                                      // as a zero.
+                                      onClick={() => navigate(
+                                        `${ROUTES.START}?package=${encodeURIComponent(pkg.englishTitle)}${priceDigits ? `&price=${priceDigits}` : ''}`
+                                      )}
                                       className={`py-4.5 rounded-none transition-transform duration-300 relative overflow-hidden group mb-0 z-10 block cursor-pointer
                                         ${ctaColorClass}
                                         w-[calc(100%+64px)] -mx-8
