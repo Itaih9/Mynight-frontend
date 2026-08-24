@@ -503,11 +503,13 @@ export const AdminCoupons = () => {
                   onChange={(e) => setFormData({ ...formData, packageName: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm bg-white"
                 >
-                  {/* Values must match event.packageName exactly (Register.tsx PACKAGE_DATA hebrewName). */}
+                  {/* Values are package KEYS, not titles. The backend stores the
+                      key it resolves from this, so renaming a package in the
+                      Packages screen can no longer orphan the coupon. */}
                   <option value="">All packages</option>
-                  <option value="האוספת">האוספת (The Morning After)</option>
-                  <option value="המושלמת">המושלמת (Unlimited)</option>
-                  <option value="החכמה">החכמה (Here I Am)</option>
+                  <option value="morning_after">האוספת (The Morning After)</option>
+                  <option value="unlimited">המושלמת (Unlimited)</option>
+                  <option value="here_i_am">החכמה (Here I Am)</option>
                 </select>
                 <p className="text-xs text-slate-400 mt-1">If set, the coupon only works when buying this package.</p>
               </div>
