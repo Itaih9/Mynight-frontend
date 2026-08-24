@@ -93,7 +93,9 @@ export const AdminEvents = () => {
 
   const [dispModalEvent, setDispModalEvent] = useState<AdminEvent | null>(null);
   const [dispEnabled, setDispEnabled] = useState(false);
-  const [dispLimit, setDispLimit] = useState(16);
+  // Kept as a string so "" can mean "no override, use the tier" — a number
+  // could not express the difference between blank and a real choice.
+  const [dispLimit, setDispLimit] = useState('');
   const [dispSaving, setDispSaving] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
@@ -353,14 +355,25 @@ export const AdminEvents = () => {
   const openDispModal = (event: AdminEvent) => {
     setDispModalEvent(event);
     setDispEnabled(!!event.disposableEnabled);
-    setDispLimit(event.disposableShotLimit || 16);
+    // Blank unless this event genuinely carries an override. Pre-filling a
+    // number here would let a Save that only meant to toggle "enabled" pin the
+    // roll length and quietly cut a Plus event from 24 shots down to it.
+    setDispLimit(event.disposableShotLimit ? String(event.disposableShotLimit) : '');
   };
+
+  /** What a guest gets today: the event's own override, else the tier default. */
+  const effectiveRoll = (event: AdminEvent) =>
+    event.disposableShotLimit || (event.flashTier === 'plus' ? 24 : 8);
 
   const handleSaveDisposable = async () => {
     if (!dispModalEvent) return;
     setDispSaving(true);
     try {
-      await adminApi.updateEventDisposable(dispModalEvent._id, { enabled: dispEnabled, shotLimit: dispLimit });
+      await adminApi.updateEventDisposable(dispModalEvent._id, {
+        enabled: dispEnabled,
+        // Blank clears the override rather than meaning zero.
+        shotLimit: dispLimit.trim() === '' ? null : parseInt(dispLimit, 10),
+      });
       await loadEvents(pagination.page);
       setDispModalEvent(null);
     } catch {
@@ -909,9 +922,14 @@ export const AdminEvents = () => {
               min={1}
               max={200}
               value={dispLimit}
-              onChange={(e) => setDispLimit(parseInt(e.target.value) || 16)}
-              className="w-full px-3 py-2 mb-3 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm"
+              placeholder={`${dispModalEvent.flashTier === 'plus' ? 24 : 8} (from the ${dispModalEvent.flashTier === 'plus' ? 'Plus' : 'free'} tier)`}
+              onChange={(e) => setDispLimit(e.target.value)}
+              className="w-full px-3 py-2 mb-1 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm"
             />
+            <p className="text-xs text-slate-400 mb-3">
+              Leave blank to follow the tier. A number here overrides it for this event only —
+              guests will get <span className="font-semibold">{dispLimit.trim() === '' ? (dispModalEvent.flashTier === 'plus' ? 24 : 8) : Math.min(200, parseInt(dispLimit, 10) || 0)}</span> shots.
+            </p>
             <p className="text-xs text-slate-400 mb-4">Guests shoot at: <span className="font-mono">/camera/{dispModalEvent.eventCode}</span></p>
             <div className="flex gap-2">
               <button onClick={() => setDispModalEvent(null)} className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
@@ -1439,8 +1457,8 @@ export const AdminEvents = () => {
                       <span className="text-sm text-slate-700">
                         Disposable camera
                         <span className="block text-xs text-slate-400">
-                          Guests shoot a limited film roll at /camera/CODE. The roll length comes
-                          from the tier — {createForm.flashTier === 'plus' ? '24' : '8'} shots per guest.
+                          Guests shoot a limited film roll at /camera/CODE — {createForm.flashTier === 'plus' ? '24' : '8'} shots
+                          each on this tier. Use the Disposable button on the event row to override that.
                         </span>
                       </span>
                     </label>
@@ -1718,7 +1736,7 @@ export const AdminEvents = () => {
                           <button
                             onClick={() => openDispModal(event)}
                             className={`inline-flex items-center gap-1 text-xs font-medium ${event.disposableEnabled ? 'text-green-600 hover:text-green-700' : 'text-slate-500 hover:text-slate-700'}`}
-                            title="Disposable camera"
+                            title={`Disposable camera — ${effectiveRoll(event)} shots per guest${event.disposableShotLimit ? ' (override)' : ' (from tier)'}`}
                           >
                             <Camera className="w-3 h-3" />
                             Disposable{event.disposableEnabled ? ' ✓' : ''}

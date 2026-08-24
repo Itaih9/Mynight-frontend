@@ -80,7 +80,8 @@ export interface AdminEvent {
   photographerName?: string;
   photographerInstagram?: string;
   disposableEnabled?: boolean;
-  disposableShotLimit?: number;
+  /** Per-event override of the roll length; absent means the tier decides. */
+  disposableShotLimit?: number | null;
   photoCount: number;
   userId: {
     _id: string;
@@ -102,6 +103,14 @@ export interface AdminEvent {
   referredByAffiliate?: { name: string; email: string; referralCode: string } | null;
   couponCode?: string | null;
   createdAt: string;
+}
+
+export interface DisposableState {
+  disposableEnabled?: boolean;
+  /** The per-event override. null means "no override — use the tier". */
+  disposableShotLimit?: number | null;
+  /** What a guest actually gets: the override if set, otherwise the tier. */
+  effectiveShotLimit?: number;
 }
 
 export interface CreateEventInput {
@@ -655,9 +664,11 @@ export const adminApi = {
 
   updateEventDisposable: async (
     eventId: string,
-    data: { enabled?: boolean; shotLimit?: number }
-  ): Promise<{ disposableEnabled?: boolean; disposableShotLimit?: number }> => {
-    const response = await adminAxios.patch<ApiResponse<{ disposableEnabled?: boolean; disposableShotLimit?: number }>>(
+    // shotLimit: a positive number overrides the tier's roll length, null clears
+    // the override, undefined leaves it untouched.
+    data: { enabled?: boolean; shotLimit?: number | null }
+  ): Promise<DisposableState> => {
+    const response = await adminAxios.patch<ApiResponse<DisposableState>>(
       `/api/admin/events/${eventId}/disposable`,
       data
     );
