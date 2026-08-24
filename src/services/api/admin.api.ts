@@ -123,6 +123,8 @@ export interface CreateEventInput {
   isPaid?: boolean;
   flashTier?: 'basic' | 'plus';
   customSlug?: string;
+  photographerName?: string;
+  photographerInstagram?: string;
   disposableEnabled?: boolean;
   sendWelcomeEmail?: boolean;
 }
@@ -136,6 +138,8 @@ export interface CreatedEvent {
   isPaid: boolean;
   flashTier?: 'basic' | 'plus';
   packageName?: string;
+  photographerName?: string;
+  photographerInstagram?: string;
   disposableEnabled?: boolean;
   expiresAt: string;
   /** True when the couple had no account and one was made for them. */

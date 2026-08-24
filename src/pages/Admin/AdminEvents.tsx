@@ -41,6 +41,8 @@ const EMPTY_CREATE_FORM = {
   isPaid: false,
   flashTier: 'basic' as 'basic' | 'plus',
   customSlug: '',
+  photographerName: '',
+  photographerInstagram: '',
   disposableEnabled: false,
   sendWelcomeEmail: false,
 };
@@ -295,6 +297,8 @@ export const AdminEvents = () => {
         isPaid: createForm.isPaid,
         flashTier: createForm.flashTier,
         customSlug: createForm.customSlug.trim() || undefined,
+        photographerName: createForm.photographerName.trim() || undefined,
+        photographerInstagram: createForm.photographerInstagram.trim() || undefined,
         disposableEnabled: createForm.disposableEnabled,
         sendWelcomeEmail: createForm.sendWelcomeEmail && !!createForm.email.trim(),
       });
@@ -1292,6 +1296,17 @@ export const AdminEvents = () => {
                           : 'Off — turn on with Status'}
                     </div>
                   </div>
+                  {createdEvent.photographerName && (
+                    <div className="bg-slate-50 rounded-lg px-3 py-2 col-span-2">
+                      <div className="text-xs text-slate-500">Photographer</div>
+                      <div className="font-medium text-slate-800">
+                        {createdEvent.photographerName}
+                        {createdEvent.photographerInstagram && (
+                          <span className="text-slate-500 font-normal"> · @{createdEvent.photographerInstagram}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="bg-slate-50 rounded-lg px-3 py-2 col-span-2">
                     <div className="text-xs text-slate-500">Gallery expires</div>
                     <div className="font-medium text-slate-800">
@@ -1433,6 +1448,33 @@ export const AdminEvents = () => {
                       English letters, numbers and hyphens only, minimum 3 — Hebrew is stripped, so
                       leave this empty to get the names transliterated automatically.
                     </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Photographer</label>
+                      <input
+                        value={createForm.photographerName}
+                        onChange={(e) => patchCreateForm({ photographerName: e.target.value })}
+                        placeholder="e.g. Studio Noa"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">Credited on the gallery.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Instagram</label>
+                      <div className="flex items-center rounded-lg border border-slate-200 focus-within:border-slate-400 px-3">
+                        <span className="text-slate-400 text-sm">@</span>
+                        <input
+                          value={createForm.photographerInstagram}
+                          onChange={(e) => patchCreateForm({ photographerInstagram: e.target.value })}
+                          placeholder="studio.noa"
+                          dir="ltr"
+                          className="w-full py-2 pl-1 outline-none text-sm text-left"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-400 mt-1">Handle, @handle or a full URL — all work.</p>
+                    </div>
                   </div>
 
                   <div className="border-t pt-4 space-y-3">
