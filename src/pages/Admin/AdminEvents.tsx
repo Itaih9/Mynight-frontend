@@ -38,8 +38,12 @@ const EMPTY_CREATE_FORM = {
   email: '',
   weddingDate: '',
   packageName: '',
-  isPaid: false,
-  flashTier: 'basic' as 'basic' | 'plus',
+  // Live by default. An event is created here because a booking exists, and an
+  // unpaid one refuses every upload — so leaving this off shipped a gallery
+  // that looked fine in the table and rejected the first guest who tried it.
+  // Untick to park a booking that has not been agreed yet.
+  isPaid: true,
+  flashTier: 'plus' as 'basic' | 'plus',
   customSlug: '',
   photographerName: '',
   photographerInstagram: '',
@@ -1117,7 +1121,7 @@ export const AdminEvents = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="ltr">
           <div className="absolute inset-0 bg-black/50" onClick={() => setStatusModalEvent(null)} />
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold text-slate-900 mb-1">Payment status</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">Event status</h3>
             <p className="text-sm text-slate-500 mb-4">
               {statusModalEvent.name} — {statusModalEvent.eventCode}
             </p>
@@ -1126,13 +1130,15 @@ export const AdminEvents = () => {
               <input
                 type="checkbox"
                 checked={statusPaid}
-                onChange={(e) => { setStatusPaid(e.target.checked); if (e.target.checked) setStatusTier('plus'); setStatusError(''); }}
+                onChange={(e) => { setStatusPaid(e.target.checked); setStatusTier(e.target.checked ? 'plus' : 'basic'); setStatusError(''); }}
                 className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
               />
               <span className="text-sm text-slate-700">
-                Paid
+                Active
                 <span className="block text-xs text-slate-400">
-                  Unpaid refuses every photo upload — the couple's and the guests'.
+                  {statusPaid
+                    ? 'The gallery is live and accepting photos.'
+                    : 'Parked — every upload is refused, the couple\'s and the guests\'.'}
                 </span>
               </span>
             </label>
@@ -1163,8 +1169,8 @@ export const AdminEvents = () => {
             )}
 
             <p className="text-xs text-slate-400 mt-4">
-              This does not take or refund money — it only records what was already settled
-              off-platform. A real payment sets both of these on its own.
+              This does not take or refund money — it only opens or closes the gallery for a deal
+              settled off-platform. A real payment sets both of these on its own.
             </p>
 
             {statusError && (
@@ -1234,9 +1240,9 @@ export const AdminEvents = () => {
 
                 {!createdEvent.isPaid && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
-                    <strong>This event is unpaid, so every upload is refused</strong> — the couple's
+                    <strong>This event is parked, so every upload is refused</strong> — the couple's
                     uploads, guest uploads and guest selfies all return "not yet activated". Only the
-                    gallery view works. Use the Status button on the event row to mark it paid.
+                    gallery view works. Use the Status button on the event row to activate it.
                   </div>
                 )}
 
@@ -1281,8 +1287,10 @@ export const AdminEvents = () => {
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="bg-slate-50 rounded-lg px-3 py-2">
-                    <div className="text-xs text-slate-500">Paid</div>
-                    <div className="font-medium text-slate-800">{createdEvent.isPaid ? 'Yes' : 'No'}</div>
+                    <div className="text-xs text-slate-500">Status</div>
+                    <div className={`font-medium ${createdEvent.isPaid ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {createdEvent.isPaid ? 'Live — uploads open' : 'Parked — uploads refused'}
+                    </div>
                   </div>
                   <div className="bg-slate-50 rounded-lg px-3 py-2">
                     <div className="text-xs text-slate-500">Face albums</div>
@@ -1493,10 +1501,11 @@ export const AdminEvents = () => {
                         className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
                       />
                       <span className="text-sm text-slate-700">
-                        Paid
+                        Active
                         <span className="block text-xs text-slate-400">
-                          Mark this only when the money actually arrived. Unpaid events refuse every
-                          photo upload — couple's and guests' alike.
+                          {createForm.isPaid
+                            ? 'The gallery is live and accepting photos the moment you create it.'
+                            : 'Parked — every upload is refused until you mark it active. Use this only for a booking that is not agreed yet.'}
                         </span>
                       </span>
                     </label>
