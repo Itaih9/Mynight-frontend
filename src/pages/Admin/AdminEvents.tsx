@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { adminApi, type AdminEvent } from '@/services/api/admin.api';
+import { adminApi, type AdminEvent, type CreatedEvent } from '@/services/api/admin.api';
+import { packagesApi, type PackageItem } from '@/services/api/packages.api';
 import { Loader } from '@/components/common/Loader';
 import { AdminLayout } from './AdminLayout';
 import {
@@ -26,7 +27,37 @@ import {
   MessageCircle,
   Film,
   Copy,
+  Plus,
 } from 'lucide-react';
+
+/** Blank state for the create-event form; also what "Create another" resets to. */
+const EMPTY_CREATE_FORM = {
+  partnerName1: '',
+  partnerName2: '',
+  phoneNumber: '',
+  email: '',
+  weddingDate: '',
+  packageName: '',
+  isPaid: false,
+  flashTier: 'basic' as 'basic' | 'plus',
+  customSlug: '',
+  disposableEnabled: false,
+  sendWelcomeEmail: false,
+};
+
+/**
+ * Mirrors `normalizeSlug` on the server exactly. When these two drift the admin
+ * reads one URL off the form and the couple is handed a different one, which
+ * 404s — so any change here belongs in events.service.ts too.
+ */
+const previewSlug = (raw: string) =>
+  raw
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-|-$/g, '');
 
 export const AdminEvents = () => {
   const navigate = useNavigate();
@@ -84,6 +115,20 @@ export const AdminEvents = () => {
     guests: { name: string; phone: string }[];
     loading: boolean;
   } | null>(null);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
+  const [createSaving, setCreateSaving] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [createdEvent, setCreatedEvent] = useState<CreatedEvent | null>(null);
+  const [packageOptions, setPackageOptions] = useState<PackageItem[]>([]);
+  const [packagesFailed, setPackagesFailed] = useState(false);
+
+  const [statusModalEvent, setStatusModalEvent] = useState<AdminEvent | null>(null);
+  const [statusPaid, setStatusPaid] = useState(false);
+  const [statusTier, setStatusTier] = useState<'basic' | 'plus'>('basic');
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusError, setStatusError] = useState('');
 
   useEffect(() => {
     loadEvents(1);
@@ -153,6 +198,105 @@ export const AdminEvents = () => {
       setCopiedLink(url);
       setTimeout(() => setCopiedLink(null), 2000);
     });
+  };
+
+  // The five-year window the backend enforces, as date-input bounds.
+  const fiveYears = (() => {
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const back = new Date();
+    back.setFullYear(back.getFullYear() - 5);
+    const forward = new Date();
+    forward.setFullYear(forward.getFullYear() + 5);
+    return { min: iso(back), max: iso(forward) };
+  })();
+
+  const openCreateModal = async () => {
+    setCreateForm(EMPTY_CREATE_FORM);
+    setCreateError('');
+    setCreatedEvent(null);
+    setCreateOpen(true);
+    if (packageOptions.length === 0) {
+      try {
+        setPackagesFailed(false);
+        const res = await packagesApi.getAllAdmin();
+        setPackageOptions((res.data || []).filter((p) => p.isActive).sort((a, b) => a.order - b.order));
+      } catch {
+        // Say so rather than showing an empty dropdown: packageName gates real
+        // behaviour (face matching, guest upload) and there is no way to set it
+        // after creation, so "no packages listed" must not read as "no packages".
+        setPackagesFailed(true);
+      }
+    }
+  };
+
+  const openStatusModal = (event: AdminEvent) => {
+    setStatusModalEvent(event);
+    setStatusPaid(!!event.isPaid);
+    setStatusTier(event.flashTier === 'plus' ? 'plus' : 'basic');
+    setStatusError('');
+  };
+
+  const handleSaveStatus = async () => {
+    if (!statusModalEvent) return;
+    setStatusSaving(true);
+    setStatusError('');
+    try {
+      await adminApi.updateEventStatus(statusModalEvent._id, { isPaid: statusPaid, flashTier: statusTier });
+      setStatusModalEvent(null);
+      setSuccessToast('Event status updated');
+      setTimeout(() => setSuccessToast(null), 3000);
+      loadEvents(pagination.page);
+    } catch (err: any) {
+      setStatusError(err?.response?.data?.error || err?.response?.data?.message || 'Failed to update status');
+    } finally {
+      setStatusSaving(false);
+    }
+  };
+
+  const patchCreateForm = (patch: Partial<typeof EMPTY_CREATE_FORM>) => {
+    setCreateForm((f) => ({ ...f, ...patch }));
+    setCreateError('');
+  };
+
+  const handleCreateEvent = async () => {
+    if (!createForm.partnerName1.trim()) {
+      setCreateError('Partner name is required');
+      return;
+    }
+    if (!createForm.phoneNumber.trim()) {
+      setCreateError('Phone number is required');
+      return;
+    }
+    if (!createForm.weddingDate) {
+      setCreateError('Wedding date is required');
+      return;
+    }
+
+    setCreateSaving(true);
+    setCreateError('');
+    try {
+      const created = await adminApi.createEvent({
+        partnerName1: createForm.partnerName1.trim(),
+        partnerName2: createForm.partnerName2.trim() || undefined,
+        phoneNumber: createForm.phoneNumber.trim(),
+        email: createForm.email.trim() || undefined,
+        weddingDate: createForm.weddingDate,
+        packageName: createForm.packageName || undefined,
+        isPaid: createForm.isPaid,
+        flashTier: createForm.flashTier,
+        customSlug: createForm.customSlug.trim() || undefined,
+        disposableEnabled: createForm.disposableEnabled,
+        sendWelcomeEmail: createForm.sendWelcomeEmail && !!createForm.email.trim(),
+      });
+      setCreatedEvent(created);
+      loadEvents(1);
+    } catch (err: any) {
+      setCreateError(
+        err?.response?.data?.error || err?.response?.data?.message || 'Failed to create event'
+      );
+    } finally {
+      setCreateSaving(false);
+    }
   };
 
   const handleSaveSlug = async () => {
@@ -939,10 +1083,436 @@ export const AdminEvents = () => {
         </div>
       )}
 
+      {statusModalEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="ltr">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setStatusModalEvent(null)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">Payment status</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              {statusModalEvent.name} — {statusModalEvent.eventCode}
+            </p>
+
+            <label className="flex items-start gap-3 cursor-pointer select-none mb-3">
+              <input
+                type="checkbox"
+                checked={statusPaid}
+                onChange={(e) => { setStatusPaid(e.target.checked); if (e.target.checked) setStatusTier('plus'); setStatusError(''); }}
+                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+              />
+              <span className="text-sm text-slate-700">
+                Paid
+                <span className="block text-xs text-slate-400">
+                  Unpaid refuses every photo upload — the couple's and the guests'.
+                </span>
+              </span>
+            </label>
+
+            <label className={`flex items-start gap-3 select-none ${statusPaid ? 'opacity-50' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={statusTier === 'plus'}
+                disabled={statusPaid}
+                onChange={(e) => { setStatusTier(e.target.checked ? 'plus' : 'basic'); setStatusError(''); }}
+                className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+              />
+              <span className="text-sm text-slate-700">
+                Flash Plus
+                <span className="block text-xs text-slate-400">
+                  {statusPaid
+                    ? 'Always on for a paid event.'
+                    : 'Face-recognition albums, video, longer film roll.'}
+                </span>
+              </span>
+            </label>
+
+            <p className="text-xs text-slate-400 mt-4">
+              This does not take or refund money — it only records what was already settled
+              off-platform. A real payment sets both of these on its own.
+            </p>
+
+            {statusError && (
+              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg mt-3">{statusError}</p>
+            )}
+
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setStatusModalEvent(null)}
+                className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveStatus}
+                disabled={statusSaving}
+                className="flex-1 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50"
+              >
+                {statusSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="ltr">
+          {/* Dismissal is blocked while the request is in flight. Closing early
+              does not cancel it — the event still gets created, the admin never
+              sees its links, and their retry meets a 409 that reads like a bug. */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => { if (!createSaving) setCreateOpen(false); }}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  {createdEvent ? 'Event created' : 'Create event'}
+                </h2>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {createdEvent
+                    ? `${createdEvent.name} — ${createdEvent.eventCode}`
+                    : 'For a couple who booked off-platform and never registered.'}
+                </p>
+              </div>
+              <button
+                onClick={() => setCreateOpen(false)}
+                disabled={createSaving}
+                className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {createdEvent ? (
+              <div className="p-6 space-y-5 overflow-y-auto">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-sm text-emerald-900">
+                  The couple can log in at <span className="font-mono">mynight.co.il/gallery-login</span> with{' '}
+                  {/* The number the SERVER stored, normalised — reading it back
+                      off the form would print whatever is in the box right now. */}
+                  <span className="font-mono" dir="ltr">{createdEvent.phoneNumber}</span>
+                  {createdEvent.userCreated
+                    ? ' — a new account was created for that number.'
+                    : ' — this number already had an account, and the event was added to it.'}
+                </div>
+
+                {!createdEvent.isPaid && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+                    <strong>This event is unpaid, so every upload is refused</strong> — the couple's
+                    uploads, guest uploads and guest selfies all return "not yet activated". Only the
+                    gallery view works. Use the Status button on the event row to mark it paid.
+                  </div>
+                )}
+
+                {createForm.sendWelcomeEmail && !createdEvent.emailSent && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+                    No email was sent — the account has no address on file, or the mail provider
+                    rejected it. Send the links below by hand.
+                  </div>
+                )}
+
+                {(() => {
+                  const base = 'https://mynight.co.il';
+                  const id = createdEvent.customSlug || createdEvent.eventCode;
+                  const links = [
+                    { label: 'Gallery', url: `${base}/gallery/${id}` },
+                    { label: 'Guest Upload', url: `${base}/guest/${id}/upload` },
+                    { label: 'Guest Selfie', url: `${base}/guest/${id}/selfie` },
+                    ...(createdEvent.disposableEnabled
+                      ? [{ label: 'Disposable Camera', url: `${base}/camera/${createdEvent.eventCode}` }]
+                      : []),
+                    // The first thing an admin sends after an off-platform sale.
+                    { label: 'Couple Login', url: `${base}/gallery-login` },
+                  ];
+                  return (
+                    <div className="space-y-2">
+                      {links.map(({ label, url }) => (
+                        <div key={label} className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                          <span className="text-xs font-medium text-slate-500 w-24 shrink-0">{label}</span>
+                          <span className="text-xs text-slate-700 font-mono truncate flex-1">{url}</span>
+                          <button
+                            onClick={() => copyLink(url)}
+                            className="shrink-0 p-1.5 rounded-md hover:bg-slate-200 transition-colors text-slate-500 hover:text-slate-800"
+                            title={`Copy ${label} link`}
+                          >
+                            {copiedLink === url ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-slate-50 rounded-lg px-3 py-2">
+                    <div className="text-xs text-slate-500">Paid</div>
+                    <div className="font-medium text-slate-800">{createdEvent.isPaid ? 'Yes' : 'No'}</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg px-3 py-2">
+                    <div className="text-xs text-slate-500">Tier</div>
+                    <div className="font-medium text-slate-800">
+                      {createdEvent.flashTier === 'plus' ? 'Plus — face recognition on' : 'Basic — no face recognition'}
+                    </div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg px-3 py-2 col-span-2">
+                    <div className="text-xs text-slate-500">Gallery expires</div>
+                    <div className="font-medium text-slate-800">
+                      {new Date(createdEvent.expiresAt).toLocaleDateString('he-IL', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => { setCreatedEvent(null); setCreateForm(EMPTY_CREATE_FORM); }}
+                    className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  >
+                    Create another
+                  </button>
+                  <button
+                    onClick={() => setCreateOpen(false)}
+                    className="flex-1 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="p-6 space-y-4 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Partner 1 *</label>
+                      <input
+                        value={createForm.partnerName1}
+                        onChange={(e) => patchCreateForm({ partnerName1: e.target.value })}
+                        placeholder="דנה"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Partner 2</label>
+                      <input
+                        value={createForm.partnerName2}
+                        onChange={(e) => patchCreateForm({ partnerName2: e.target.value })}
+                        placeholder="יואב"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
+                      <input
+                        value={createForm.phoneNumber}
+                        onChange={(e) => patchCreateForm({ phoneNumber: e.target.value })}
+                        placeholder="0501234567"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm font-mono"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">This is the number they log in with.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                      <input
+                        value={createForm.email}
+                        onChange={(e) => patchCreateForm({ email: e.target.value })}
+                        placeholder="couple@example.com"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Wedding date *</label>
+                      <input
+                        type="date"
+                        value={createForm.weddingDate}
+                        // Same window the backend accepts, so the range is
+                        // visible in the picker instead of arriving as a 400.
+                        min={fiveYears.min}
+                        max={fiveYears.max}
+                        onChange={(e) => patchCreateForm({ weddingDate: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">
+                        The gallery lives 6 months past this date (at least 6 months from today).
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Package</label>
+                      <select
+                        value={createForm.packageName}
+                        onChange={(e) => patchCreateForm({ packageName: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm bg-white"
+                      >
+                        <option value="">— none —</option>
+                        {packageOptions.map((p) => (
+                          <option key={p._id} value={p.title}>
+                            {p.title} — ₪{p.price}
+                          </option>
+                        ))}
+                      </select>
+                      {packagesFailed && (
+                        <p className="text-xs text-red-600 mt-1">
+                          Couldn't load packages — the list above is empty, not the real one. Close
+                          and reopen this dialog to retry.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Personal link</label>
+                    <input
+                      value={createForm.customSlug}
+                      onChange={(e) => patchCreateForm({ customSlug: e.target.value })}
+                      placeholder="leave empty to generate from names + date"
+                      dir="ltr"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm font-mono text-left"
+                    />
+                    {createForm.customSlug.trim() && (
+                      <p className="text-xs text-slate-400 mt-1" dir="ltr">
+                        mynight.co.il/gallery/{previewSlug(createForm.customSlug) || '...'}
+                      </p>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1">
+                      English letters, numbers and hyphens only, minimum 3 — Hebrew is stripped, so
+                      leave this empty to get the names transliterated automatically.
+                    </p>
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={createForm.isPaid}
+                        // Paid and Plus move together in BOTH directions. Ticking
+                        // Paid alone would leave a paid gallery with no face
+                        // album; unticking it alone would leave the ₪50 upgrade
+                        // given away, invisibly — the table never shows the tier.
+                        onChange={(e) => patchCreateForm({
+                          isPaid: e.target.checked,
+                          flashTier: e.target.checked ? 'plus' : 'basic',
+                        })}
+                        className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                      />
+                      <span className="text-sm text-slate-700">
+                        Paid
+                        <span className="block text-xs text-slate-400">
+                          Mark this only when the money actually arrived. Unpaid events refuse every
+                          photo upload — couple's and guests' alike.
+                        </span>
+                      </span>
+                    </label>
+
+                    <label className={`flex items-start gap-3 select-none ${createForm.isPaid ? 'opacity-50' : 'cursor-pointer'}`}>
+                      <input
+                        type="checkbox"
+                        checked={createForm.flashTier === 'plus'}
+                        // Locked on while Paid: the server forces it anyway, and a
+                        // checkbox that silently disagrees with the result is worse
+                        // than one that cannot be wrong.
+                        disabled={createForm.isPaid}
+                        onChange={(e) => patchCreateForm({ flashTier: e.target.checked ? 'plus' : 'basic' })}
+                        className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                      />
+                      <span className="text-sm text-slate-700">
+                        Flash Plus
+                        <span className="block text-xs text-slate-400">
+                          {createForm.isPaid
+                            ? 'Always on for a paid event — face recognition is what was paid for.'
+                            : 'Face-recognition albums, video, and a longer film roll per guest.'}
+                        </span>
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-3 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={createForm.disposableEnabled}
+                        onChange={(e) => patchCreateForm({ disposableEnabled: e.target.checked })}
+                        className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                      />
+                      <span className="text-sm text-slate-700">
+                        Disposable camera
+                        <span className="block text-xs text-slate-400">
+                          Guests shoot a limited film roll at /camera/CODE. The roll length comes
+                          from the tier — {createForm.flashTier === 'plus' ? '24' : '8'} shots per guest.
+                        </span>
+                      </span>
+                    </label>
+
+                    <label className={`flex items-start gap-3 select-none ${createForm.email.trim() ? 'cursor-pointer' : 'opacity-50'}`}>
+                      <input
+                        type="checkbox"
+                        checked={createForm.sendWelcomeEmail && !!createForm.email.trim()}
+                        // Without an address there is nothing to send to, and the
+                        // send is swallowed server-side — so the admin would close
+                        // this believing the couple had been told.
+                        disabled={!createForm.email.trim()}
+                        onChange={(e) => patchCreateForm({ sendWelcomeEmail: e.target.checked })}
+                        className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                      />
+                      <span className="text-sm text-slate-700">
+                        Email the couple their links
+                        <span className="block text-xs text-slate-400">
+                          {createForm.email.trim()
+                            ? "Off by default — backfilling old weddings shouldn't mail anyone."
+                            : 'Needs an email address above.'}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+
+                  {createError && (
+                    <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{createError}</p>
+                  )}
+                </div>
+
+                <div className="flex gap-2 p-6 border-t bg-slate-50">
+                  <button
+                    onClick={() => setCreateOpen(false)}
+                    className="flex-1 px-4 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium text-slate-600 hover:bg-slate-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateEvent}
+                    disabled={createSaving}
+                    className="flex-1 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                  >
+                    {createSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Creating…
+                      </>
+                    ) : (
+                      'Create event'
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <>
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-semibold text-slate-900">Events</h1>
-          <span className="text-sm text-slate-600">{pagination.total} total events</span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-600">{pagination.total} total events</span>
+            <button
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create event
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -1121,6 +1691,14 @@ export const AdminEvents = () => {
                               Extend
                             </button>
                           )}
+                          <button
+                            onClick={() => openStatusModal(event)}
+                            className={`inline-flex items-center gap-1 text-xs font-medium ${event.isPaid ? 'text-emerald-600 hover:text-emerald-700' : 'text-slate-500 hover:text-slate-700'}`}
+                            title={`Paid: ${event.isPaid ? 'yes' : 'no'} · Tier: ${event.flashTier === 'plus' ? 'Plus' : 'Basic'}`}
+                          >
+                            <Tag className="w-3 h-3" />
+                            Status
+                          </button>
                           <button
                             onClick={() => openSlugModal(event)}
                             className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700"

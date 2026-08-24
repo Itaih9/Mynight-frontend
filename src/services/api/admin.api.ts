@@ -75,6 +75,7 @@ export interface AdminEvent {
   customSlug?: string;
   slugChangeCount?: number;
   isPaid: boolean;
+  flashTier?: 'basic' | 'plus';
   packageName?: string;
   photographerName?: string;
   photographerInstagram?: string;
@@ -101,6 +102,39 @@ export interface AdminEvent {
   referredByAffiliate?: { name: string; email: string; referralCode: string } | null;
   couponCode?: string | null;
   createdAt: string;
+}
+
+export interface CreateEventInput {
+  partnerName1: string;
+  partnerName2?: string;
+  phoneNumber: string;
+  email?: string;
+  weddingDate: string;
+  packageName?: string;
+  isPaid?: boolean;
+  flashTier?: 'basic' | 'plus';
+  customSlug?: string;
+  disposableEnabled?: boolean;
+  sendWelcomeEmail?: boolean;
+}
+
+export interface CreatedEvent {
+  _id: string;
+  name: string;
+  eventCode: string;
+  customSlug?: string;
+  weddingDate?: string;
+  isPaid: boolean;
+  flashTier?: 'basic' | 'plus';
+  packageName?: string;
+  disposableEnabled?: boolean;
+  expiresAt: string;
+  /** True when the couple had no account and one was made for them. */
+  userCreated: boolean;
+  /** The normalised number the couple logs in with — not what the admin typed. */
+  phoneNumber: string;
+  /** Whether mail actually left, not merely whether it was requested. */
+  emailSent: boolean;
 }
 
 export interface AdminCoupon {
@@ -416,6 +450,31 @@ export const adminApi = {
   getEvents: async (page: number = 1, limit: number = 20): Promise<{ events: AdminEvent[]; pagination: any }> => {
     const response = await adminAxios.get<ApiResponse<{ events: AdminEvent[]; pagination: any }>>(
       `/api/admin/events?page=${page}&limit=${limit}`
+    );
+    return response.data.data!;
+  },
+
+  /**
+   * Create an event by hand for a couple who booked off-platform. The backend
+   * builds the whole thing — account, face collection, coupons — so the gallery
+   * works immediately; it stays silent unless sendWelcomeEmail is set.
+   */
+  createEvent: async (data: CreateEventInput): Promise<CreatedEvent> => {
+    const response = await adminAxios.post<ApiResponse<CreatedEvent>>('/api/admin/events', data);
+    return response.data.data!;
+  },
+
+  /**
+   * Flip an event's paid state and tier. Unpaid events reject every upload, and
+   * before this existed only a completed payment could clear that.
+   */
+  updateEventStatus: async (
+    eventId: string,
+    data: { isPaid?: boolean; flashTier?: 'basic' | 'plus' }
+  ): Promise<{ isPaid: boolean; flashTier: 'basic' | 'plus' }> => {
+    const response = await adminAxios.patch<ApiResponse<{ isPaid: boolean; flashTier: 'basic' | 'plus' }>>(
+      `/api/admin/events/${eventId}/status`,
+      data
     );
     return response.data.data!;
   },
