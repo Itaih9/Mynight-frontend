@@ -46,6 +46,14 @@ const EMPTY_CREATE_FORM = {
 };
 
 /**
+ * Packages whose sale includes the guest face album ("מיון אורחים ואלבום אורח").
+ * Keyed on `key`, not the Hebrew title, because titles are editable in the
+ * Packages screen. האוספת is deliberately absent — it does not include face
+ * albums, and photos.service refuses face matching for it outright.
+ */
+const PACKAGES_WITH_FACE_ALBUMS = new Set(['here_i_am', 'unlimited']);
+
+/**
  * Mirrors `normalizeSlug` on the server exactly. When these two drift the admin
  * reads one URL off the form and the couple is handed a different one, which
  * 404s — so any change here belongs in events.service.ts too.
@@ -1134,14 +1142,21 @@ export const AdminEvents = () => {
                 className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
               />
               <span className="text-sm text-slate-700">
-                Flash Plus
+                Face albums &amp; video
                 <span className="block text-xs text-slate-400">
                   {statusPaid
                     ? 'Always on for a paid event.'
-                    : 'Face-recognition albums, video, longer film roll.'}
+                    : 'Guest sorting, the WhatsApp guest album, video, longer film roll.'}
                 </span>
               </span>
             </label>
+
+            {statusModalEvent.packageName === 'האוספת' && statusTier === 'plus' && (
+              <p className="ml-7 mt-1 text-xs text-amber-700">
+                האוספת does not include guest face albums — face matching stays refused for this
+                package regardless.
+              </p>
+            )}
 
             <p className="text-xs text-slate-400 mt-4">
               This does not take or refund money — it only records what was already settled
@@ -1266,9 +1281,15 @@ export const AdminEvents = () => {
                     <div className="font-medium text-slate-800">{createdEvent.isPaid ? 'Yes' : 'No'}</div>
                   </div>
                   <div className="bg-slate-50 rounded-lg px-3 py-2">
-                    <div className="text-xs text-slate-500">Tier</div>
+                    <div className="text-xs text-slate-500">Face albums</div>
                     <div className="font-medium text-slate-800">
-                      {createdEvent.flashTier === 'plus' ? 'Plus — face recognition on' : 'Basic — no face recognition'}
+                      {/* Name the cause, not just the state. "no face recognition"
+                          on an event whose package includes it reads as a fault. */}
+                      {createdEvent.flashTier === 'plus'
+                        ? 'On'
+                        : createdEvent.packageName === 'האוספת'
+                          ? 'Not part of האוספת'
+                          : 'Off — turn on with Status'}
                     </div>
                   </div>
                   <div className="bg-slate-50 rounded-lg px-3 py-2 col-span-2">
@@ -1363,7 +1384,19 @@ export const AdminEvents = () => {
                       <label className="block text-sm font-medium text-slate-700 mb-1">Package</label>
                       <select
                         value={createForm.packageName}
-                        onChange={(e) => patchCreateForm({ packageName: e.target.value })}
+                        // Choosing a package that includes the guest face album
+                        // turns the tier on. Without this the admin picks
+                        // המושלמת and is told "no face recognition", which is
+                        // true (the tier drives it) and useless as an answer.
+                        onChange={(e) => {
+                          const title = e.target.value;
+                          const pkg = packageOptions.find((p) => p.title === title);
+                          const includesFaces = !!pkg && PACKAGES_WITH_FACE_ALBUMS.has(pkg.key);
+                          patchCreateForm({
+                            packageName: title,
+                            ...(includesFaces ? { flashTier: 'plus' as const } : {}),
+                          });
+                        }}
                         className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm bg-white"
                       >
                         <option value="">— none —</option>
@@ -1438,14 +1471,21 @@ export const AdminEvents = () => {
                         className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
                       />
                       <span className="text-sm text-slate-700">
-                        Flash Plus
+                        Face albums &amp; video
                         <span className="block text-xs text-slate-400">
                           {createForm.isPaid
-                            ? 'Always on for a paid event — face recognition is what was paid for.'
-                            : 'Face-recognition albums, video, and a longer film roll per guest.'}
+                            ? 'Always on for a paid event — this is what was paid for.'
+                            : 'Guest sorting, the WhatsApp guest album, video, and a longer film roll. Included in החכמה and המושלמת.'}
                         </span>
                       </span>
                     </label>
+
+                    {createForm.packageName === 'האוספת' && createForm.flashTier === 'plus' && (
+                      <p className="ml-7 -mt-1 text-xs text-amber-700">
+                        האוספת does not include guest face albums — the server refuses face matching
+                        for this package whatever is ticked here.
+                      </p>
+                    )}
 
                     <label className="flex items-start gap-3 cursor-pointer select-none">
                       <input
