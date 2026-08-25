@@ -64,6 +64,13 @@ const PACKAGES_WITH_FACE_ALBUMS = new Set(['here_i_am', 'unlimited']);
  * reads one URL off the form and the couple is handed a different one, which
  * 404s — so any change here belongs in events.service.ts too.
  */
+/**
+ * Nothing we put in a link may end in a digit: pasted down a spreadsheet column,
+ * Excel's fill handle treats a trailing number as a series and renumbers it into
+ * an event that belongs to somebody else. Mirrors endsInDigit on the server.
+ */
+const endsInDigit = (value: string) => /[0-9]$/.test(value || '');
+
 const previewSlug = (raw: string) =>
   raw
     .trim()
@@ -946,7 +953,7 @@ export const AdminEvents = () => {
               Leave blank to follow the tier. A number here overrides it for this event only —
               guests will get <span className="font-semibold">{dispLimit.trim() === '' ? (dispModalEvent.flashTier === 'plus' ? 24 : 8) : Math.min(200, parseInt(dispLimit, 10) || 0)}</span> shots.
             </p>
-            <p className="text-xs text-slate-400 mb-4">Guests shoot at: <span className="font-mono">/camera/{dispModalEvent.eventCode}</span></p>
+            <p className="text-xs text-slate-400 mb-4" dir="ltr">Guests shoot at: <span className="font-mono">/camera/{dispModalEvent.customSlug || dispModalEvent.eventCode}</span></p>
             <div className="flex gap-2">
               <button onClick={() => setDispModalEvent(null)} className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
               <button onClick={handleSaveDisposable} disabled={dispSaving} className="flex-1 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50">{dispSaving ? 'Saving…' : 'Save'}</button>
@@ -1014,8 +1021,9 @@ export const AdminEvents = () => {
                   { label: 'Gallery', url: `${base}/gallery/${id}` },
                   { label: 'Guest Upload', url: `${base}/guest/${id}/upload` },
                   { label: 'Guest Selfie', url: `${base}/guest/${id}/selfie` },
-                  // Disposable camera uses the event code (not the slug).
-                  { label: 'Disposable Camera', url: `${base}/camera/${slugModalEvent.eventCode}` },
+                  // The camera resolves a slug just as it resolves a code, so
+                  // guests see the couple's names rather than eight characters.
+                  { label: 'Disposable Camera', url: `${base}/camera/${id}` },
                   // Couple login screen: the couple enters their phone or email
                   // and drops into their gallery (gallery-only owner view).
                   { label: 'Couple Link', url: `${base}/gallery-login` },
@@ -1261,7 +1269,7 @@ export const AdminEvents = () => {
                     { label: 'Guest Upload', url: `${base}/guest/${id}/upload` },
                     { label: 'Guest Selfie', url: `${base}/guest/${id}/selfie` },
                     ...(createdEvent.disposableEnabled
-                      ? [{ label: 'Disposable Camera', url: `${base}/camera/${createdEvent.eventCode}` }]
+                      ? [{ label: 'Disposable Camera', url: `${base}/camera/${id}` }]
                       : []),
                     // The first thing an admin sends after an off-platform sale.
                     { label: 'Couple Login', url: `${base}/gallery-login` },
@@ -1452,9 +1460,15 @@ export const AdminEvents = () => {
                         mynight.co.il/gallery/{previewSlug(createForm.customSlug) || '...'}
                       </p>
                     )}
+                    {endsInDigit(previewSlug(createForm.customSlug)) && (
+                      <p className="text-xs text-red-600 mt-1">
+                        A link must not end in a number — Excel renumbers those when you drag a
+                        column of links. End it with a letter.
+                      </p>
+                    )}
                     <p className="text-xs text-slate-400 mt-1">
-                      English letters, numbers and hyphens only, minimum 3 — Hebrew is stripped, so
-                      leave this empty to get the names transliterated automatically.
+                      English letters, numbers and hyphens only, minimum 3, never ending in a
+                      number. Leave empty to get the names transliterated automatically.
                     </p>
                   </div>
 
