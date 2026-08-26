@@ -5,8 +5,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { disposableApi, type DisposableStatus, type DisposableShot } from '@/services/api/disposable.api';
 import { API_BASE_URL } from '@/config/api';
-import { renderFilmFrame, captureStill } from './filmFilter';
-import { stringsFor } from './strings';
+import { renderFilmFrame, captureStill, looksBlank } from './filmFilter';
+import { stringsFor, CAMERA_STRINGS } from './strings';
 
 const MAX_VIDEO_MS = 8000;
 
@@ -79,6 +79,11 @@ export const DisposableCamera = () => {
   const [preview, setPreview] = useState<DisposableShot | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  // A capture in flight. The ref is what the guard reads (synchronous, so rapid
+  // taps cannot slip between a setState and its re-render); the state only dims
+  // the shutter so the guest can see why the second tap did nothing.
+  const capturingRef = useRef(false);
+  const [capturing, setCapturing] = useState(false);
   const [name, setName] = useState(() => localStorage.getItem('mynight_guest_name') || '');
   const [flash, setFlash] = useState(false);
   const [mode, setMode] = useState<Mode>('photo');
@@ -735,9 +740,7 @@ export const DisposableCamera = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, deviceId, name]);
 
-  const takePhoto = useCallback(async () => {
-    const video = videoRef.current;
-    if (!video || remainingRef.current <= 0) return;
+  const runCapture = useCallback(async (video: HTMLVideoElement) => {
 
     // Never burn a shot on a frame that isn't there.
     //
@@ -821,6 +824,20 @@ export const DisposableCamera = () => {
       // (Android → sensor photo res), else the video frame (iOS/Safari). Full res,
       // downscaled with high-quality resampling only past the 4096 canvas ceiling.
       const still = track ? await captureStill(track) : null;
+
+      // Last line of defence: refuse a frame with nothing in it.
+      //
+      // The freshness check above proves frames are ARRIVING; it cannot prove
+      // the one the sensor just handed back was painted. A blank still is
+      // otherwise developed, uploaded, and charged to the roll as a photograph
+      // — the guest loses the shot and gets a black square for it. Give the shot
+      // back and let them press again rather than spend it on nothing.
+      if (looksBlank(still ?? video)) {
+        camLog('capture-blank', `still=${!!still}`);
+        still?.close();
+        throw new Error('blank frame');
+      }
+
       const blob = await renderFilmFrame(still ?? video, { maxWidth: 4096, dateStamp: false, zoom, mirror });
       still?.close();
       if (flashMode && track) {
@@ -843,6 +860,37 @@ export const DisposableCamera = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadShot, flashMode, zoom, facing, camLog]);
+
+  const takePhoto = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video || remainingRef.current <= 0) return;
+
+    // ONE capture at a time.
+    //
+    // The shutter is a plain button, so N rapid taps used to start N concurrent
+    // runs, each building its own ImageCapture on the SAME track and calling
+    // takePhoto(). Android answers those overlapping requests with frames it has
+    // not painted yet: at a live wedding this produced fourteen 1440x2560 images
+    // of 22KB each — 0.05 bits per pixel, solid black — taken 21ms apart, and
+    // every one of them burned a shot off that guest's roll.
+    //
+    // Extra taps are DROPPED rather than queued: a queued tap would still spend
+    // a shot the guest never meant to spend.
+    if (capturingRef.current) {
+      camLog('capture-ignored', 'a capture is already in flight');
+      return;
+    }
+    capturingRef.current = true;
+    setCapturing(true);
+    try {
+      await runCapture(video);
+    } finally {
+      capturingRef.current = false;
+      setCapturing(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runCapture, camLog]);
+
 
   const stopVideo = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') recorderRef.current.stop();
@@ -1099,9 +1147,37 @@ export const DisposableCamera = () => {
   );
 
   // ---- Non-camera screens ----
-  if (phase === 'loading') return <Screen dir={t.dir}><p className="text-white/70">{t.loading}</p></Screen>;
+  // Wordless on purpose. This is the one screen that renders BEFORE the status
+  // call answers, so the event's language is not known yet — any sentence here
+  // would be a guess, and an English guest was being shown "רק רגע…".
+  if (phase === 'loading') {
+    return (
+      <Screen>
+        <div className="flex items-center gap-2" aria-label="Loading">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="w-2.5 h-2.5 rounded-full bg-white/70 animate-pulse"
+              style={{ animationDelay: `${i * 160}ms` }}
+            />
+          ))}
+        </div>
+      </Screen>
+    );
+  }
+  // By now the status call has answered, so the language is known.
   if (phase === 'disabled') return <Screen dir={t.dir}><h1 className="text-2xl font-bold mb-2">{t.closedTitle}</h1><p className="text-white/60">{t.closedBody}</p></Screen>;
-  if (phase === 'error') return <Screen dir={t.dir}><h1 className="text-2xl font-bold mb-2">{t.errorTitle}</h1><p className="text-white/60">{t.errorBody}</p></Screen>;
+  // The only screen we reach WITHOUT ever learning the language — the lookup
+  // itself failed. Say it in both rather than guess wrong for half the guests.
+  if (phase === 'error') {
+    return (
+      <Screen>
+        <h1 className="text-2xl font-bold mb-2">{CAMERA_STRINGS.he.errorTitle} · {CAMERA_STRINGS.en.errorTitle}</h1>
+        <p className="text-white/60" dir="rtl">{CAMERA_STRINGS.he.errorBody}</p>
+        <p className="text-white/60 mt-1" dir="ltr">{CAMERA_STRINGS.en.errorBody}</p>
+      </Screen>
+    );
+  }
 
   if (phase === 'name') {
     return (
@@ -1315,8 +1391,12 @@ export const DisposableCamera = () => {
           <div className="flex flex-col items-center gap-3">
             <button
               onClick={() => (mode === 'photo' ? takePhoto() : recording ? stopVideo() : startVideo())}
+              // Dimmed and inert while a shot is developing, so a guest who taps
+              // again can see the camera is busy rather than believing nothing
+              // happened and tapping harder.
+              disabled={capturing}
               aria-label={t.shutterLabel}
-              className="relative w-[76px] h-[76px] rounded-full active:scale-90 transition-transform"
+              className={`relative w-[76px] h-[76px] rounded-full transition-transform ${capturing ? 'opacity-50' : 'active:scale-90'}`}
             >
               {mode === 'video' && recording && (
                 <svg className="absolute inset-0 w-[76px] h-[76px] -rotate-90" viewBox="0 0 80 80">

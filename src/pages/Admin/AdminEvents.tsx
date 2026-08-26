@@ -168,6 +168,7 @@ export const AdminEvents = () => {
   const [statusTier, setStatusTier] = useState<'basic' | 'plus'>('basic');
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusError, setStatusError] = useState('');
+  const [statusPackage, setStatusPackage] = useState('');
 
   useEffect(() => {
     loadEvents(1);
@@ -249,27 +250,35 @@ export const AdminEvents = () => {
     return { min: iso(back), max: iso(forward) };
   })();
 
+  /**
+   * The package list, fetched once and shared by the create and status dialogs.
+   * A failure is surfaced rather than swallowed: packageName decides the price
+   * and gates guest uploads and face albums, so an empty dropdown must not be
+   * mistaken for "this event has no package".
+   */
+  const loadPackages = async () => {
+    if (packageOptions.length > 0) return;
+    try {
+      setPackagesFailed(false);
+      const res = await packagesApi.getAllAdmin();
+      setPackageOptions((res.data || []).filter((p) => p.isActive).sort((a, b) => a.order - b.order));
+    } catch {
+      setPackagesFailed(true);
+    }
+  };
+
   const openCreateModal = async () => {
     setCreateForm(EMPTY_CREATE_FORM);
     setCreateError('');
     setCreatedEvent(null);
     setCreateOpen(true);
-    if (packageOptions.length === 0) {
-      try {
-        setPackagesFailed(false);
-        const res = await packagesApi.getAllAdmin();
-        setPackageOptions((res.data || []).filter((p) => p.isActive).sort((a, b) => a.order - b.order));
-      } catch {
-        // Say so rather than showing an empty dropdown: packageName gates real
-        // behaviour (face matching, guest upload) and there is no way to set it
-        // after creation, so "no packages listed" must not read as "no packages".
-        setPackagesFailed(true);
-      }
-    }
+    await loadPackages();
   };
 
-  const openStatusModal = (event: AdminEvent) => {
+  const openStatusModal = async (event: AdminEvent) => {
     setStatusModalEvent(event);
+    setStatusPackage(event.packageName || '');
+    await loadPackages();
     setStatusPaid(!!event.isPaid);
     setStatusTier(event.flashTier === 'plus' ? 'plus' : 'basic');
     setStatusError('');
@@ -280,7 +289,11 @@ export const AdminEvents = () => {
     setStatusSaving(true);
     setStatusError('');
     try {
-      await adminApi.updateEventStatus(statusModalEvent._id, { isPaid: statusPaid, flashTier: statusTier });
+      await adminApi.updateEventStatus(statusModalEvent._id, {
+        isPaid: statusPaid,
+        flashTier: statusTier,
+        packageName: statusPackage,
+      });
       setStatusModalEvent(null);
       setSuccessToast('Event status updated');
       setTimeout(() => setSuccessToast(null), 3000);
@@ -1204,6 +1217,36 @@ export const AdminEvents = () => {
             <h3 className="text-lg font-semibold text-slate-900 mb-1">Event status</h3>
             <p className="text-sm text-slate-500 mb-4">
               {statusModalEvent.name} — {statusModalEvent.eventCode}
+            </p>
+
+            <label className="block text-sm font-medium text-slate-700 mb-1">Package</label>
+            <select
+              value={statusPackage}
+              onChange={(e) => {
+                const title = e.target.value;
+                const pkg = packageOptions.find((p) => p.title === title);
+                setStatusPackage(title);
+                // Same rule as creation: a package that includes face albums
+                // turns the tier on, so the two cannot disagree.
+                if (pkg && PACKAGES_WITH_FACE_ALBUMS.has(pkg.key)) setStatusTier('plus');
+                setStatusError('');
+              }}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm bg-white mb-1"
+            >
+              <option value="">— none —</option>
+              {packageOptions.map((p) => (
+                <option key={p._id} value={p.title}>{p.title} — ₪{p.price}</option>
+              ))}
+              {/* A package that has since been renamed or deactivated still has
+                  to be listed, or opening this dialog would silently offer to
+                  clear it. */}
+              {statusPackage && !packageOptions.some((p) => p.title === statusPackage) && (
+                <option value={statusPackage}>{statusPackage} (not in the current list)</option>
+              )}
+            </select>
+            <p className="text-xs text-slate-400 mb-4">
+              Decides the price a couple is charged, and whether guests can upload and get face
+              albums. Changing it does not move any money that has already been taken.
             </p>
 
             <label className="flex items-start gap-3 cursor-pointer select-none mb-3">

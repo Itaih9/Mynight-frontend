@@ -20,6 +20,40 @@ export type FrameSource = HTMLVideoElement | ImageBitmap | HTMLCanvasElement;
  * Feature detection cannot express "present but breaks the stream", and this
  * exists purely as an Android quality win, so it asks for Android by name.
  */
+/**
+ * Is this frame a flat, featureless rectangle — i.e. nothing was painted?
+ *
+ * Deliberately strict: it returns true ONLY when every sampled pixel is
+ * identical. A dim reception is dark but never uniform — sensor noise alone
+ * guarantees variation — so a real low-light photo cannot trip this. What does
+ * trip it is the blank frame a camera hands back when it was asked for a still
+ * before it was ready, which is otherwise uploaded and charged to the guest's
+ * roll as if it were a photograph.
+ */
+export function looksBlank(source: CanvasImageSource): boolean {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 16;
+    c.height = 16;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return false;
+    ctx.drawImage(source as any, 0, 0, 16, 16);
+    const { data } = ctx.getImageData(0, 0, 16, 16);
+    let min = 255;
+    let max = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      // Luma is enough: a blank frame is flat in every channel at once.
+      const y = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+      if (y < min) min = y;
+      if (y > max) max = y;
+    }
+    return max - min === 0;
+  } catch {
+    // Canvas unavailable or tainted — never block a shot on a failed check.
+    return false;
+  }
+}
+
 export async function captureStill(track: MediaStreamTrack): Promise<ImageBitmap | null> {
   try {
     if (!/Android/i.test(navigator.userAgent)) return null;
