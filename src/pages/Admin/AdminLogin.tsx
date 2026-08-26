@@ -21,7 +21,13 @@ export const AdminLogin = () => {
     setError('');
     setLoading(true);
     try {
-      await adminApi.login(email, password);
+      const result = await adminApi.login(email, password);
+      // This browser was trusted from this network inside the window, so the
+      // password was enough and we are already signed in.
+      if (!result.requiresOtp) {
+        navigate('/admin/dashboard');
+        return;
+      }
       setStep('otp');
     } catch (err: any) {
       setError(err.response?.data?.message || err.response?.data?.error || 'Login failed');

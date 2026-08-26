@@ -3,6 +3,10 @@ import { API_BASE_URL } from '@/config/api';
 import type { ApiResponse } from '@/types/api.types';
 
 const ADMIN_TOKEN_KEY = 'admin-token';
+// Identifies this browser to the trusted-device check. Deliberately NOT cleared
+// on logout: logging out should not cost you the code-free window you already
+// earned on this machine. It is cleared server-side by a password change.
+const ADMIN_DEVICE_KEY = 'admin-device';
 
 const adminAxios = axios.create({
   baseURL: API_BASE_URL,
@@ -42,12 +46,18 @@ export interface AdminLoginResponse {
     name: string;
   };
   token: string;
+  /** Identifies this browser on the next sign-in; stored, never displayed. */
+  deviceToken?: string;
+  trustedUntil?: string;
 }
 
-export interface AdminLoginOtpRequestResponse {
-  email: string;
-  requiresOtp: true;
-}
+/**
+ * The login step answers one of two ways: either it sent a code, or this
+ * browser was already trusted and we are signed in.
+ */
+export type AdminLoginStepResponse =
+  | { requiresOtp: true; email: string; emailDelivered?: boolean }
+  | ({ requiresOtp: false } & AdminLoginResponse);
 
 export interface DashboardStats {
   users: { total: number };
@@ -374,12 +384,19 @@ export const adminApi = {
     localStorage.removeItem(ADMIN_TOKEN_KEY);
   },
 
-  login: async (email: string, password: string): Promise<AdminLoginOtpRequestResponse> => {
-    const response = await adminAxios.post<ApiResponse<AdminLoginOtpRequestResponse>>(
+  /**
+   * Step one. Sends the device token if this browser has one, so a sign-in from
+   * the same network inside the trust window comes straight back signed in
+   * rather than emailing a code.
+   */
+  login: async (email: string, password: string): Promise<AdminLoginStepResponse> => {
+    const response = await adminAxios.post<ApiResponse<AdminLoginStepResponse>>(
       '/api/admin/login',
-      { email, password }
+      { email, password, deviceToken: localStorage.getItem(ADMIN_DEVICE_KEY) || undefined }
     );
-    return response.data.data!;
+    const data = response.data.data!;
+    if (!data.requiresOtp && data.token) adminApi.setToken(data.token);
+    return data;
   },
 
   verifyOtp: async (email: string, otp: string): Promise<AdminLoginResponse> => {
@@ -389,6 +406,8 @@ export const adminApi = {
     );
     const data = response.data.data!;
     adminApi.setToken(data.token);
+    // Remember this browser so the next sign-in can skip the code.
+    if (data.deviceToken) localStorage.setItem(ADMIN_DEVICE_KEY, data.deviceToken);
     return data;
   },
 
