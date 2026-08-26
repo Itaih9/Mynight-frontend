@@ -92,6 +92,8 @@ export interface AdminEvent {
   disposableEnabled?: boolean;
   /** Per-event override of the roll length; absent means the tier decides. */
   disposableShotLimit?: number | null;
+  /** Language the guest camera speaks. Hebrew unless set otherwise. */
+  cameraLanguage?: 'he' | 'en';
   photoCount: number;
   userId: {
     _id: string;
@@ -117,6 +119,7 @@ export interface AdminEvent {
 
 export interface DisposableState {
   disposableEnabled?: boolean;
+  cameraLanguage?: 'he' | 'en';
   /** The per-event override. null means "no override — use the tier". */
   disposableShotLimit?: number | null;
   /** What a guest actually gets: the override if set, otherwise the tier. */
@@ -692,7 +695,7 @@ export const adminApi = {
     eventId: string,
     // shotLimit: a positive number overrides the tier's roll length, null clears
     // the override, undefined leaves it untouched.
-    data: { enabled?: boolean; shotLimit?: number | null }
+    data: { enabled?: boolean; shotLimit?: number | null; language?: 'he' | 'en' }
   ): Promise<DisposableState> => {
     const response = await adminAxios.patch<ApiResponse<DisposableState>>(
       `/api/admin/events/${eventId}/disposable`,

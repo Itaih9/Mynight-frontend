@@ -132,6 +132,7 @@ export const AdminEvents = () => {
   // Kept as a string so "" can mean "no override, use the tier" — a number
   // could not express the difference between blank and a real choice.
   const [dispLimit, setDispLimit] = useState('');
+  const [dispLanguage, setDispLanguage] = useState<'he' | 'en'>('he');
   const [dispSaving, setDispSaving] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
@@ -399,6 +400,7 @@ export const AdminEvents = () => {
     // number here would let a Save that only meant to toggle "enabled" pin the
     // roll length and quietly cut a Plus event from 24 shots down to it.
     setDispLimit(event.disposableShotLimit ? String(event.disposableShotLimit) : '');
+    setDispLanguage(event.cameraLanguage === 'en' ? 'en' : 'he');
   };
 
   /** What a guest gets today: the event's own override, else the tier default. */
@@ -413,6 +415,7 @@ export const AdminEvents = () => {
         enabled: dispEnabled,
         // Blank clears the override rather than meaning zero.
         shotLimit: dispLimit.trim() === '' ? null : parseInt(dispLimit, 10),
+        language: dispLanguage,
       });
       await loadEvents(pagination.page);
       setDispModalEvent(null);
@@ -956,6 +959,28 @@ export const AdminEvents = () => {
               <input type="checkbox" checked={dispEnabled} onChange={(e) => setDispEnabled(e.target.checked)} className="w-5 h-5" />
               <span className="text-sm font-medium text-slate-700">Enable disposable camera for this event</span>
             </label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Camera language</label>
+            <div className="flex gap-2 mb-1">
+              {([['he', 'עברית'], ['en', 'English']] as const).map(([code, label]) => (
+                <button
+                  key={code}
+                  type="button"
+                  onClick={() => setDispLanguage(code)}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    dispLanguage === code
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400 mb-3">
+              What the guests' camera says, and which way it reads. A guest handed a language they
+              don't read simply doesn't take the photo.
+            </p>
+
             <label className="block text-sm font-medium text-slate-700 mb-1">Shots per guest</label>
             <input
               type="number"

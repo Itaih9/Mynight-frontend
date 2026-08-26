@@ -6,6 +6,7 @@ import confetti from 'canvas-confetti';
 import { disposableApi, type DisposableStatus, type DisposableShot } from '@/services/api/disposable.api';
 import { API_BASE_URL } from '@/config/api';
 import { renderFilmFrame, captureStill } from './filmFilter';
+import { stringsFor } from './strings';
 
 const MAX_VIDEO_MS = 8000;
 
@@ -69,6 +70,10 @@ export const DisposableCamera = () => {
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [status, setStatus] = useState<DisposableStatus | null>(null);
+  // Which language this wedding's camera speaks, and therefore how it reads.
+  // Hebrew until the status call says otherwise, so the first paint is never a
+  // language the guest then watches swap under them.
+  const t = stringsFor(status?.language);
   const [remaining, setRemaining] = useState(0);
   const [shots, setShots] = useState<DisposableShot[]>([]);
   const [preview, setPreview] = useState<DisposableShot | null>(null);
@@ -676,7 +681,7 @@ export const DisposableCamera = () => {
   const copyPageLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      showToast('הקישור הועתק — הדביקו בדפדפן');
+      showToast(t.linkCopied);
     } catch {
       showToast(window.location.href);
     }
@@ -699,7 +704,7 @@ export const DisposableCamera = () => {
       const fileName = `shot-${Date.now()}.${ext}`;
       const presign = await disposableApi.presignedUrl(code, deviceId, fileName, mimeType);
       await disposableApi.uploadToS3(presign.data!.uploadUrl, blob);
-      const res = await disposableApi.complete(code, deviceId, presign.data!.key, name || 'אורח', { size: blob.size, mimeType });
+      const res = await disposableApi.complete(code, deviceId, presign.data!.key, name || t.guest, { size: blob.size, mimeType });
       const done = res.data!;
       // Keep the instant local poster for videos — the server's /thumbnails/ copy
       // is generated async by Lambda and may 404 (black) for a while.
@@ -715,12 +720,12 @@ export const DisposableCamera = () => {
       const msg = e?.response?.data?.error || e?.response?.data?.message || '';
       setShots((s) => s.filter((x) => x._id !== tempId)); // drop the failed optimistic shot
       URL.revokeObjectURL(localUrl);
-      if (msg.includes('פילם')) {
+      if (msg.includes('פילם') || msg.toLowerCase().includes('out of film')) {
         setRem(0); // server says the roll is out — trust it
       } else {
         setRem(remainingRef.current + 1); // refund
         setFinishing(false);
-        showToast('צילום לא נשלח, נסו שוב');
+        showToast(t.uploadFailed);
       }
     } finally {
       pendingUploadsRef.current -= 1;
@@ -752,7 +757,7 @@ export const DisposableCamera = () => {
     const framesStale = Date.now() - lastFrameAtRef.current > 1500;
     if (!video.videoWidth || !liveTrack || liveTrack.muted || liveTrack.readyState !== 'live' || framesStale) {
       camLog('capture-blocked', `muted=${liveTrack?.muted} state=${liveTrack?.readyState} vw=${video.videoWidth} stale=${framesStale}`);
-      showToast('רגע, המצלמה מתעוררת…');
+      showToast(t.cameraWaking);
       autoRestartRef.current('capture-blocked-restart');
       return;
     }
@@ -834,7 +839,7 @@ export const DisposableCamera = () => {
       setShots((s) => s.filter((x) => x._id !== tempId)); // drop the placeholder
       setRem(remainingRef.current + 1); // give the shot back
       setFinishing(false);
-      showToast('צילום נכשל, נסו שוב');
+      showToast(t.shotFailed);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadShot, flashMode, zoom, facing, camLog]);
@@ -852,7 +857,7 @@ export const DisposableCamera = () => {
     const framesStale = Date.now() - lastFrameAtRef.current > 1500;
     if (!liveTrack || liveTrack.muted || liveTrack.readyState !== 'live' || framesStale) {
       camLog('capture-blocked', `video muted=${liveTrack?.muted} state=${liveTrack?.readyState} stale=${framesStale}`);
-      showToast('רגע, המצלמה מתעוררת…');
+      showToast(t.cameraWaking);
       autoRestartRef.current('capture-blocked-restart');
       return;
     }
@@ -930,7 +935,7 @@ export const DisposableCamera = () => {
         micTrack?.stop();
         if (raf) cancelAnimationFrame(raf);
         canvasTrack?.stop();
-        showToast('הקלטת וידאו לא נתמכת במכשיר');
+        showToast(t.videoUnsupported);
         return;
       }
     }
@@ -1017,7 +1022,7 @@ export const DisposableCamera = () => {
       setShots((s) => s.filter((x) => x._id !== shot._id)); // note: shot stays spent, remaining unchanged
       setPreview(null);
     } catch {
-      showToast('מחיקה נכשלה');
+      showToast(t.deleteFailed);
     } finally {
       setDeleting(false);
     }
@@ -1061,7 +1066,7 @@ export const DisposableCamera = () => {
 
   // Enlarged shot with a (non-refunding) delete — shared by the strip and review.
   const previewOverlay = preview && (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" dir="rtl">
+    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" dir={t.dir}>
       <div
         onTouchStart={onGalleryTouchStart}
         onTouchEnd={onGalleryTouchEnd}
@@ -1080,13 +1085,13 @@ export const DisposableCamera = () => {
       </div>
       <div className="px-6 pb-8 pt-2">
         <button onClick={() => downloadShot(preview)} className="w-full py-3.5 rounded-2xl bg-white text-black font-bold flex items-center justify-center gap-2 mb-3 active:scale-[0.99] transition-transform">
-          <Download size={18} /> הורדה לטלפון
+          <Download size={18} /> {t.downloadToPhone}
         </button>
-        <p className="text-center text-white/40 text-xs mb-3">מחיקה מסירה את הצילום — אבל לא מחזירה לך צילום</p>
+        <p className="text-center text-white/40 text-xs mb-3">{t.deleteNoRefund}</p>
         <div className="flex gap-3">
-          <button onClick={() => setPreview(null)} className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-bold">חזרה</button>
+          <button onClick={() => setPreview(null)} className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-bold">{t.back}</button>
           <button onClick={() => deleteShot(preview)} disabled={deleting} className="flex-1 py-3.5 rounded-2xl bg-red-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50">
-            <Trash2 size={18} /> {deleting ? 'מוחק…' : 'מחיקה'}
+            <Trash2 size={18} /> {deleting ? t.deleting : t.deleteAction}
           </button>
         </div>
       </div>
@@ -1094,19 +1099,19 @@ export const DisposableCamera = () => {
   );
 
   // ---- Non-camera screens ----
-  if (phase === 'loading') return <Screen><p className="text-white/70">רק רגע…</p></Screen>;
-  if (phase === 'disabled') return <Screen><h1 className="text-2xl font-bold mb-2">המצלמה סגורה</h1><p className="text-white/60">האירוע הזה לא הפעיל את המצלמה החד-פעמית.</p></Screen>;
-  if (phase === 'error') return <Screen><h1 className="text-2xl font-bold mb-2">אופס</h1><p className="text-white/60">לא מצאנו את האירוע. בדקו את הקישור.</p></Screen>;
+  if (phase === 'loading') return <Screen dir={t.dir}><p className="text-white/70">{t.loading}</p></Screen>;
+  if (phase === 'disabled') return <Screen dir={t.dir}><h1 className="text-2xl font-bold mb-2">{t.closedTitle}</h1><p className="text-white/60">{t.closedBody}</p></Screen>;
+  if (phase === 'error') return <Screen dir={t.dir}><h1 className="text-2xl font-bold mb-2">{t.errorTitle}</h1><p className="text-white/60">{t.errorBody}</p></Screen>;
 
   if (phase === 'name') {
     return (
-      <Screen>
+      <Screen dir={t.dir}>
         <div className="w-full max-w-xs text-center">
           <div className="text-5xl mb-4">📷</div>
           <h1 className="text-3xl font-black mb-1">{status?.coupleName}</h1>
-          <p className="text-white/60 mb-8">{status?.shotLimit} צילומים. בלי לראות, בלי לחזור אחורה — כמו פעם.</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="איך קוראים לך?" className="w-full px-5 py-4 rounded-2xl bg-white/10 border border-white/20 text-white text-center text-lg outline-none focus:border-white/50 mb-4" />
-          <button onClick={() => { if (name.trim()) { localStorage.setItem('mynight_guest_name', name.trim()); setPhase('ready'); } }} disabled={!name.trim()} className="w-full py-4 rounded-2xl bg-white text-black font-bold text-lg disabled:opacity-40">קדימה לצלם</button>
+          <p className="text-white/60 mb-8">{t.introShots(status?.shotLimit ?? 0)}</p>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t.namePlaceholder} className="w-full px-5 py-4 rounded-2xl bg-white/10 border border-white/20 text-white text-center text-lg outline-none focus:border-white/50 mb-4" />
+          <button onClick={() => { if (name.trim()) { localStorage.setItem('mynight_guest_name', name.trim()); setPhase('ready'); } }} disabled={!name.trim()} className="w-full py-4 rounded-2xl bg-white text-black font-bold text-lg disabled:opacity-40">{t.start}</button>
         </div>
       </Screen>
     );
@@ -1114,14 +1119,14 @@ export const DisposableCamera = () => {
 
   if (phase === 'done') {
     return (
-      <div className="fixed inset-0 bg-neutral-950 text-white flex flex-col items-center px-6" dir="rtl">
+      <div className="fixed inset-0 bg-neutral-950 text-white flex flex-col items-center px-6" dir={t.dir}>
         <div className="flex-1 flex flex-col items-center justify-center text-center max-w-xs">
           <div className="text-6xl mb-5">💛</div>
-          <p className="text-white/85 text-lg leading-relaxed mb-4">תודה שצילמתם! 🎞️ כל רגע שתפסתם עכשיו שמור — חלק מהסיפור של הערב הזה.</p>
-          {savedToPhone && <p className="text-white/50 text-sm mb-6">📲 הצילומים נשמרים גם בטלפון שלך</p>}
+          <p className="text-white/85 text-lg leading-relaxed mb-4">{t.thanks}</p>
+          {savedToPhone && <p className="text-white/50 text-sm mb-6">{t.savedToPhone}</p>}
           {/* CTA to the site — left-pointing arrow sits to the LEFT of the label */}
           <a href="/" className="inline-flex items-center gap-2 px-7 py-3 rounded-full bg-white text-black font-bold text-lg active:scale-95 transition-transform">
-            <span>לאתר</span>
+            <span>{t.toSite}</span>
             <ArrowLeft size={20} />
           </a>
         </div>
@@ -1133,16 +1138,16 @@ export const DisposableCamera = () => {
   // ---- Review gallery (roll ran out) ----
   if (phase === 'review') {
     return (
-      <div className="fixed inset-0 bg-neutral-950 text-white flex flex-col" dir="rtl">
+      <div className="fixed inset-0 bg-neutral-950 text-white flex flex-col" dir={t.dir}>
         <header className="px-5 pt-7 pb-3 text-center shrink-0">
           <div className="text-4xl mb-1">🎞️</div>
-          <h1 className="text-2xl font-black mb-1">הפילם נגמר!</h1>
-          <p className="text-white/55 text-sm">{shots.length} צילומים בדרך לאלבום של {status?.coupleName}. אפשר למחוק מה שלא יצא — אבל זה לא יחזיר צילומים.</p>
+          <h1 className="text-2xl font-black mb-1">{t.rollDone}</h1>
+          <p className="text-white/55 text-sm">{t.rollDoneBody(shots.length, status?.coupleName ?? '')}</p>
         </header>
 
         <div className="flex-1 overflow-y-auto px-3 pb-4 min-h-0">
           {shots.length === 0 ? (
-            <p className="text-center text-white/40 mt-16">אין צילומים להצגה.</p>
+            <p className="text-center text-white/40 mt-16">{t.nothingToShow}</p>
           ) : (
             <div className="grid grid-cols-3 gap-1.5">
               {shots.map((shot) => (
@@ -1156,7 +1161,7 @@ export const DisposableCamera = () => {
 
         <footer className="px-5 pt-3 pb-7 shrink-0 border-t border-white/10">
           <button onClick={finishRoll} className="w-full py-4 rounded-2xl bg-white text-black font-black text-lg active:scale-[0.99] transition-transform inline-flex items-center justify-center gap-2">
-            <span>סיום</span>
+            <span>{t.finish}</span>
             {/* Same checkmark as the Punish app's Icon (name="check") — stroked, round caps, no fill. */}
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M5 12.5 L10 17.5 L19 7" />
@@ -1171,9 +1176,9 @@ export const DisposableCamera = () => {
 
   // ---- Viewfinder ----
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden select-none flex flex-col" dir="rtl">
+    <div className="fixed inset-0 bg-black overflow-hidden select-none flex flex-col" dir={t.dir}>
       {/* Flash — icon only, top-left of the screen */}
-      <button onClick={() => setFlashMode((v) => !v)} aria-label="פלאש" className="absolute top-3 left-4 z-30 p-1 active:scale-90 transition-transform">
+      <button onClick={() => setFlashMode((v) => !v)} aria-label={t.flash} className="absolute top-3 left-4 z-30 p-1 active:scale-90 transition-transform">
         {flashMode ? <Zap size={24} className="fill-yellow-400 text-yellow-400" /> : <ZapOff size={24} className="text-white/80" />}
       </button>
 
@@ -1235,7 +1240,7 @@ export const DisposableCamera = () => {
           {finishing && (
             <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3 backdrop-blur-sm">
               <div className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              <p className="text-white/80 text-sm">מפתח את הצילומים</p>
+              <p className="text-white/80 text-sm">{t.developing}</p>
               {status?.coupleName && <p className="text-white font-bold text-3xl mt-1 px-6 text-center leading-tight">{status.coupleName}</p>}
             </div>
           )}
@@ -1244,26 +1249,26 @@ export const DisposableCamera = () => {
           {camStuck && (
             <div className="absolute inset-0 z-20 bg-black/85 flex flex-col items-center justify-center gap-3 backdrop-blur-sm px-8 text-center">
               <p className="text-white font-bold">
-                {camError === 'denied' ? 'צריך הרשאה למצלמה'
-                  : camError === 'busy' ? 'המצלמה תפוסה'
-                  : camError === 'notfound' ? 'לא נמצאה מצלמה'
-                  : camError === 'unsupported' ? 'הדפדפן חוסם את המצלמה'
-                  : 'לא הצלחנו להפעיל את המצלמה'}
+                {camError === 'denied' ? t.camDenied
+                  : camError === 'busy' ? t.camBusy
+                  : camError === 'notfound' ? t.camNotFound
+                  : camError === 'unsupported' ? t.camUnsupported
+                  : t.camGeneric}
               </p>
               <p className="text-white/60 text-sm leading-relaxed">
-                {camError === 'denied' ? 'אפשרו גישה למצלמה בהגדרות האתר בדפדפן (סמל המנעול ליד הכתובת) ונסו שוב.'
-                  : camError === 'busy' ? 'נראה שאפליקציה אחרת משתמשת במצלמה. סגרו אותה ונסו שוב.'
-                  : camError === 'unsupported' ? 'פתחו את הקישור ב-Chrome או Safari כדי לצלם.'
-                  : IN_APP_BROWSER ? 'נפתח דרך אפליקציה? עדיף לפתוח את הקישור בדפדפן (Chrome / Safari).'
-                  : 'לחצו להפעלה מחדש של המצלמה.'}
+                {camError === 'denied' ? t.camDeniedHelp
+                  : camError === 'busy' ? t.camBusyHelp
+                  : camError === 'unsupported' ? t.camUnsupportedHelp
+                  : IN_APP_BROWSER ? t.camInAppHelp
+                  : t.camRetryHelp}
               </p>
               {camError === 'unsupported' ? (
-                <button onClick={copyPageLink} className="px-6 py-3 rounded-full bg-white text-black font-bold active:scale-95 transition-transform">העתקת הקישור</button>
+                <button onClick={copyPageLink} className="px-6 py-3 rounded-full bg-white text-black font-bold active:scale-95 transition-transform">{t.copyLink}</button>
               ) : (
-                <button onClick={retryCamera} className="px-6 py-3 rounded-full bg-white text-black font-bold active:scale-95 transition-transform">הפעלת המצלמה</button>
+                <button onClick={retryCamera} className="px-6 py-3 rounded-full bg-white text-black font-bold active:scale-95 transition-transform">{t.startCamera}</button>
               )}
               {IN_APP_BROWSER && camError !== 'unsupported' && (
-                <button onClick={copyPageLink} className="text-white/60 text-xs underline">העתקת הקישור לפתיחה בדפדפן</button>
+                <button onClick={copyPageLink} className="text-white/60 text-xs underline">{t.copyLinkForBrowser}</button>
               )}
             </div>
           )}
@@ -1292,7 +1297,7 @@ export const DisposableCamera = () => {
       <div className="shrink-0 pb-7 pt-3 px-6">
         <div className="flex items-center justify-between">
           {/* Latest shot, stacked — tap to open the photo history */}
-          <button ref={historyBtnRef} onClick={() => shots.length && setHistoryOpen(true)} aria-label="היסטוריית צילומים" className="relative w-12 h-12">
+          <button ref={historyBtnRef} onClick={() => shots.length && setHistoryOpen(true)} aria-label={t.historyLabel} className="relative w-12 h-12">
             {shots.length ? (
               <>
                 <span className="absolute inset-0 rounded-xl bg-white/15 rotate-6" />
@@ -1310,7 +1315,7 @@ export const DisposableCamera = () => {
           <div className="flex flex-col items-center gap-3">
             <button
               onClick={() => (mode === 'photo' ? takePhoto() : recording ? stopVideo() : startVideo())}
-              aria-label="צילום"
+              aria-label={t.shutterLabel}
               className="relative w-[76px] h-[76px] rounded-full active:scale-90 transition-transform"
             >
               {mode === 'video' && recording && (
@@ -1330,13 +1335,13 @@ export const DisposableCamera = () => {
                 guests just take photos. */}
             {status?.videoEnabled && (
               <div className="flex bg-white/10 rounded-full p-1 text-xs">
-                <button onClick={() => !recording && setMode('photo')} className={`px-4 py-1 rounded-full font-bold transition-colors ${mode === 'photo' ? 'bg-white text-black' : 'text-white/70'}`}>תמונה</button>
-                <button onClick={() => !recording && setMode('video')} className={`px-4 py-1 rounded-full font-bold transition-colors ${mode === 'video' ? 'bg-white text-black' : 'text-white/70'}`}>וידאו</button>
+                <button onClick={() => !recording && setMode('photo')} className={`px-4 py-1 rounded-full font-bold transition-colors ${mode === 'photo' ? 'bg-white text-black' : 'text-white/70'}`}>{t.photoMode}</button>
+                <button onClick={() => !recording && setMode('video')} className={`px-4 py-1 rounded-full font-bold transition-colors ${mode === 'video' ? 'bg-white text-black' : 'text-white/70'}`}>{t.videoMode}</button>
               </div>
             )}
           </div>
 
-          <button onClick={flip} aria-label="החלפת מצלמה" className="w-12 h-12 rounded-full bg-white/12 text-white flex items-center justify-center">
+          <button onClick={flip} aria-label={t.flipLabel} className="w-12 h-12 rounded-full bg-white/12 text-white flex items-center justify-center">
             <SwitchCamera size={22} />
           </button>
         </div>
@@ -1344,14 +1349,14 @@ export const DisposableCamera = () => {
 
       {/* Photo history — all shots this session; tap one to view / download / delete */}
       {historyOpen && (
-        <div className="fixed inset-0 z-40 bg-neutral-950/95 backdrop-blur-sm flex flex-col" dir="rtl">
+        <div className="fixed inset-0 z-40 bg-neutral-950/95 backdrop-blur-sm flex flex-col" dir={t.dir}>
           <header className="flex items-center justify-between px-5 pt-6 pb-3 shrink-0">
-            <h2 className="text-white font-bold text-lg">הצילומים שלך</h2>
-            <button onClick={() => setHistoryOpen(false)} className="text-white/70 text-sm px-3 py-1">סגירה</button>
+            <h2 className="text-white font-bold text-lg">{t.yourShots}</h2>
+            <button onClick={() => setHistoryOpen(false)} className="text-white/70 text-sm px-3 py-1">{t.close}</button>
           </header>
           <div className="flex-1 overflow-y-auto px-3 pb-6 min-h-0">
             {shots.length === 0 ? (
-              <p className="text-center text-white/40 mt-16">עוד לא צילמת.</p>
+              <p className="text-center text-white/40 mt-16">{t.noShotsYet}</p>
             ) : (
               <div className="grid grid-cols-3 gap-1.5">
                 {[...shots].reverse().map((shot) => (
@@ -1453,8 +1458,14 @@ const Corner = ({ className }: { className: string }) => (
   <span className={`absolute w-5 h-5 border-white/40 rounded-sm pointer-events-none ${className}`} />
 );
 
-const Screen = ({ children }: { children: React.ReactNode }) => (
-  <div className="fixed inset-0 bg-neutral-950 text-white flex flex-col items-center justify-center px-6" dir="rtl">
+/**
+ * The full-bleed message screens (loading, camera closed, event not found).
+ * `dir` is passed in rather than read from a dictionary here: this component
+ * lives outside the camera, so it has no access to the event's language and
+ * would otherwise pin every one of those screens to Hebrew.
+ */
+const Screen = ({ children, dir = 'rtl' }: { children: React.ReactNode; dir?: 'rtl' | 'ltr' }) => (
+  <div className="fixed inset-0 bg-neutral-950 text-white flex flex-col items-center justify-center px-6" dir={dir}>
     {children}
   </div>
 );

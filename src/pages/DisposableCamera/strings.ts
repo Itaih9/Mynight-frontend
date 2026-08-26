@@ -1,0 +1,126 @@
+/**
+ * Everything the guest camera says, in both languages.
+ *
+ * Which one is used comes from the event (admin sets it per wedding), because
+ * an English-speaking guest handed a Hebrew shutter screen simply does not take
+ * the photo — and a Hebrew-speaking one handed English is no better.
+ *
+ * Keep both maps exhaustive: the type below is derived from the Hebrew one, so
+ * a key added there and forgotten here is a compile error rather than a Hebrew
+ * word appearing mid-sentence in the English camera.
+ */
+export type CameraLang = 'he' | 'en';
+
+const he = {
+  dir: 'rtl' as const,
+  linkCopied: 'הקישור הועתק — הדביקו בדפדפן',
+  guest: 'אורח',
+  uploadFailed: 'צילום לא נשלח, נסו שוב',
+  cameraWaking: 'רגע, המצלמה מתעוררת…',
+  shotFailed: 'צילום נכשל, נסו שוב',
+  videoUnsupported: 'הקלטת וידאו לא נתמכת במכשיר',
+  deleteFailed: 'מחיקה נכשלה',
+  deleting: 'מוחק…',
+  deleteAction: 'מחיקה',
+  downloadToPhone: 'הורדה לטלפון',
+  deleteNoRefund: 'מחיקה מסירה את הצילום — אבל לא מחזירה לך צילום',
+  back: 'חזרה',
+  loading: 'רק רגע…',
+  closedTitle: 'המצלמה סגורה',
+  closedBody: 'האירוע הזה לא הפעיל את המצלמה החד-פעמית.',
+  errorTitle: 'אופס',
+  errorBody: 'לא מצאנו את האירוע. בדקו את הקישור.',
+  introShots: (n: number) => `${n} צילומים. בלי לראות, בלי לחזור אחורה — כמו פעם.`,
+  namePlaceholder: 'איך קוראים לך?',
+  start: 'קדימה לצלם',
+  thanks: 'תודה שצילמתם! 🎞️ כל רגע שתפסתם עכשיו שמור — חלק מהסיפור של הערב הזה.',
+  savedToPhone: '📲 הצילומים נשמרים גם בטלפון שלך',
+  toSite: 'לאתר',
+  rollDone: 'הפילם נגמר!',
+  rollDoneBody: (n: number, couple: string) =>
+    `${n} צילומים בדרך לאלבום של ${couple}. אפשר למחוק מה שלא יצא — אבל זה לא יחזיר צילומים.`,
+  nothingToShow: 'אין צילומים להצגה.',
+  finish: 'סיום',
+  flash: 'פלאש',
+  developing: 'מפתח את הצילומים',
+  camDenied: 'צריך הרשאה למצלמה',
+  camBusy: 'המצלמה תפוסה',
+  camNotFound: 'לא נמצאה מצלמה',
+  camUnsupported: 'הדפדפן חוסם את המצלמה',
+  camGeneric: 'לא הצלחנו להפעיל את המצלמה',
+  camDeniedHelp: 'אפשרו גישה למצלמה בהגדרות האתר בדפדפן (סמל המנעול ליד הכתובת) ונסו שוב.',
+  camBusyHelp: 'נראה שאפליקציה אחרת משתמשת במצלמה. סגרו אותה ונסו שוב.',
+  camUnsupportedHelp: 'פתחו את הקישור ב-Chrome או Safari כדי לצלם.',
+  camInAppHelp: 'נפתח דרך אפליקציה? עדיף לפתוח את הקישור בדפדפן (Chrome / Safari).',
+  camRetryHelp: 'לחצו להפעלה מחדש של המצלמה.',
+  copyLink: 'העתקת הקישור',
+  startCamera: 'הפעלת המצלמה',
+  copyLinkForBrowser: 'העתקת הקישור לפתיחה בדפדפן',
+  historyLabel: 'היסטוריית צילומים',
+  shutterLabel: 'צילום',
+  flipLabel: 'החלפת מצלמה',
+  photoMode: 'תמונה',
+  videoMode: 'וידאו',
+  yourShots: 'הצילומים שלך',
+  close: 'סגירה',
+  noShotsYet: 'עוד לא צילמת.',
+};
+
+const en: typeof he = {
+  dir: 'ltr' as const,
+  linkCopied: 'Link copied — paste it in your browser',
+  guest: 'Guest',
+  uploadFailed: "Photo didn't send, try again",
+  cameraWaking: 'One moment, the camera is waking up…',
+  shotFailed: 'Shot failed, try again',
+  videoUnsupported: 'Video recording is not supported on this device',
+  deleteFailed: 'Delete failed',
+  deleting: 'Deleting…',
+  deleteAction: 'Delete',
+  downloadToPhone: 'Save to phone',
+  deleteNoRefund: 'Deleting removes the shot — it does not give you the shot back',
+  back: 'Back',
+  loading: 'One moment…',
+  closedTitle: 'The camera is closed',
+  closedBody: "This event hasn't switched the disposable camera on.",
+  errorTitle: 'Oops',
+  errorBody: "We couldn't find this event. Check the link.",
+  introShots: (n: number) => `${n} shots. No previews, no do-overs — like it used to be.`,
+  namePlaceholder: "What's your name?",
+  start: 'Start shooting',
+  thanks: 'Thanks for shooting! 🎞️ Every moment you caught is saved — part of tonight’s story.',
+  savedToPhone: '📲 Your shots are being saved to your phone too',
+  toSite: 'Visit the site',
+  rollDone: 'The film is finished!',
+  rollDoneBody: (n: number, couple: string) =>
+    `${n} shots on their way to ${couple}'s album. You can delete the ones that didn't come out — but that won't give you shots back.`,
+  nothingToShow: 'No shots to show.',
+  finish: 'Done',
+  flash: 'Flash',
+  developing: 'Developing your shots',
+  camDenied: 'Camera permission needed',
+  camBusy: 'The camera is busy',
+  camNotFound: 'No camera found',
+  camUnsupported: 'This browser is blocking the camera',
+  camGeneric: "We couldn't start the camera",
+  camDeniedHelp: 'Allow camera access in your browser’s site settings (the lock icon next to the address) and try again.',
+  camBusyHelp: 'Another app seems to be using the camera. Close it and try again.',
+  camUnsupportedHelp: 'Open this link in Chrome or Safari to shoot.',
+  camInAppHelp: 'Opened from inside an app? Better to open the link in a browser (Chrome / Safari).',
+  camRetryHelp: 'Tap to restart the camera.',
+  copyLink: 'Copy the link',
+  startCamera: 'Start the camera',
+  copyLinkForBrowser: 'Copy the link to open in a browser',
+  historyLabel: 'Shot history',
+  shutterLabel: 'Shutter',
+  flipLabel: 'Flip camera',
+  photoMode: 'Photo',
+  videoMode: 'Video',
+  yourShots: 'Your shots',
+  close: 'Close',
+  noShotsYet: "You haven't shot anything yet.",
+};
+
+export const CAMERA_STRINGS = { he, en };
+
+export const stringsFor = (lang?: string | null) => (lang === 'en' ? en : he);

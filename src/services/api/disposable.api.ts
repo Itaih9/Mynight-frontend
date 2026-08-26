@@ -12,6 +12,8 @@ export interface DisposableStatus {
   tier?: 'basic' | 'plus';
   /** פלאש+ only — the free tier is photos, no video toggle. */
   videoEnabled?: boolean;
+  /** Set per event by an admin; decides the camera's words and its direction. */
+  language?: 'he' | 'en';
 }
 
 export interface DisposableShot {
