@@ -126,6 +126,9 @@ export interface DisposableState {
 export interface CreateEventInput {
   partnerName1: string;
   partnerName2?: string;
+  /** Optional English spellings — used for the link instead of transliterating. */
+  partnerName1En?: string;
+  partnerName2En?: string;
   phoneNumber: string;
   email?: string;
   weddingDate: string;

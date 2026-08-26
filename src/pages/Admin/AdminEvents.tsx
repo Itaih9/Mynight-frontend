@@ -34,6 +34,8 @@ import {
 const EMPTY_CREATE_FORM = {
   partnerName1: '',
   partnerName2: '',
+  partnerName1En: '',
+  partnerName2En: '',
   phoneNumber: '',
   email: '',
   weddingDate: '',
@@ -70,6 +72,18 @@ const PACKAGES_WITH_FACE_ALBUMS = new Set(['here_i_am', 'unlimited']);
  * an event that belongs to somebody else. Mirrors endsInDigit on the server.
  */
 const endsInDigit = (value: string) => /[0-9]$/.test(value || '');
+
+/**
+ * The date tail of a generated link — day + month abbreviation, mirroring
+ * generateCustomSlug. Letters last, because a link must not end in a number.
+ */
+const MONTH_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const slugDateSuffix = (isoDate: string) => {
+  if (!isoDate) return 'dd-mmm';
+  const d = new Date(isoDate);
+  if (isNaN(d.getTime())) return 'dd-mmm';
+  return `${String(d.getDate()).padStart(2, '0')}-${MONTH_ABBR[d.getMonth()]}`;
+};
 
 const previewSlug = (raw: string) =>
   raw
@@ -301,6 +315,8 @@ export const AdminEvents = () => {
       const created = await adminApi.createEvent({
         partnerName1: createForm.partnerName1.trim(),
         partnerName2: createForm.partnerName2.trim() || undefined,
+        partnerName1En: createForm.partnerName1En.trim() || undefined,
+        partnerName2En: createForm.partnerName2En.trim() || undefined,
         phoneNumber: createForm.phoneNumber.trim(),
         email: createForm.email.trim() || undefined,
         weddingDate: createForm.weddingDate,
@@ -1371,6 +1387,37 @@ export const AdminEvents = () => {
                       />
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Partner 1 in English</label>
+                      <input
+                        value={createForm.partnerName1En}
+                        onChange={(e) => patchCreateForm({ partnerName1En: e.target.value })}
+                        placeholder="Dana"
+                        dir="ltr"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm text-left"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Partner 2 in English</label>
+                      <input
+                        value={createForm.partnerName2En}
+                        onChange={(e) => patchCreateForm({ partnerName2En: e.target.value })}
+                        placeholder="Yoav"
+                        dir="ltr"
+                        className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-slate-400 outline-none text-sm text-left"
+                      />
+                    </div>
+                  </div>
+                  {/* The generated link is the only thing these feed, so show it. */}
+                  <p className="text-xs text-slate-400 -mt-2" dir="ltr">
+                    {createForm.customSlug.trim()
+                      ? 'Optional — the personal link below overrides these.'
+                      : createForm.partnerName1En.trim() || createForm.partnerName2En.trim()
+                        ? `Link: mynight.co.il/gallery/${previewSlug([createForm.partnerName1En, createForm.partnerName2En].map((n) => n.trim()).filter(Boolean).join('-')) || '…'}-${slugDateSuffix(createForm.weddingDate)}`
+                        : 'Optional. Given here, the link uses your spelling instead of transliterating the Hebrew.'}
+                  </p>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
