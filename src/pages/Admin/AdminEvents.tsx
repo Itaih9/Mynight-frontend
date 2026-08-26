@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { adminApi, type AdminEvent, type CreatedEvent } from '@/services/api/admin.api';
 import { packagesApi, type PackageItem } from '@/services/api/packages.api';
+import { API_BASE_URL } from '@/config/api';
 import { Loader } from '@/components/common/Loader';
 import { AdminLayout } from './AdminLayout';
 import {
@@ -970,6 +971,36 @@ export const AdminEvents = () => {
               guests will get <span className="font-semibold">{dispLimit.trim() === '' ? (dispModalEvent.flashTier === 'plus' ? 24 : 8) : Math.min(200, parseInt(dispLimit, 10) || 0)}</span> shots.
             </p>
             <p className="text-xs text-slate-400 mb-4" dir="ltr">Guests shoot at: <span className="font-mono">/camera/{dispModalEvent.customSlug || dispModalEvent.eventCode}</span></p>
+
+            {/* The QR the couple prints and puts on the tables. Generated from
+                the same link shown above, so what is scanned and what is read
+                can never disagree. */}
+            {(() => {
+              const ref = dispModalEvent.customSlug || dispModalEvent.eventCode;
+              const qrUrl = `${API_BASE_URL}/api/events/code/${encodeURIComponent(ref)}/qr.png`;
+              return (
+                <div className="flex items-center gap-4 mb-4 p-3 rounded-lg bg-slate-50">
+                  <img
+                    src={qrUrl}
+                    alt={`Camera QR for ${dispModalEvent.eventCode}`}
+                    className="w-24 h-24 rounded bg-white shrink-0"
+                                      />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-slate-800 mb-1">Guest camera QR</div>
+                    <p className="text-xs text-slate-400 mb-2">
+                      Scans straight to the camera. Print it for the tables.
+                    </p>
+                    <a
+                      href={`${qrUrl}?download=1`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download PNG
+                    </a>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="flex gap-2">
               <button onClick={() => setDispModalEvent(null)} className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
               <button onClick={handleSaveDisposable} disabled={dispSaving} className="flex-1 px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 disabled:opacity-50">{dispSaving ? 'Saving…' : 'Save'}</button>
@@ -1269,6 +1300,26 @@ export const AdminEvents = () => {
                     gallery view works. Use the Status button on the event row to activate it.
                   </div>
                 )}
+
+                {createdEvent.disposableEnabled && (() => {
+                  const ref = createdEvent.customSlug || createdEvent.eventCode;
+                  const qrUrl = `${API_BASE_URL}/api/events/code/${encodeURIComponent(ref)}/qr.png`;
+                  return (
+                    <div className="flex items-center gap-4 p-3 rounded-lg bg-slate-50">
+                      <img src={qrUrl} alt="Camera QR" className="w-20 h-20 rounded bg-white shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-800 mb-1">Guest camera QR</div>
+                        <a
+                          href={`${qrUrl}?download=1`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          Download PNG
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {createForm.sendWelcomeEmail && !createdEvent.emailSent && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
