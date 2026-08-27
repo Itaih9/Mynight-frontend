@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronsRight, X, Download, Share2, ChevronLeft, ChevronRight, Loader2, Heart } from 'lucide-react';
+import { ChevronsRight, X, Download, Share2, ChevronLeft, ChevronRight, Loader2, Heart, Check } from 'lucide-react';
 import { galleryApi } from '@/services/api';
 import type { Photo } from '@/types/api.types';
 import { faceCircleImageStyle, type FaceEntry } from './faceCrop';
@@ -73,7 +73,54 @@ export const FacePhotosOverlay = ({
   const [isLoading, setIsLoading] = useState(true);
   const [selected, setSelected] = useState<Photo | null>(null);
   const [fullLoaded, setFullLoaded] = useState(false);
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  // Selection mode. While it is on, tapping a photo picks it instead of opening
+  // it — the same gesture the grid already uses, so there is nothing new to
+  // learn, and no second tap target crowding a thumbnail.
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDownloadingSelected, setIsDownloadingSelected] = useState(false);
+
+  const toggleSelected = (photoId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(photoId)) next.delete(photoId);
+      else next.add(photoId);
+      return next;
+    });
+  };
+
+  const exitSelection = () => {
+    setIsSelecting(false);
+    setSelectedIds(new Set());
+  };
+
+  // Moving to another person clears the selection. The ids belong to the album
+  // you were looking at; carrying them over would download someone else's
+  // photos from a count the user can no longer see.
+  useEffect(() => {
+    setIsSelecting(false);
+    setSelectedIds(new Set());
+  }, [current.face.faceId]);
+
+  const handleDownloadSelected = async () => {
+    if (selectedIds.size === 0 || isDownloadingSelected) return;
+    setIsDownloadingSelected(true);
+    try {
+      // Everything selected goes back through the dedicated face-zip endpoint:
+      // it streams, where downloadZip posts every id and builds from a list.
+      const blob =
+        selectedIds.size === photos.length && eventId
+          ? await galleryApi.downloadFaceZip(eventId, current.face.faceId)
+          : await galleryApi.downloadZip([...selectedIds]);
+      saveBlob(blob, `mynight-${coupleName || 'album'}.zip`);
+      exitSelection();
+    } catch (err) {
+      console.error('Download selected failed:', err);
+      alert('שגיאה בהורדת התמונות. נסו שוב.');
+    } finally {
+      setIsDownloadingSelected(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -144,22 +191,6 @@ export const FacePhotosOverlay = ({
     swipeStartX.current = null;
   };
 
-  // Download every photo of the current person as a zip (same backend stream
-  // as the rekognition/guest gallery's "download all").
-  const handleDownloadAll = async () => {
-    if (!eventId || photos.length === 0 || isDownloadingAll) return;
-    setIsDownloadingAll(true);
-    try {
-      const blob = await galleryApi.downloadFaceZip(eventId, current.face.faceId);
-      saveBlob(blob, `mynight-${coupleName || 'album'}.zip`);
-    } catch (err) {
-      console.error('Download all failed:', err);
-      alert('שגיאה בהורדת התמונות. נסו שוב.');
-    } finally {
-      setIsDownloadingAll(false);
-    }
-  };
-
   const handleShare = async (photo: Photo, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const url = photo.displayUrl || photo.url;
@@ -220,12 +251,12 @@ export const FacePhotosOverlay = ({
 
           {photos.length > 0 && canDownloadAll && (
             <button
-              onClick={handleDownloadAll}
-              disabled={isDownloadingAll}
+              onClick={() => (isSelecting ? exitSelection() : setIsSelecting(true))}
+              disabled={isDownloadingSelected}
               className="shrink-0 flex items-center gap-2 px-4 py-2 md:px-5 md:py-2.5 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-60"
             >
-              {isDownloadingAll ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-              <span className="text-sm font-medium whitespace-nowrap">הורדת הכל</span>
+              {isDownloadingSelected ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+              <span className="text-sm font-medium whitespace-nowrap">{isSelecting ? 'ביטול' : 'בחירה והורדה'}</span>
             </button>
           )}
         </div>
@@ -250,8 +281,14 @@ export const FacePhotosOverlay = ({
                   key={photo._id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => { setFullLoaded(false); setSelected(photo); }}
-                  className="group relative block w-full overflow-hidden bg-gray-50 border-[0.5px] border-gray-100 mb-[3px] break-inside-avoid cursor-pointer"
+                  onClick={() => {
+                    if (isSelecting) { toggleSelected(photo._id); return; }
+                    setFullLoaded(false);
+                    setSelected(photo);
+                  }}
+                  className={`group relative block w-full overflow-hidden bg-gray-50 border-[0.5px] border-gray-100 mb-[3px] break-inside-avoid cursor-pointer ${
+                    isSelecting && selectedIds.has(photo._id) ? 'ring-2 ring-inset ring-[#FACD21]' : ''
+                  }`}
                 >
                   <img
                     src={previewUrl(photo)}
@@ -263,6 +300,15 @@ export const FacePhotosOverlay = ({
                   {isVideo(photo) && (
                     <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <span className="p-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs">▶</span>
+                    </span>
+                  )}
+                  {isSelecting && (
+                    <span
+                      className={`absolute top-2 right-2 z-20 w-6 h-6 rounded-full border-2 flex items-center justify-center pointer-events-none ${
+                        selectedIds.has(photo._id) ? 'bg-[#FACD21] border-[#FACD21]' : 'bg-white/60 border-white'
+                      }`}
+                    >
+                      {selectedIds.has(photo._id) && <Check size={14} className="text-black" />}
                     </span>
                   )}
                   {/* Favorited photos show an interactive heart (to un-favorite),
@@ -288,6 +334,45 @@ export const FacePhotosOverlay = ({
           </div>
         )}
       </div>
+
+      {/* Selection bar. Fixed to the bottom so the count and the download stay
+          reachable however far down the grid the user has scrolled. */}
+      <AnimatePresence>
+        {isSelecting && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 34 }}
+            className="absolute bottom-0 inset-x-0 z-30 px-4 pb-4 pt-3 bg-white/95 backdrop-blur-md border-t border-gray-100 flex items-center gap-3"
+            dir="rtl"
+          >
+            <button
+              onClick={() =>
+                setSelectedIds((prev) =>
+                  prev.size === photos.length ? new Set() : new Set(photos.map((p) => p._id))
+                )
+              }
+              className="shrink-0 text-sm font-medium text-gray-600 hover:text-black transition-colors px-2 py-2"
+            >
+              {selectedIds.size === photos.length ? 'נקה בחירה' : 'בחר הכל'}
+            </button>
+
+            <span className="text-sm text-gray-500 flex-1 truncate">
+              {selectedIds.size > 0 ? `${photoCountText(selectedIds.size)} נבחרו` : 'לא נבחרו תמונות'}
+            </span>
+
+            <button
+              onClick={handleDownloadSelected}
+              disabled={selectedIds.size === 0 || isDownloadingSelected}
+              className="shrink-0 flex items-center gap-2 px-5 py-2.5 bg-black text-white rounded-full hover:bg-gray-800 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isDownloadingSelected ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+              <span className="text-sm font-medium whitespace-nowrap">הורדה</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {showPhotog && hasPhotographer && (
         <PhotographerCard photographer={photographer!} onClose={() => setShowPhotog(false)} />
