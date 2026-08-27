@@ -6,6 +6,7 @@ import { eventsApi, galleryApi, couponApi } from '@/services/api';
 import type { ShowcaseMedia } from '@/services/api/gallery.api';
 import type { Photo } from '@/types/api.types';
 import { PhotographerCard } from '@/components/gallery/PhotographerCard';
+import { saveUrl, saveBlob } from '@/lib/download';
 import type { MediaItem, StoryGroup, GalleryPageProps } from './types';
 import { cubeVariants } from './constants';
 import { useGalleryData } from './hooks';
@@ -2533,16 +2534,9 @@ const Gallery: React.FC<GalleryPageProps> = ({
       if (!response.data?.url) throw new Error('No download URL');
 
       const extension = selectedMedia.type === 'video' ? 'mp4' : 'jpg';
-      const filename = `mynight-${selectedMedia.id}.${extension}`;
-
-      const link = document.createElement('a');
-      link.href = response.data.url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      saveUrl(response.data.url, `mynight-${selectedMedia.id}.${extension}`);
     } catch {
-      window.open(selectedMedia.url, '_blank');
+      saveUrl(selectedMedia.url);
     }
   }, [selectedMedia]);
 
@@ -2555,16 +2549,9 @@ const Gallery: React.FC<GalleryPageProps> = ({
       if (!response.data?.url) throw new Error('No download URL');
 
       const extension = item.type === 'video' ? 'mp4' : 'jpg';
-      const filename = `mynight-story-${item.id}.${extension}`;
-
-      const link = document.createElement('a');
-      link.href = response.data.url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      saveUrl(response.data.url, `mynight-story-${item.id}.${extension}`);
     } catch {
-      window.open(item.url, '_blank');
+      saveUrl(item.url);
     }
   }, [activeStoryGroup, activeStoryIndex]);
 
@@ -2665,14 +2652,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
           text: `From the wedding of ${coupleName}`,
         });
       } else {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+        saveBlob(blob, file.name);
       }
     } catch {
     } finally {

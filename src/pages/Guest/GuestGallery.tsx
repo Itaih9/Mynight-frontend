@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import { Share2, Download, Play, X, Camera, Heart, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Loader2, Check } from 'lucide-react';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
+import { saveUrl, saveBlob } from '@/lib/download';
 
 const WhatsAppIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -325,17 +326,11 @@ const GuestGallery: React.FC = () => {
     try {
       const response = await galleryApi.getDownloadUrl(photo._id);
       if (response.data?.url) {
-        const a = document.createElement('a');
-        a.href = response.data.url;
-        a.download = `mynight-${photo._id}.jpg`;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        saveUrl(response.data.url, `mynight-${photo._id}.jpg`);
       }
     } catch (err) {
       console.error("Download failed", err);
-      window.open(getPhotoUrl(photo), '_blank');
+      saveUrl(getPhotoUrl(photo));
     }
   };
 
@@ -346,14 +341,7 @@ const GuestGallery: React.FC = () => {
     try {
       const photoIds = photos.map(p => p._id);
       const blob = await galleryApi.downloadZip(photoIds);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mynight-album-${eventCode}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      saveBlob(blob, `mynight-album-${eventCode}.zip`);
     } catch (err) {
       console.error('Download all failed:', err);
       alert('שגיאה בהורדת האלבום. נסה שוב.');
@@ -380,14 +368,7 @@ const GuestGallery: React.FC = () => {
     setIsDownloadingSelected(true);
     try {
       const blob = await galleryApi.downloadZip([...selectedPhotoIds]);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mynight-selected-${eventCode}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      saveBlob(blob, `mynight-selected-${eventCode}.zip`);
     } catch (err) {
       console.error('Download selected failed:', err);
       alert('שגיאה בהורדת התמונות הנבחרות. נסה שוב.');

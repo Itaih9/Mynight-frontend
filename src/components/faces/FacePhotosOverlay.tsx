@@ -6,6 +6,7 @@ import type { Photo } from '@/types/api.types';
 import { faceCircleImageStyle, type FaceEntry } from './faceCrop';
 import { FaceCircles } from './FaceCircles';
 import { PhotographerCard } from '@/components/gallery/PhotographerCard';
+import { saveUrl, saveBlob } from '@/lib/download';
 
 interface FacePhotosOverlayProps {
   /** Present for event galleries; omitted for the showcase (uses fetchPhotos). */
@@ -150,14 +151,7 @@ export const FacePhotosOverlay = ({
     setIsDownloadingAll(true);
     try {
       const blob = await galleryApi.downloadFaceZip(eventId, current.face.faceId);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mynight-${coupleName || 'album'}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      saveBlob(blob, `mynight-${coupleName || 'album'}.zip`);
     } catch (err) {
       console.error('Download all failed:', err);
       alert('שגיאה בהורדת התמונות. נסו שוב.');
@@ -185,16 +179,9 @@ export const FacePhotosOverlay = ({
     if (e) e.stopPropagation();
     try {
       const res = await galleryApi.getDownloadUrl(photo._id);
-      const url = res.data?.url || photo.url;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `mynight-${photo._id}.jpg`;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      saveUrl(res.data?.url || photo.url, `mynight-${photo._id}.jpg`);
     } catch {
-      window.open(photo.url, '_blank');
+      saveUrl(photo.url);
     }
   };
 
