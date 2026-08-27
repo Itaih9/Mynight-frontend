@@ -8,51 +8,42 @@
     <link rel="apple-touch-icon" href="/logo.svg" />
     <link rel="preload" as="image" href="/images/woman-holding-phone.png" fetchpriority="high" />
     <title>My Night - חתונה בלתי נשכחת</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Boot spinner. Deliberately the first style in the document and written
+         in plain CSS: it has to paint before Tailwind, the fonts and React have
+         loaded, so it cannot depend on any of them. Removed in main.tsx once
+         React has rendered. -->
+    <style>
+      #boot-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        z-index: 9999;
+      }
+      #boot-loader::after {
+        content: '';
+        width: 34px;
+        height: 34px;
+        border: 2px solid #e5e7eb;
+        border-top-color: #111111;
+        border-radius: 50%;
+        animation: boot-spin 0.7s linear infinite;
+      }
+      @keyframes boot-spin { to { transform: rotate(360deg); } }
+      /* A spinner is decoration; someone who asked for less motion gets a
+         static ring rather than nothing, so the page still reads as busy. */
+      @media (prefers-reduced-motion: reduce) {
+        #boot-loader::after { animation: none; }
+      }
+    </style>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Assistant:wght@200..800&family=Bona+Nova+SC:ital,wght@0,400;0,700;1,400&family=Dynalight&family=Frank+Ruhl+Libre:wght@300..900&family=Heebo:wght@300;400;500;700;800;900&family=Miriam+Libre:wght@400;700&family=Rubik:wght@400;500;700&family=Dancing+Script:wght@700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&family=Rouge+Script&family=Cinzel+Decorative:wght@400;700&family=Mr+Dafoe&family=Noto+Serif+Hebrew:wght@800&family=Secular+One&family=Varela+Round&family=Inter:wght@300;400;500;600&family=Alata&family=Cardo:wght@400;700&family=Kaushan+Script&family=Fredoka:wght@300;400;500;600;700&family=Bellefair&family=Suez+One&family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Heebo', 'sans-serif'],
-              rubik: ['Rubik', 'sans-serif'],
-              cursive: ['Dancing Script', 'cursive'],
-              serif: ['Playfair Display', 'serif'],
-              anka: ['Amatic SC', 'cursive'],
-              dynalight: ['Dynalight', 'cursive'],
-              vibes: ['"Great Vibes"', 'cursive'],
-              cinzel: ['"Cinzel Decorative"', 'cursive'],
-              'mr-dafoe': ['"Mr Dafoe"', 'cursive'],
-              rouge: ['"Rouge Script"', 'cursive'],
-              bona: ['"Bona Nova SC"', 'serif'],
-              noto: ['"Noto Serif Hebrew"', 'serif'],
-              secular: ['"Secular One"', 'sans-serif'],
-            },
-            colors: {
-              charcoal: '#111111',
-              gray: {
-                50: '#F9FAFB',
-                100: '#F3F4F6',
-                200: '#E5E7EB',
-                800: '#1F2937',
-                900: '#111827',
-              },
-              editorial: {
-                 black: '#000000',
-                 charcoal: '#111111',
-              },
-              gold: {
-                primary: '#F5C518',
-                secondary: '#F9D970',
-              }
-            }
-          }
-        }
-      }
-    </script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Assistant:wght@200..800&family=Bona+Nova+SC:ital,wght@0,400;0,700;1,400&family=Dynalight&family=Frank+Ruhl+Libre:wght@300..900&family=Heebo:wght@300;400;500;700;800;900&family=Miriam+Libre:wght@400;700&family=Rubik:wght@400;500;700&family=Dancing+Script:wght@700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&family=Rouge+Script&family=Cinzel+Decorative:wght@400;700&family=Mr+Dafoe&family=Noto+Serif+Hebrew:wght@800&family=Secular+One&family=Varela+Round&family=Inter:wght@300;400;500;600&family=Alata&family=Cardo:wght@400;700&family=Kaushan+Script&family=Fredoka:wght@300;400;500;600;700&family=Bellefair&family=Suez+One&family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Assistant:wght@200..800&family=Bona+Nova+SC:ital,wght@0,400;0,700;1,400&family=Dynalight&family=Frank+Ruhl+Libre:wght@300..900&family=Heebo:wght@300;400;500;700;800;900&family=Miriam+Libre:wght@400;700&family=Rubik:wght@400;500;700&family=Dancing+Script:wght@700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Great+Vibes&family=Rouge+Script&family=Cinzel+Decorative:wght@400;700&family=Mr+Dafoe&family=Noto+Serif+Hebrew:wght@800&family=Secular+One&family=Varela+Round&family=Inter:wght@300;400;500;600&family=Alata&family=Cardo:wght@400;700&family=Kaushan+Script&family=Fredoka:wght@300;400;500;600;700&family=Bellefair&family=Suez+One&family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap"></noscript>
     <!-- Meta Pixel Code -->
     <script>
       !function(f,b,e,v,n,t,s)
@@ -139,7 +130,63 @@
     <!-- Meta Pixel <noscript> fallback (valid here in <body>, not in <head>) -->
     <noscript><img height="1" width="1" style="display:none"
       src="https://www.facebook.com/tr?id=1718541075819599&ev=PageView&noscript=1" /></noscript>
+    <!-- The spinner sits outside #root so React never has to own it; main.tsx
+         removes it once the first render is on screen. -->
+    <div id="boot-loader" role="status" aria-label="טוען"></div>
     <div id="root"></div>
+
+    <!-- Tailwind used to sit in <head>, where it blocked the parser: nothing in
+         <body> could paint until the CDN answered, so the spinner above would
+         have waited on it too. Down here the document paints first. This is a
+         classic script, so it still executes before the deferred module below,
+         and Tailwind is configured by the time React mounts. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Guarded: if the CDN is blocked — an ad-blocker, a captive portal, an
+      // outage — the bare `tailwind.config =` below threw a ReferenceError and
+      // took the rest of this script with it.
+      window.tailwind = window.tailwind || {};
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Heebo', 'sans-serif'],
+              rubik: ['Rubik', 'sans-serif'],
+              cursive: ['Dancing Script', 'cursive'],
+              serif: ['Playfair Display', 'serif'],
+              anka: ['Amatic SC', 'cursive'],
+              dynalight: ['Dynalight', 'cursive'],
+              vibes: ['"Great Vibes"', 'cursive'],
+              cinzel: ['"Cinzel Decorative"', 'cursive'],
+              'mr-dafoe': ['"Mr Dafoe"', 'cursive'],
+              rouge: ['"Rouge Script"', 'cursive'],
+              bona: ['"Bona Nova SC"', 'serif'],
+              noto: ['"Noto Serif Hebrew"', 'serif'],
+              secular: ['"Secular One"', 'sans-serif'],
+            },
+            colors: {
+              charcoal: '#111111',
+              gray: {
+                50: '#F9FAFB',
+                100: '#F3F4F6',
+                200: '#E5E7EB',
+                800: '#1F2937',
+                900: '#111827',
+              },
+              editorial: {
+                 black: '#000000',
+                 charcoal: '#111111',
+              },
+              gold: {
+                primary: '#F5C518',
+                secondary: '#F9D970',
+              }
+            }
+          }
+        }
+      }
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
