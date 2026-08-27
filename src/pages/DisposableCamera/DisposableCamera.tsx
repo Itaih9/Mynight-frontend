@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { disposableApi, type DisposableStatus, type DisposableShot } from '@/services/api/disposable.api';
 import { API_BASE_URL } from '@/config/api';
+import { saveUrl } from '@/lib/download';
 import { renderFilmFrame, captureStill, looksBlank } from './filmFilter';
 import { stringsFor, CAMERA_STRINGS } from './strings';
 
@@ -256,13 +257,11 @@ export const DisposableCamera = () => {
   // download endpoint, which streams the file with Content-Disposition: attachment
   // so the browser saves it instead of navigating.
   const downloadShot = (shot: DisposableShot) => {
-    const a = document.createElement('a');
-    a.href = `${API_BASE_URL}/api/photos/download/${shot._id}`;
-    a.download = '';
-    a.rel = 'noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    // Through the shared helper so this behaves the same as every other
+    // download in the app; the API is a different origin in production, where
+    // the `download` attribute is dropped and the server's Content-Disposition
+    // is what actually saves the file.
+    saveUrl(`${API_BASE_URL}/api/photos/download/${shot._id}`);
   };
 
   const stopStream = useCallback(() => {
@@ -1113,31 +1112,41 @@ export const DisposableCamera = () => {
     : '';
 
   // Enlarged shot with a (non-refunding) delete — shared by the strip and review.
+  // The shot fills the whole screen and the controls float over it. They used
+  // to be a stacked block below the photo — two rows of buttons plus a line of
+  // small print, some 200px of a phone screen — so the picture the guest just
+  // took got whatever was left, which on a small phone was about half. Turning
+  // the phone sideways made that worse, not better. Full-bleed means rotating
+  // now genuinely enlarges the photo, which is the whole point.
   const previewOverlay = preview && (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" dir={t.dir}>
+    <div className="fixed inset-0 z-50 bg-black" dir={t.dir}>
       <div
         onTouchStart={onGalleryTouchStart}
         onTouchEnd={onGalleryTouchEnd}
-        className="flex-1 flex items-center justify-center p-4 min-h-0 relative"
+        className="absolute inset-0 flex items-center justify-center"
       >
         {preview.type === 'video' ? (
-          <video key={preview._id} src={preview.url} controls autoPlay playsInline className="max-w-full max-h-full rounded-2xl" />
+          <video key={preview._id} src={preview.url} controls autoPlay playsInline className="w-full h-full object-contain" />
         ) : (
-          <img key={preview._id} src={preview.url} alt="" className="max-w-full max-h-full rounded-2xl object-contain" />
-        )}
-        {shots.length > 1 && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/55 text-white/80 text-xs px-3 py-1 rounded-full tabular-nums" dir="ltr">
-            {shots.findIndex((x) => x._id === preview._id) + 1} / {shots.length}
-          </div>
+          <img key={preview._id} src={preview.url} alt="" className="w-full h-full object-contain" />
         )}
       </div>
-      <div className="px-6 pb-8 pt-2">
-        <button onClick={() => downloadShot(preview)} className="w-full py-3.5 rounded-2xl bg-white text-black font-bold flex items-center justify-center gap-2 mb-3 active:scale-[0.99] transition-transform">
+
+      {shots.length > 1 && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-black/55 text-white/80 text-xs px-3 py-1 rounded-full tabular-nums pointer-events-none" dir="ltr">
+          {shots.findIndex((x) => x._id === preview._id) + 1} / {shots.length}
+        </div>
+      )}
+
+      {/* Scrim, not a solid bar: the photo keeps running underneath, and white
+          text on a bright shot still reads. */}
+      <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-7 pt-12 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
+        <button onClick={() => downloadShot(preview)} className="w-full py-3.5 rounded-2xl bg-white text-black font-bold flex items-center justify-center gap-2 mb-2.5 active:scale-[0.99] transition-transform">
           <Download size={18} /> {t.downloadToPhone}
         </button>
-        <p className="text-center text-white/40 text-xs mb-3">{t.deleteNoRefund}</p>
+        <p className="text-center text-white/50 text-xs mb-2.5">{t.deleteNoRefund}</p>
         <div className="flex gap-3">
-          <button onClick={() => setPreview(null)} className="flex-1 py-3.5 rounded-2xl bg-white/10 text-white font-bold">{t.back}</button>
+          <button onClick={() => setPreview(null)} className="flex-1 py-3.5 rounded-2xl bg-white/15 backdrop-blur-sm text-white font-bold">{t.back}</button>
           <button onClick={() => deleteShot(preview)} disabled={deleting} className="flex-1 py-3.5 rounded-2xl bg-red-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50">
             <Trash2 size={18} /> {deleting ? t.deleting : t.deleteAction}
           </button>
