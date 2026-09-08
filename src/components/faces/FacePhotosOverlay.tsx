@@ -424,7 +424,30 @@ export const FacePhotosOverlay = ({
 
             <div className="w-full h-full p-4 md:p-8 flex items-center justify-center" onClick={(e) => e.stopPropagation()} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
               {isVideo(selected) ? (
-                <video src={selected.url} className="max-w-full max-h-full rounded-lg shadow-2xl" controls autoPlay playsInline onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }} />
+                <video
+                  key={selected._id}
+                  // displayUrl is the transcoded, faststart copy. This used to
+                  // play selected.url — the untouched phone upload, often
+                  // hundreds of megabytes with its moov atom at the END, so the
+                  // browser cannot start playing until nearly all of it has
+                  // arrived. The fallback below covers media with no rendition.
+                  src={selected.displayUrl || selected.url}
+                  poster={selected.posterUrl || selected.thumbnailUrl || undefined}
+                  preload="metadata"
+                  className="max-w-full max-h-full rounded-lg shadow-2xl"
+                  controls
+                  autoPlay
+                  playsInline
+                  onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }}
+                  onError={(e) => {
+                    const v = e.currentTarget;
+                    if (selected.displayUrl && !v.dataset.fellBack) {
+                      v.dataset.fellBack = '1';
+                      v.src = selected.url;
+                      v.load();
+                    }
+                  }}
+                />
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center" style={{ filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.20))' }}>
                   <img

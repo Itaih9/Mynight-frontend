@@ -321,6 +321,11 @@ const GuestGallery: React.FC = () => {
     return photo.thumbnailUrl || photo.url;
   };
 
+  // Videos play the web-optimised rendition when there is one. getPhotoUrl
+  // returns the original, which for a guest's phone upload is the full file.
+  const getVideoSrc = (photo: Photo) => photo.displayUrl || photo.url;
+  const getVideoPoster = (photo: Photo) => photo.posterUrl || photo.thumbnailUrl || undefined;
+
   const handleDownload = async (photo: Photo, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     try {
@@ -889,11 +894,23 @@ const GuestGallery: React.FC = () => {
                         >
                             {isVideo(selectedItem) ? (
                                 <video
-                                    src={getPhotoUrl(selectedItem)}
+                                    key={selectedItem._id}
+                                    src={getVideoSrc(selectedItem)}
+                                    poster={getVideoPoster(selectedItem)}
+                                    preload="metadata"
                                     className="max-w-full max-h-full rounded-lg shadow-2xl"
                                     controls
                                     autoPlay
+                                    playsInline
                                     onLoadedMetadata={(e) => { e.currentTarget.volume = 0.3; }}
+                                    onError={(e) => {
+                                        const v = e.currentTarget;
+                                        if (selectedItem.displayUrl && !v.dataset.fellBack) {
+                                            v.dataset.fellBack = '1';
+                                            v.src = selectedItem.url;
+                                            v.load();
+                                        }
+                                    }}
                                 />
                             ) : (
                                 // Both imgs fill the same box (absolute inset-0 w-full h-full +

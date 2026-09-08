@@ -795,6 +795,10 @@ const MediaCard = React.memo(({ item, priority = false, eager = false, isFavorit
   const knownRatio = item.width && item.height ? item.width / item.height : null;
   const [measuredRatio, setMeasuredRatio] = useState<number | null>(null);
   const [thumbFailed, setThumbFailed] = useState(false);
+  // Set when the video rendition 404s, so the tile falls back to the original
+  // once rather than retrying it. The lightbox has its own flag of the same
+  // name; this is a separate component and cannot see it.
+  const [displayFailed, setDisplayFailed] = useState(false);
 
   const ratio = knownRatio ?? measuredRatio;
 
@@ -831,7 +835,7 @@ const MediaCard = React.memo(({ item, priority = false, eager = false, isFavorit
     [item.thumbnail, item.displayUrl, item.url]
   );
   const [srcIdx, setSrcIdx] = useState(0);
-  useEffect(() => { setSrcIdx(0); }, [item.id]);
+  useEffect(() => { setSrcIdx(0); setDisplayFailed(false); }, [item.id]);
   const gridImgSrc = srcChain[Math.min(srcIdx, srcChain.length - 1)] || '';
   const handleImgError = useCallback(() => {
     setSrcIdx((i) => (i < srcChain.length - 1 ? i + 1 : i));
@@ -864,13 +868,20 @@ const MediaCard = React.memo(({ item, priority = false, eager = false, isFavorit
           />
         ) : (
           <video
-            src={item.url}
+            // Reached only when a video has no poster and no thumbnail, which
+            // is the normal state for a guest upload: nothing generates one on
+            // that path. The tile then fetches VIDEO bytes just to learn the
+            // aspect ratio, once per tile, and on the original file. Reading
+            // the rendition instead makes that a small faststart header rather
+            // than a range walk through a few hundred megabytes.
+            src={(!displayFailed && item.displayUrl) || item.url}
             preload="metadata"
             muted
             playsInline
             width={item.width || undefined}
             height={item.height || undefined}
             onLoadedMetadata={handleVideoMeta}
+            onError={() => { if (item.displayUrl && !displayFailed) setDisplayFailed(true); }}
             className="w-full h-full object-cover bg-gradient-to-br from-gray-200 to-gray-300"
           />
         )
