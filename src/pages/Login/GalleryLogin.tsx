@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { ArrowRight, Loader2, Images } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Navbar } from '@/components/common';
 import { useUserStore } from '@/store/userStore';
 import { ROUTES } from '@/config/routes';
 import { authApi } from '@/services/api';
+import logoSvg from '@/assets/logo.svg';
 
 /**
  * Couple gallery login — a stripped-down copy of the user login screen with only
@@ -65,9 +66,16 @@ export const GalleryLogin: React.FC = () => {
         <div className="w-full max-w-md lg:max-w-xl space-y-10 animate-fade-in text-center">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
             <div className="flex flex-col items-center gap-8">
-              <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100">
-                <Images size={40} className="text-black" strokeWidth={1.5} />
-              </div>
+              {/* The brand mark, not a stock picture icon. This is the screen
+                  a couple lands on from a link in an email or a message, so it
+                  is the first thing that has to say whose gallery this is. */}
+              <img
+                src={logoSvg}
+                alt="MyNight"
+                className="h-14 lg:h-16 w-auto object-contain"
+                width={200}
+                height={64}
+              />
               <div className="space-y-3">
                 <h2 className="text-4xl lg:text-6xl font-bold text-black tracking-tight font-rubik">כניסה לגלריה</h2>
                 <p className="text-gray-500 text-lg lg:text-2xl">הזינו מספר טלפון או אימייל</p>
