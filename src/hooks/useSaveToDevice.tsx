@@ -49,8 +49,10 @@ interface Plan {
   zip: (items: Photo[]) => Promise<void>;
 }
 
-/** Fetches in flight while preparing a round. */
-const FETCH_CONCURRENCY = 3;
+/** Fetches in flight while preparing a round. Browsers open six connections per host. */
+const FETCH_CONCURRENCY = 6;
+/** Android: files fetched ahead of the one being saved (including it). */
+const DOWNLOAD_AHEAD = 4;
 /** Pause between Android downloads, so the browser sees separate requests. */
 const DOWNLOAD_GAP_MS = 350;
 
@@ -226,10 +228,23 @@ export function useSaveToDevice() {
     const plan = planRef.current;
     if (!plan) return;
     setStage({ kind: 'downloading', done: 0, total: items.length });
+    // Fetch ahead, several at once, but save strictly in order: the network
+    // time overlaps instead of adding up, and the files still arrive in the
+    // order the guest sees them.
+    const fetches: Promise<File>[] = [];
+    const fetchAhead = (from: number) => {
+      for (let j = from; j < Math.min(items.length, from + DOWNLOAD_AHEAD); j += 1) {
+        if (!fetches[j]) {
+          fetches[j] = fetchMediaFile(items[j], signedUrlFor(items[j]));
+          fetches[j].catch(() => {}); // handled when its turn comes
+        }
+      }
+    };
     for (let i = 0; i < items.length; i += 1) {
       if (!isCurrent(run)) return;
+      fetchAhead(i);
       try {
-        const file = await fetchMediaFile(items[i], signedUrlFor(items[i]));
+        const file = await fetches[i];
         if (!isCurrent(run)) return;
         saveBlob(file, file.name);
       } catch {

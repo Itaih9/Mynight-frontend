@@ -6,6 +6,7 @@ import type { Photo } from '@/types/api.types';
 import { faceCircleImageStyle, type FaceEntry } from './faceCrop';
 import { FaceCircles } from './FaceCircles';
 import { PhotographerCard } from '@/components/gallery/PhotographerCard';
+import { MasonryColumns, photoHeightPerWidth } from '@/components/gallery/MasonryColumns';
 import { saveUrl, saveBlob } from '@/lib/download';
 import { useSaveToDevice } from '@/hooks/useSaveToDevice';
 
@@ -292,10 +293,12 @@ export const FacePhotosOverlay = ({
           </div>
         ) : (
           <div className="px-[3px] pb-24 pt-[3px]">
-            <div className="columns-2 md:columns-3 lg:columns-4 gap-[3px] space-y-[3px]">
-              {photos.map((photo) => (
+            <MasonryColumns
+              items={photos}
+              getKey={(photo) => photo._id}
+              heightPerWidth={photoHeightPerWidth}
+              renderItem={(photo) => (
                 <div
-                  key={photo._id}
                   role="button"
                   tabIndex={0}
                   onClick={() => {
@@ -339,8 +342,8 @@ export const FacePhotosOverlay = ({
                     </button>
                   )}
                 </div>
-              ))}
-            </div>
+              )}
+            />
             {hasPhotographer && (
               <div className="text-center pt-10 pb-4">
                 <button onClick={() => setShowPhotog(true)} className="text-xs text-gray-500 hover:text-black transition-colors" dir="rtl">

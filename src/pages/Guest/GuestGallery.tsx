@@ -18,6 +18,7 @@ import type { Event, Photo } from '@/types/api.types';
 import { formatCategoryLabel } from '@/lib/utils';
 import { FacePhotosOverlay } from '@/components/faces/FacePhotosOverlay';
 import { PhotographerCard } from '@/components/gallery/PhotographerCard';
+import { MasonryColumns, photoHeightPerWidth } from '@/components/gallery/MasonryColumns';
 import { GuestGiftPopup } from '@/components/upsell/GuestGiftPopup';
 import type { FaceEntry } from '@/components/faces/faceCrop';
 import logoSvg from '@/assets/logo.svg';
@@ -41,9 +42,8 @@ const GuestPhotoCard = React.memo(({
   onClick,
   onShare,
 }: GuestPhotoCardProps) => {
-  const known = (item as any).width && (item as any).height
-    ? (item as any).width / (item as any).height
-    : null;
+  const heightPerWidth = photoHeightPerWidth(item);
+  const known = heightPerWidth ? 1 / heightPerWidth : null;
   const [measured, setMeasured] = useState<number | null>(null);
   const ratio = known ?? measured;
 
@@ -794,20 +794,22 @@ const GuestGallery: React.FC = () => {
 
          {photos.length > 0 ? (
            <div className="px-[3px] pb-32">
-              <div className="columns-2 md:columns-3 lg:columns-4 gap-[3px] space-y-[3px]">
-                  {visiblePhotos.map((item) => (
-                    <GuestPhotoCard
-                      key={item._id}
-                      item={item}
-                      isSelecting={isSelecting}
-                      isSelected={selectedPhotoIds.has(item._id)}
-                      isVideoItem={isVideo(item)}
-                      thumbnailUrl={getThumbnailUrl(item)}
-                      onClick={(e) => isSelecting ? togglePhotoSelection(item._id, e) : setSelectedItem(item)}
-                      onShare={(e) => handleShareClick(item, e)}
-                    />
-                  ))}
-              </div>
+              <MasonryColumns
+                items={visiblePhotos}
+                getKey={(item) => item._id}
+                heightPerWidth={photoHeightPerWidth}
+                renderItem={(item) => (
+                  <GuestPhotoCard
+                    item={item}
+                    isSelecting={isSelecting}
+                    isSelected={selectedPhotoIds.has(item._id)}
+                    isVideoItem={isVideo(item)}
+                    thumbnailUrl={getThumbnailUrl(item)}
+                    onClick={(e) => isSelecting ? togglePhotoSelection(item._id, e) : setSelectedItem(item)}
+                    onShare={(e) => handleShareClick(item, e)}
+                  />
+                )}
+              />
               {hasPhotographer && (
                 <div className="text-center pt-8 pb-4">
                   <button onClick={() => setShowPhotog(true)} className="text-xs text-gray-500 hover:text-black transition-colors" dir="rtl">
