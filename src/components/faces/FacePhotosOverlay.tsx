@@ -7,6 +7,7 @@ import { faceCircleImageStyle, type FaceEntry } from './faceCrop';
 import { FaceCircles } from './FaceCircles';
 import { PhotographerCard } from '@/components/gallery/PhotographerCard';
 import { saveUrl, saveBlob } from '@/lib/download';
+import { useSaveToDevice } from '@/hooks/useSaveToDevice';
 
 interface FacePhotosOverlayProps {
   /** Present for event galleries; omitted for the showcase (uses fetchPhotos). */
@@ -79,6 +80,9 @@ export const FacePhotosOverlay = ({
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDownloadingSelected, setIsDownloadingSelected] = useState(false);
+  // Phones save separate photos (iPhone: share sheet → Photos; Android: one
+  // download each). Computers keep the zip.
+  const saver = useSaveToDevice();
 
   const toggleSelected = (photoId: string) => {
     setSelectedIds((prev) => {
@@ -102,21 +106,34 @@ export const FacePhotosOverlay = ({
     setSelectedIds(new Set());
   }, [current.face.faceId]);
 
-  const handleDownloadSelected = async () => {
-    if (selectedIds.size === 0 || isDownloadingSelected) return;
-    setIsDownloadingSelected(true);
+  // Resolves false when the zip failed, so the selection is kept for a retry.
+  const zipSelected = async (items: Photo[]): Promise<boolean> => {
     try {
       // Everything selected goes back through the dedicated face-zip endpoint:
       // it streams, where downloadZip posts every id and builds from a list.
       const blob =
-        selectedIds.size === photos.length && eventId
+        items.length === photos.length && eventId
           ? await galleryApi.downloadFaceZip(eventId, current.face.faceId)
-          : await galleryApi.downloadZip([...selectedIds]);
+          : await galleryApi.downloadZip(items.map((p) => p._id));
       saveBlob(blob, `mynight-${coupleName || 'album'}.zip`);
-      exitSelection();
+      return true;
     } catch (err) {
       console.error('Download selected failed:', err);
       alert('שגיאה בהורדת התמונות. נסו שוב.');
+      return false;
+    }
+  };
+
+  const handleDownloadSelected = async () => {
+    if (selectedIds.size === 0 || isDownloadingSelected) return;
+    setIsDownloadingSelected(true);
+    try {
+      let zipFailed = false;
+      // In grid order, not in the order they were tapped.
+      await saver.start(photos.filter((p) => selectedIds.has(p._id)), async (items) => {
+        zipFailed = !(await zipSelected(items));
+      });
+      if (!zipFailed) exitSelection();
     } finally {
       setIsDownloadingSelected(false);
     }
@@ -377,6 +394,8 @@ export const FacePhotosOverlay = ({
       {showPhotog && hasPhotographer && (
         <PhotographerCard photographer={photographer!} onClose={() => setShowPhotog(false)} />
       )}
+
+      {saver.card}
 
       {/* Internal viewer */}
       <AnimatePresence>

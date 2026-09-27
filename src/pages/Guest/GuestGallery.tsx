@@ -3,6 +3,8 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/config/routes';
 import { Share2, Download, Play, X, Camera, Heart, ArrowLeft, ChevronLeft, ChevronRight, ChevronDown, MoreHorizontal, Loader2, Check } from 'lucide-react';
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation';
+import { useSaveToDevice } from '@/hooks/useSaveToDevice';
+import { useDeferredShare } from '@/hooks/useDeferredShare';
 import { saveUrl, saveBlob } from '@/lib/download';
 
 const WhatsAppIcon = ({ size = 24, className = '' }: { size?: number; className?: string }) => (
@@ -197,7 +199,11 @@ const GuestGallery: React.FC = () => {
       setShareTarget(null);
     }
   };
-  const [isSharing, setIsSharing] = useState(false);
+  const deferredShare = useDeferredShare();
+  const isSharing = deferredShare.preparing;
+  // On a phone, "download" saves separate photos (iPhone: share sheet →
+  // Photos; Android: one download each). Computers keep the zip.
+  const saver = useSaveToDevice();
   const [isDownloadExpanded, setIsDownloadExpanded] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(new Set());
@@ -339,17 +345,22 @@ const GuestGallery: React.FC = () => {
     }
   };
 
+  const zipAll = async (items: Photo[]) => {
+    try {
+      const blob = await galleryApi.downloadZip(items.map(p => p._id));
+      saveBlob(blob, `mynight-album-${eventCode}.zip`);
+    } catch (err) {
+      console.error('Download all failed:', err);
+      alert('שגיאה בהורדת האלבום. נסה שוב.');
+    }
+  };
+
   const handleDownloadAll = async () => {
     if (photos.length === 0 || isDownloadingAll) return;
 
     setIsDownloadingAll(true);
     try {
-      const photoIds = photos.map(p => p._id);
-      const blob = await galleryApi.downloadZip(photoIds);
-      saveBlob(blob, `mynight-album-${eventCode}.zip`);
-    } catch (err) {
-      console.error('Download all failed:', err);
-      alert('שגיאה בהורדת האלבום. נסה שוב.');
+      await saver.start(photos, zipAll);
     } finally {
       setIsDownloadingAll(false);
     }
@@ -368,15 +379,22 @@ const GuestGallery: React.FC = () => {
     });
   };
 
-  const handleDownloadSelected = async () => {
-    if (selectedPhotoIds.size === 0 || isDownloadingSelected) return;
-    setIsDownloadingSelected(true);
+  const zipSelected = async (items: Photo[]) => {
     try {
-      const blob = await galleryApi.downloadZip([...selectedPhotoIds]);
+      const blob = await galleryApi.downloadZip(items.map(p => p._id));
       saveBlob(blob, `mynight-selected-${eventCode}.zip`);
     } catch (err) {
       console.error('Download selected failed:', err);
       alert('שגיאה בהורדת התמונות הנבחרות. נסה שוב.');
+    }
+  };
+
+  const handleDownloadSelected = async () => {
+    if (selectedPhotoIds.size === 0 || isDownloadingSelected) return;
+    setIsDownloadingSelected(true);
+    try {
+      // In grid order, not in the order they were tapped.
+      await saver.start(photos.filter(p => selectedPhotoIds.has(p._id)), zipSelected);
     } finally {
       setIsDownloadingSelected(false);
     }
@@ -397,32 +415,27 @@ const GuestGallery: React.FC = () => {
         const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
         if (isMobile) {
           window.location.href = `whatsapp://send?text=${encodeURIComponent(shareText)}`;
-        } else {
-          window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+          return true;
         }
+        // null when the popup was blocked — the tap had expired.
+        return window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank') !== null;
       };
 
-      setIsSharing(true);
-      try {
-        const signedRes = await galleryApi.getDownloadUrl(photo._id);
-        const fileUrl = signedRes.data?.url || getPhotoUrl(photo);
-        const response = await fetch(fileUrl);
-        const blob = await response.blob();
-        const isVid = isVideo(photo);
-        const ext = isVid ? 'mp4' : 'jpg';
-        const mimeType = isVid ? 'video/mp4' : 'image/jpeg';
-        const file = new File([blob], `mynight-${photo._id}.${ext}`, { type: mimeType });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], text });
-        } else {
-          fallback();
+      await deferredShare.run(async () => {
+        try {
+          const signedRes = await galleryApi.getDownloadUrl(photo._id);
+          const fileUrl = signedRes.data?.url || getPhotoUrl(photo);
+          const response = await fetch(fileUrl);
+          const blob = await response.blob();
+          const isVid = isVideo(photo);
+          const ext = isVid ? 'mp4' : 'jpg';
+          const mimeType = isVid ? 'video/mp4' : 'image/jpeg';
+          const file = new File([blob], `mynight-${photo._id}.${ext}`, { type: mimeType });
+          return { data: { files: [file], text }, fallback };
+        } catch {
+          return { fallback };
         }
-      } catch {
-        fallback();
-      } finally {
-        setIsSharing(false);
-      }
+      });
 
       closeShareMenu();
   };
@@ -1018,6 +1031,9 @@ const GuestGallery: React.FC = () => {
           </>
         )}
       </AnimatePresence>
+
+      {saver.card}
+      {deferredShare.card}
 
       {/* Fires once the guest is actually looking at their own matched photos —
           both the in-page face match and the arrival from GuestSelfie land in

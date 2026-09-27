@@ -52,6 +52,7 @@ import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useSwipeNavigation } from '@/hooks/useSwipeNavigation';
 import { useNetworkQuality } from '@/hooks/useNetworkQuality';
+import { useDeferredShare } from '@/hooks/useDeferredShare';
 
 type ShareTarget = 'lightbox' | 'story';
 
@@ -1734,7 +1735,10 @@ const Gallery: React.FC<GalleryPageProps> = ({
   const [fullImageLoaded, setFullImageLoaded] = useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [isStoryShareOpen, setIsStoryShareOpen] = useState(false);
-  const [isPreparingShare, setIsPreparingShare] = useState(false);
+  // Downloads the file, then opens the share sheet — asking for one more tap
+  // when the download outlasted the first one (see useDeferredShare).
+  const deferredShare = useDeferredShare();
+  const isPreparingShare = deferredShare.preparing;
 
   // Initialize from window synchronously to avoid mobile→desktop flicker on first paint
   const [isMobile, setIsMobile] = useState(() => {
@@ -2589,87 +2593,78 @@ const Gallery: React.FC<GalleryPageProps> = ({
   const handleWhatsAppShare = useCallback(async () => {
     if (!currentShareItem || isPreparingShare) return;
     const text = getShareText(coupleName, isOwner);
+    const item = currentShareItem;
+    // window.open returns null when the popup was blocked.
+    const fallback = () => window.open(`https://wa.me/?text=${encodeURIComponent(`${text} ${item.url}`)}`, '_blank') !== null;
 
-    setIsPreparingShare(true);
-    try {
-      const signedRes = await galleryApi.getDownloadUrl(currentShareItem.id);
-      const fileUrl = signedRes.data?.url || currentShareItem.url;
-      const response = await fetch(fileUrl);
-      const blob = await response.blob();
-      const ext = currentShareItem.type === 'video' ? 'mp4' : 'jpg';
-      const mimeType = currentShareItem.type === 'video' ? 'video/mp4' : 'image/jpeg';
-      const file = new File([blob], `mynight-${currentShareItem.id}.${ext}`, { type: mimeType });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text });
-      } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(`${text} ${currentShareItem.url}`)}`, '_blank');
+    await deferredShare.run(async () => {
+      try {
+        const signedRes = await galleryApi.getDownloadUrl(item.id);
+        const fileUrl = signedRes.data?.url || item.url;
+        const response = await fetch(fileUrl);
+        const blob = await response.blob();
+        const ext = item.type === 'video' ? 'mp4' : 'jpg';
+        const mimeType = item.type === 'video' ? 'video/mp4' : 'image/jpeg';
+        const file = new File([blob], `mynight-${item.id}.${ext}`, { type: mimeType });
+        return { data: { files: [file], text }, fallback };
+      } catch {
+        return { fallback };
       }
-    } catch {
-      window.open(`https://wa.me/?text=${encodeURIComponent(`${text} ${currentShareItem.url}`)}`, '_blank');
-    } finally {
-      setIsPreparingShare(false);
-    }
+    });
 
     closeShareMenus();
-  }, [currentShareItem, coupleName, isOwner, closeShareMenus, isPreparingShare]);
+  }, [currentShareItem, coupleName, isOwner, closeShareMenus, isPreparingShare, deferredShare.run]);
 
   const handleFacebookShare = useCallback(async () => {
     if (!currentShareItem || isPreparingShare) return;
     const text = getShareText(coupleName, isOwner);
-
-    setIsPreparingShare(true);
-    try {
-      const signedRes = await galleryApi.getDownloadUrl(currentShareItem.id);
-      const fileUrl = signedRes.data?.url || currentShareItem.url;
-      const response = await fetch(fileUrl);
-      const blob = await response.blob();
-      const file = new File([blob], `mynight-${currentShareItem.id}.jpg`, { type: 'image/jpeg' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text });
-      } else {
-        window.open(
-          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentShareItem.url)}&quote=${encodeURIComponent(text)}`,
-          '_blank'
-        );
-      }
-    } catch {
+    const item = currentShareItem;
+    const fallback = () =>
       window.open(
-        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentShareItem.url)}&quote=${encodeURIComponent(text)}`,
+        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(item.url)}&quote=${encodeURIComponent(text)}`,
         '_blank'
-      );
-    } finally {
-      setIsPreparingShare(false);
-    }
+      ) !== null;
+
+    await deferredShare.run(async () => {
+      try {
+        const signedRes = await galleryApi.getDownloadUrl(item.id);
+        const fileUrl = signedRes.data?.url || item.url;
+        const response = await fetch(fileUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `mynight-${item.id}.jpg`, { type: 'image/jpeg' });
+        return { data: { files: [file], text }, fallback };
+      } catch {
+        return { fallback };
+      }
+    });
 
     closeShareMenus();
-  }, [currentShareItem, coupleName, isOwner, closeShareMenus, isPreparingShare]);
+  }, [currentShareItem, coupleName, isOwner, closeShareMenus, isPreparingShare, deferredShare.run]);
 
   const handleInstagramStory = useCallback(async () => {
-    if (!currentShareItem) return;
+    if (!currentShareItem || isPreparingShare) return;
+    const item = currentShareItem;
 
-    try {
-      const response = await fetch(currentShareItem.url);
-      const blob = await response.blob();
-      const mimeType = currentShareItem.type === 'video' ? 'video/mp4' : 'image/jpeg';
-      const ext = currentShareItem.type === 'video' ? 'mp4' : 'jpg';
-      const file = new File([blob], `mynight-${currentShareItem.id}.${ext}`, { type: mimeType });
-
-      if (navigator.share) {
-        await navigator.share({
-          files: [file],
-          title: 'My Night',
-          text: `From the wedding of ${coupleName}`,
-        });
-      } else {
-        saveBlob(blob, file.name);
+    await deferredShare.run(async () => {
+      try {
+        const response = await fetch(item.url);
+        const blob = await response.blob();
+        const mimeType = item.type === 'video' ? 'video/mp4' : 'image/jpeg';
+        const ext = item.type === 'video' ? 'mp4' : 'jpg';
+        const file = new File([blob], `mynight-${item.id}.${ext}`, { type: mimeType });
+        return {
+          data: { files: [file], title: 'My Night', text: `From the wedding of ${coupleName}` },
+          // No share sheet for files: save it, to post from the camera roll.
+          fallback: () => saveBlob(blob, file.name),
+        };
+      } catch {
+        // Could not read the file; there is nothing to share or save.
+        return { fallback: () => {} };
       }
-    } catch {
-    } finally {
-      closeShareMenus();
-    }
-  }, [currentShareItem, coupleName, closeShareMenus]);
+    });
+
+    closeShareMenus();
+  }, [currentShareItem, coupleName, closeShareMenus, isPreparingShare, deferredShare.run]);
 
   const handleNativeShare = useCallback(async () => {
     if (!currentShareItem) return;
@@ -3103,6 +3098,8 @@ const Gallery: React.FC<GalleryPageProps> = ({
         onPressDown={() => setIsStoryPaused(true)}
         onPressUp={() => setIsStoryPaused(false)}
       />
+
+      {deferredShare.card}
 
       <AnimatePresence>
         {isPreparingShare && (
