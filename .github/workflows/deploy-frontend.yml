@@ -1,0 +1,70 @@
+name: Deploy frontend to S3
+
+# "Connect once, then it deploys itself" — done the safe way. You add your AWS
+# credentials to THIS REPO's settings one time (steps below); after that every
+# push to main builds the site and pushes it to S3 + busts CloudFront. GitHub
+# holds the credentials, scoped and revocable by you — nothing is stored in an
+# agent sandbox. There is also a manual "Run workflow" button.
+#
+# ONE-TIME SETUP  (GitHub → your repo → Settings)
+#   Secrets and variables → Actions:
+#     Secrets:
+#       AWS_ACCESS_KEY_ID       an IAM user/key allowed only to write the
+#       AWS_SECRET_ACCESS_KEY   frontend bucket + create CloudFront invalidations
+#     Variables:
+#       AWS_REGION                  e.g. eu-west-1
+#       DEPLOY_BUCKET               the S3 bucket that serves the site
+#       VITE_API_URL                your backend URL, e.g. https://api.mynight.co.il
+#       CLOUDFRONT_DISTRIBUTION_ID  your CloudFront distribution id
+#
+# Until DEPLOY_BUCKET is set the job is skipped (no failing runs on every push),
+# so it stays quiet until you have configured it.
+#
+# More secure upgrade (no long-lived keys): use GitHub OIDC instead of the two
+# secrets — swap the configure-aws-credentials inputs for `role-to-assume`. See
+# the commented line in that step.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: false
+
+permissions:
+  id-token: write   # only needed if you switch to OIDC; harmless otherwise
+  contents: read
+
+jobs:
+  deploy:
+    # Stay dormant until the bucket is configured, so unconfigured pushes are
+    # skipped rather than shown as failures.
+    if: ${{ vars.DEPLOY_BUCKET != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # OIDC alternative — delete the two lines above and use:
+          # role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+
+      # Reuses scripts/deploy.sh (same tool you run by hand). --confirm makes it
+      # actually deploy; without it the script only prints its plan.
+      - run: npm run deploy -- --confirm
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          DEPLOY_BUCKET: ${{ vars.DEPLOY_BUCKET }}
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
