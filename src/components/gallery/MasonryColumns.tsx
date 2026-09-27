@@ -59,7 +59,8 @@ interface MasonryColumnsProps<T> {
   getKey: (item: T) => string;
   /** height / width from data the API already sent; null when unknown. */
   heightPerWidth: (item: T) => number | null;
-  renderItem: (item: T) => ReactNode;
+  /** `index` is the item's position in `items`, not in its column. */
+  renderItem: (item: T, index: number) => ReactNode;
 }
 
 export function MasonryColumns<T>({ items, getKey, heightPerWidth, renderItem }: MasonryColumnsProps<T>) {
@@ -68,13 +69,14 @@ export function MasonryColumns<T>({ items, getKey, heightPerWidth, renderItem }:
   // but the list and the column count.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const columns = useMemo(() => assignColumns(items, columnCount, heightPerWidth), [items, columnCount]);
+  const indexOf = useMemo(() => new Map(items.map((item, i) => [item, i])), [items]);
 
   return (
     <div className="flex items-start gap-[3px]">
       {columns.map((column, c) => (
         <div key={c} className="flex-1 min-w-0">
           {column.map((item) => (
-            <div key={getKey(item)}>{renderItem(item)}</div>
+            <div key={getKey(item)}>{renderItem(item, indexOf.get(item) ?? 0)}</div>
           ))}
         </div>
       ))}

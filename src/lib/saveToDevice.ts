@@ -118,11 +118,33 @@ export const readLimitOverrides = (search: string, base: BatchLimits): BatchLimi
 
 export const isVideoPhoto = (photo: Photo): boolean => Boolean(photo.metadata?.mimeType?.startsWith('video/'));
 
+/**
+ * What the guest chose to save: the web copy the gallery shows (~2048px,
+ * ~0.3 MB) or the original upload (~4 MB for a photographer's JPEG). The web
+ * copy is about ten times faster on a phone and sharp on any screen; the
+ * original is for printing.
+ */
+export type SaveQuality = 'fast' | 'full';
+
+/** A web copy's typical size (measured: 0.2–0.3 MB for a 4 MB original). */
+export const FAST_IMAGE_BYTES = 0.3 * MB;
+
 /** The size to plan with: the reported one, else a guess by kind. */
-export const estimatedBytes = (photo: Photo): number => {
+export const estimatedBytes = (photo: Photo, quality: SaveQuality = 'full'): number => {
   const size = photo.metadata?.size;
-  if (typeof size === 'number' && Number.isFinite(size) && size > 0) return size;
+  const known = typeof size === 'number' && Number.isFinite(size) && size > 0 ? size : null;
+  // Videos have no reliable web copy yet, so they are fetched in full either way.
+  if (quality === 'fast' && !isVideoPhoto(photo) && photo.displayUrl) {
+    return known !== null ? Math.min(known, FAST_IMAGE_BYTES) : FAST_IMAGE_BYTES;
+  }
+  if (known !== null) return known;
   return isVideoPhoto(photo) ? UNKNOWN_VIDEO_BYTES : UNKNOWN_IMAGE_BYTES;
+};
+
+/** "0.6MB", "3.4MB", "12MB" — one decimal below 10 MB. */
+export const formatMB = (bytes: number): string => {
+  const mb = bytes / MB;
+  return mb >= 10 ? `${Math.round(mb)}MB` : `${Math.max(0.1, Math.round(mb * 10) / 10)}MB`;
 };
 
 export interface BatchPlan<T> {
@@ -195,25 +217,32 @@ export const extensionFor = (mimeType: string): string =>
 export const fileNameFor = (photo: Photo, mimeType: string): string => `mynight-${photo._id}.${extensionFor(mimeType)}`;
 
 /**
- * Download one photo into a File. Tries the signed original first (what the
- * single-photo download and the zip use), then the public URL. Throws if
- * neither can be read — a CORS refusal surfaces here as a TypeError.
+ * Download one photo into a File. For 'fast', the web copy first. Then the
+ * signed original (what the single-photo download and the zip use), then the
+ * public URL. Throws if none can be read — a CORS refusal surfaces here as a
+ * TypeError.
  */
 export const fetchMediaFile = async (
   photo: Photo,
   signedUrl: () => Promise<string | undefined>,
+  quality: SaveQuality = 'full',
 ): Promise<File> => {
-  const candidates: string[] = [];
-  try {
-    const url = await signedUrl();
-    if (url) candidates.push(url);
-  } catch {
-    // Fall through to the public URL.
+  // Resolved one at a time, so the signed URL (an API round trip) is only
+  // asked for when the web copy could not be read.
+  const candidates: (() => Promise<string | undefined>)[] = [];
+  if (quality === 'fast' && !isVideoPhoto(photo) && photo.displayUrl) {
+    const displayUrl = photo.displayUrl;
+    candidates.push(async () => displayUrl);
   }
-  if (photo.url && !candidates.includes(photo.url)) candidates.push(photo.url);
+  candidates.push(() => signedUrl().catch(() => undefined));
+  candidates.push(async () => photo.url);
 
+  const tried = new Set<string>();
   let lastError: unknown = new Error('No URL to fetch');
-  for (const url of candidates) {
+  for (const resolve of candidates) {
+    const url = await resolve();
+    if (!url || tried.has(url)) continue;
+    tried.add(url);
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

@@ -7,10 +7,14 @@ import { ShareActionCard, type ShareActionCardProps } from '@/components/gallery
 import {
   SHARE_SHEET_LIMITS,
   type BatchLimits,
+  type SaveQuality,
+  type SaveStrategy,
   activationIsLive,
   currentDevice,
   estimatedBytes,
   fetchMediaFile,
+  formatMB,
+  isVideoPhoto,
   isActivationExpired,
   isShareCancelled,
   mapPool,
@@ -34,6 +38,7 @@ import {
 
 type Stage =
   | { kind: 'idle' }
+  | { kind: 'choose'; items: Photo[]; strategy: Exclude<SaveStrategy, 'zip'>; zip: (items: Photo[]) => Promise<void> }
   | { kind: 'preparing'; done: number; total: number; round: number; rounds: number }
   | { kind: 'ready'; files: File[]; items: Photo[]; round: number; rounds: number }
   | { kind: 'downloading'; done: number; total: number }
@@ -47,7 +52,12 @@ interface Plan {
   leftovers: Photo[];
   limits: BatchLimits;
   zip: (items: Photo[]) => Promise<void>;
+  quality: SaveQuality;
 }
+
+/** Paces the progress bar: a slow phone connection, roughly 1 MB/s, plus a moment to start. */
+const expectedSecondsFor = (items: Photo[], quality: SaveQuality) =>
+  1 + items.reduce((sum, p) => sum + estimatedBytes(p, quality), 0) / (1024 * 1024);
 
 /** Fetches in flight while preparing a round. Browsers open six connections per host. */
 const FETCH_CONCURRENCY = 6;
@@ -173,7 +183,7 @@ export function useSaveToDevice() {
     const results = await mapPool(
       items,
       FETCH_CONCURRENCY,
-      (photo) => fetchMediaFile(photo, signedUrlFor(photo)),
+      (photo) => fetchMediaFile(photo, signedUrlFor(photo), plan.quality),
       (done) => {
         if (isCurrent(run)) setStage((s) => (s.kind === 'preparing' ? { ...s, done } : s));
       }
@@ -235,7 +245,7 @@ export function useSaveToDevice() {
     const fetchAhead = (from: number) => {
       for (let j = from; j < Math.min(items.length, from + DOWNLOAD_AHEAD); j += 1) {
         if (!fetches[j]) {
-          fetches[j] = fetchMediaFile(items[j], signedUrlFor(items[j]));
+          fetches[j] = fetchMediaFile(items[j], signedUrlFor(items[j]), plan.quality);
           fetches[j].catch(() => {}); // handled when its turn comes
         }
       }
@@ -274,23 +284,34 @@ export function useSaveToDevice() {
       return;
     }
 
+    // On a phone the guest picks fast or full quality first. Their tap on
+    // that choice is also a fresh activation for the share sheet.
+    runRef.current += 1;
+    planRef.current = null;
+    setStage({ kind: 'choose', items, strategy, zip });
+  }, []);
+
+  const begin = (
+    items: Photo[],
+    strategy: Exclude<SaveStrategy, 'zip'>,
+    zip: (items: Photo[]) => Promise<void>,
+    quality: SaveQuality
+  ) => {
     runRef.current += 1;
     const run = runRef.current;
 
     if (strategy === 'downloads') {
-      planRef.current = { all: items, rounds: [], leftovers: [], limits: SHARE_SHEET_LIMITS, zip };
+      planRef.current = { all: items, rounds: [], leftovers: [], limits: SHARE_SHEET_LIMITS, zip, quality };
       void runDownloads(run, items);
       return;
     }
 
     const limits = readLimitOverrides(window.location.search, SHARE_SHEET_LIMITS);
-    const { batches, oversized } = planBatches(items, estimatedBytes, limits);
-    planRef.current = { all: items, rounds: batches, leftovers: [...oversized], limits, zip };
+    const { batches, oversized } = planBatches(items, (p) => estimatedBytes(p, quality), limits);
+    planRef.current = { all: items, rounds: batches, leftovers: [...oversized], limits, zip, quality };
     if (batches.length === 0) finish(run);
     else void prepareRound(run, 0);
-    // prepareRound etc. read refs, not state, so they are safe to leave out.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  };
 
   const downloadLeftover = (items: Photo[], index: number) => {
     const photo = items[index];
@@ -307,13 +328,28 @@ export function useSaveToDevice() {
     switch (stage.kind) {
       case 'idle':
         return null;
-      case 'preparing':
+      case 'choose': {
+        const { items, strategy, zip } = stage;
+        const total = (quality: SaveQuality) => formatMB(items.reduce((sum, p) => sum + estimatedBytes(p, quality), 0));
+        const noun = items.some(isVideoPhoto) ? 'קבצים' : 'תמונות';
+        return {
+          title: items.length === 1 ? `הורדת ${noun === 'קבצים' ? 'קובץ אחד' : 'תמונה אחת'}` : `הורדת ${items.length} ${noun}`,
+          action: { label: `מהיר · ${total('fast')}`, onClick: () => begin(items, strategy, zip, 'fast') },
+          secondaryAction: { label: `איכות מלאה · ${total('full')}`, onClick: () => begin(items, strategy, zip, 'full') },
+          onCancel: cancel,
+        };
+      }
+      case 'preparing': {
+        const plan = planRef.current;
+        const roundItems = plan?.rounds[stage.round - 1] ?? [];
         return {
           title: stage.rounds > 1 ? `מכין את התמונות (חלק ${stage.round} מתוך ${stage.rounds})` : 'מכין את התמונות…',
           detail: `${stage.done} מתוך ${stage.total}`,
           progress: stage.total ? stage.done / stage.total : 0,
+          expectedSeconds: plan ? expectedSecondsFor(roundItems, plan.quality) : undefined,
           onCancel: cancel,
         };
+      }
       case 'ready':
         return {
           title: 'התמונות מוכנות',
@@ -334,12 +370,18 @@ export function useSaveToDevice() {
           detail: `${stage.done} מתוך ${stage.total}`,
           hint: 'אם הדפדפן שואל — אשרו הורדה של כמה קבצים',
           progress: stage.total ? stage.done / stage.total : 0,
+          expectedSeconds: planRef.current ? expectedSecondsFor(planRef.current.all, planRef.current.quality) : undefined,
           onCancel: cancel,
         };
       case 'zipping':
         // No cancel: the server is already building the zip, and it downloads
-        // when done whatever this card says.
-        return { title: 'מכין את הקובץ להורדה…' };
+        // when done whatever this card says. No real progress exists, so the
+        // bar paces itself on the originals' size.
+        return {
+          title: 'מכין את הקובץ להורדה…',
+          progress: 0,
+          expectedSeconds: planRef.current ? 2 * expectedSecondsFor(planRef.current.all, 'full') : undefined,
+        };
       case 'leftovers':
         return {
           title: stage.items.length === 1 ? 'נשאר קובץ אחד' : `נשארו ${stage.items.length} קבצים`,

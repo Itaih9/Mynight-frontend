@@ -6,6 +6,7 @@ import { eventsApi, galleryApi, couponApi } from '@/services/api';
 import type { ShowcaseMedia } from '@/services/api/gallery.api';
 import type { Photo } from '@/types/api.types';
 import { PhotographerCard } from '@/components/gallery/PhotographerCard';
+import { MasonryColumns } from '@/components/gallery/MasonryColumns';
 import { saveUrl, saveBlob } from '@/lib/download';
 import type { MediaItem, StoryGroup, GalleryPageProps } from './types';
 import { cubeVariants } from './constants';
@@ -938,6 +939,13 @@ MediaCard.displayName = 'MediaCard';
 // added sentinel ref for IntersectionObserver-driven infinite scroll
 // ============================================================================
 
+/** Matches the shape MediaCard reserves before its image loads. */
+const mediaHeightPerWidth = (item: MediaItem): number | null =>
+  item.width && item.height ? item.height / item.width
+    : item.orientation === 'portrait' ? 3 / 2
+    : item.orientation ? 2 / 3
+    : null;
+
 const GalleryGrid = ({
   items,
   favorites,
@@ -966,18 +974,22 @@ const GalleryGrid = ({
       </div>
     )}
 
-    <div className="columns-2 md:columns-3 lg:columns-4 gap-[3px] space-y-[3px] overflow-hidden">
-      {items.map((item, index) => (
-        <MediaCard
-          key={item.id}
-          item={item}
-          priority={index < 8}
-          eager={index < 30}
-          isFavorite={favorites.has(item.id)}
-          onOpen={onOpen}
-          onToggleFavorite={onToggleFavorite}
-        />
-      ))}
+    <div className="overflow-hidden">
+      <MasonryColumns
+        items={items}
+        getKey={(item) => item.id}
+        heightPerWidth={mediaHeightPerWidth}
+        renderItem={(item, index) => (
+          <MediaCard
+            item={item}
+            priority={index < 8}
+            eager={index < 30}
+            isFavorite={favorites.has(item.id)}
+            onOpen={onOpen}
+            onToggleFavorite={onToggleFavorite}
+          />
+        )}
+      />
     </div>
 
     {hasMore && (
@@ -2106,7 +2118,7 @@ const Gallery: React.FC<GalleryPageProps> = ({
   const filteredMedia = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
-    return mediaItems
+    const kept = mediaItems
       .filter((item) => {
         if (deletedIds.has(item.id)) return false;
         if (item.source === 'pro' && !effectiveShareSettings.pro) return false;
@@ -2119,9 +2131,14 @@ const Gallery: React.FC<GalleryPageProps> = ({
         if (q !== '' && !(item.uploaderName?.toLowerCase().includes(q) ?? false)) return false;
 
         return true;
-      })
-      .sort((a, b) => getItemTime(b) - getItemTime(a));
-  }, [mediaItems, filterType, filterSource, selectedCategory, searchQuery, deletedIds, showFavoritesOnly, favorites, effectiveShareSettings]);
+      });
+    // An event gallery keeps the order the server pages in (a per-visit
+    // shuffle), so each page loaded while scrolling lands BELOW what is on
+    // screen. Sorting here re-spread every new page through the list, above
+    // photos the guest had already seen. Only the showcase, which loads all
+    // at once, is sorted.
+    return isShowcase ? kept.sort((a, b) => getItemTime(b) - getItemTime(a)) : kept;
+  }, [mediaItems, filterType, filterSource, selectedCategory, searchQuery, deletedIds, showFavoritesOnly, favorites, effectiveShareSettings, isShowcase]);
 
   // What the grid actually mounts. Stories and categories keep reading the full
   // filteredMedia, so windowing the grid never hides a story.
