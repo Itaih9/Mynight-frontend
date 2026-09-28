@@ -323,9 +323,11 @@ const GuestGallery: React.FC = () => {
     return photo.url || photo.thumbnailUrl;
   };
 
-  const getThumbnailUrl = (photo: Photo) => {
-    return photo.thumbnailUrl || photo.url;
-  };
+  // A video has no thumbnails/ copy (that pipeline only makes them for
+  // images), so its tile shows the poster frame — as the face album and the
+  // main gallery already do. Without this every video tile was blank.
+  const getThumbnailUrl = (photo: Photo) =>
+    (isVideo(photo) ? photo.posterUrl || photo.thumbnailUrl : photo.thumbnailUrl) || photo.url;
 
   // Videos play the web-optimised rendition when there is one. getPhotoUrl
   // returns the original, which for a guest's phone upload is the full file.
