@@ -244,7 +244,10 @@ export const fetchMediaFile = async (
     if (!url || tried.has(url)) continue;
     tried.add(url);
     try {
-      const response = await fetch(url);
+      // no-store: the gallery already showed this image through an <img>,
+      // and CloudFront's reply to that carries no CORS header and no
+      // `Vary: Origin`. Reusing the cached copy for this CORS fetch fails.
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
       const type = pickMimeType(blob.type, photo.metadata?.mimeType);

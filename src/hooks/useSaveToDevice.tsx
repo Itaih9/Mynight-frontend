@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { galleryApi } from '@/services/api';
 import type { Photo } from '@/types/api.types';
-import { saveBlob, saveUrl } from '@/lib/download';
+import { saveUrl } from '@/lib/download';
 import { ShareActionCard, type ShareActionCardProps } from '@/components/gallery/ShareActionCard';
 import {
   SHARE_SHEET_LIMITS,
@@ -13,6 +13,7 @@ import {
   currentDevice,
   estimatedBytes,
   fetchMediaFile,
+  fileNameFor,
   formatMB,
   isVideoPhoto,
   isActivationExpired,
@@ -61,12 +62,18 @@ const expectedSecondsFor = (items: Photo[], quality: SaveQuality) =>
 
 /** Fetches in flight while preparing a round. Browsers open six connections per host. */
 const FETCH_CONCURRENCY = 6;
-/** Android: files fetched ahead of the one being saved (including it). */
-const DOWNLOAD_AHEAD = 4;
 /** Pause between Android downloads, so the browser sees separate requests. */
 const DOWNLOAD_GAP_MS = 350;
 
 const signedUrlFor = (photo: Photo) => () => galleryApi.getDownloadUrl(photo._id).then((res) => res.data?.url);
+
+/**
+ * The API's own download route, relative so it is same-origin on both
+ * mynight.co.il and www — `download` is only honoured same-origin, and only
+ * then does the browser treat the link as a download from the first byte.
+ */
+const nativeDownloadUrl = (photo: Photo, quality: SaveQuality) =>
+  `/api/photos/download/${encodeURIComponent(photo._id)}${quality === 'fast' ? '?variant=display' : ''}`;
 
 const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -238,34 +245,16 @@ export function useSaveToDevice() {
     const plan = planRef.current;
     if (!plan) return;
     setStage({ kind: 'downloading', done: 0, total: items.length });
-    // Fetch ahead, several at once, but save strictly in order: the network
-    // time overlaps instead of adding up, and the files still arrive in the
-    // order the guest sees them.
-    const fetches: Promise<File>[] = [];
-    const fetchAhead = (from: number) => {
-      for (let j = from; j < Math.min(items.length, from + DOWNLOAD_AHEAD); j += 1) {
-        if (!fetches[j]) {
-          fetches[j] = fetchMediaFile(items[j], signedUrlFor(items[j]), plan.quality);
-          fetches[j].catch(() => {}); // handled when its turn comes
-        }
-      }
-    };
+    // Each file is handed to Android's own download manager through a
+    // same-origin link, rather than fetched into this page first. The
+    // download manager runs outside the tab: it keeps going when Chrome is in
+    // the background (where battery saver cuts the page's network), resumes
+    // after a dropped connection, and shows real progress in the
+    // notifications. Fetching into the page lost every file to one blip on a
+    // roaming connection (seen on a guest's phone, 2026-09-28).
     for (let i = 0; i < items.length; i += 1) {
       if (!isCurrent(run)) return;
-      fetchAhead(i);
-      try {
-        const file = await fetches[i];
-        if (!isCurrent(run)) return;
-        saveBlob(file, file.name);
-      } catch {
-        // The first file failing means none will load — use the zip instead.
-        if (i === 0) {
-          await fallBackToZip(run, items);
-          return;
-        }
-        plan.leftovers.push(items[i]);
-      }
-      if (!isCurrent(run)) return;
+      saveUrl(nativeDownloadUrl(items[i], plan.quality), fileNameFor(items[i], items[i].metadata?.mimeType || 'image/jpeg'));
       setStage({ kind: 'downloading', done: i + 1, total: items.length });
       if (i < items.length - 1) await sleep(DOWNLOAD_GAP_MS);
     }
